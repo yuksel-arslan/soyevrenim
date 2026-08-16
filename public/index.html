@@ -244,6 +244,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   <button id="reparentBtn" title="Ebeveyn bağı değiştir">⇄</button>
   <div class="sep"></div>
   <button id="statsBtn" title="İstatistikler">📊</button>
+  <button id="lensBtn" title="Katman / renklendirme">◑</button>
   <button id="themeBtn" title="Gece / Gündüz modu">🌙</button>
   <button id="chatBtn" title="Aile sohbeti" style="display:none">💬</button>
   <button id="adminBtn" title="Yönetici girişi">🔑</button>
@@ -281,7 +282,21 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 </div>
 
 <!-- istatistik paneli -->
-<!-- TAM SAYFA ANALİZ EKRANI -->
+<!-- KATMAN / LENS seçici -->
+<div id="lensPanel" style="position:fixed;left:64px;top:64px;z-index:16;width:210px;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;
+  box-shadow:0 16px 50px var(--shadow);display:none">
+  <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 6px 8px">Renklendirme katmanı</div>
+  <button class="lensOpt" data-lens="default" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Varsayılan (cinsiyet · soy hattı)</button>
+  <button class="lensOpt" data-lens="alive" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Yaşam durumu</button>
+  <button class="lensOpt" data-lens="gen" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Nesil</button>
+  <button class="lensOpt" data-lens="branch" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Kol / soy</button>
+</div>
+<!-- lens göstergesi (legend) -->
+<div id="lensLegend" style="position:fixed;left:16px;bottom:56px;z-index:9;
+  background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 11px;
+  box-shadow:0 8px 30px var(--shadow);display:none;max-width:240px;font-size:11px"></div>
+
 <div id="analysisScreen" style="position:fixed;inset:0;z-index:40;background:var(--bg);
   display:none;flex-direction:column;overflow:hidden">
   <div style="display:flex;justify-content:space-between;align-items:center;
@@ -548,10 +563,43 @@ function tick(){
 }
 
 // ---- renk ----
+// ============================ KATMAN / LENS ============================
+// Evreni farklı parametrelere göre boyar. "default" = normal görünüm.
+let activeLens = "default";   // default | alive | gen | branch  (cinsiyet zaten default'ta)
+// nesil renk paleti (0..8+) — soğuktan sıcağa
+const GEN_COLORS = ["#7c5cff","#5c8aff","#4ab8d9","#4ad9a8","#8ad94a","#d9c84a","#d9954a","#d9644a","#d94a8a","#c84ad9"];
+// kol (Molla Memiş'in çocukları) renkleri — kişi hangi ana kola aitse
+let BRANCH_OF = {};    // id -> kol kök id'si
+let BRANCH_COLORS = {};// kol kök id'si -> renk
+function computeBranches(){
+  BRANCH_OF={}; BRANCH_COLORS={};
+  const root=nodes.find(n=>!n._parent); if(!root) return;
+  const palette=["#4a90d9","#d96a9a","#5ac87a","#e0b64a","#c88ad0","#5cc8d8","#e0645a","#8ad94a"];
+  (root._kids||[]).forEach((k,i)=>{
+    const col=palette[i%palette.length]; BRANCH_COLORS[k.id]=col;
+    (function mark(n){ BRANCH_OF[n.id]=k.id; (n._kids||[]).forEach(mark); })(k);
+  });
+  BRANCH_OF[root.id]="root"; BRANCH_COLORS["root"]=getVar("--muted");
+}
+
 function nodeColor(n){
-  if(n.id===viewerId) return getVar("--you");        // bakan kişi
-  if(viewerSpine.has(n.id)) return getVar("--spine"); // onun soy hattı
-  if(n.alive===false) return getVar("--dead");
+  // her lenste bakan kişi ve soy hattı önceliği korunur (yön kaybolmasın)
+  if(n.id===viewerId) return getVar("--you");
+  if(activeLens==="default"){
+    if(viewerSpine.has(n.id)) return getVar("--spine");
+    if(n.alive===false) return getVar("--dead");
+    return n.sex==="K"?getVar("--female"):getVar("--male");
+  }
+  if(activeLens==="alive"){
+    return n.alive===false ? getVar("--dead") : getVar("--ok");
+  }
+  if(activeLens==="gen"){
+    const d=n._depth||0; return GEN_COLORS[Math.min(d, GEN_COLORS.length-1)];
+  }
+  if(activeLens==="branch"){
+    const b=BRANCH_OF[n.id]; return b? (BRANCH_COLORS[b]||getVar("--muted")) : getVar("--muted");
+  }
+  // yedek
   return n.sex==="K"?getVar("--female"):getVar("--male");
 }
 function getVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
@@ -562,7 +610,10 @@ function radius(n){
   // Boyutta herkes eşit; kurucu atalar ve merkeze alınan/viewer belirgin.
   if(n===activeNode) return Math.max(FOUNDERS[n.id]||0, 12+20*(n._grow||0));
   if(FOUNDERS[n.id]) return FOUNDERS[n.id];   // Molla Memiş & Abdurrahman iri
-  return n.id===viewerId ? 14 : 8;
+  let base = n.id===viewerId ? 14 : 8;
+  // lens boyut vurgusu (hafif): yaşam durumu lensinde yaşayanlar biraz iri
+  if(activeLens==="alive" && n.alive!==false) base += 1.5;
+  return base;
 }
 
 // ---- render ----
@@ -1991,6 +2042,49 @@ function renderAnalysis(){
   };
   document.getElementById("analysisClose").onclick=()=>{ screen.style.display="none"; };
   renderStats(); // welcome özeti
+})();
+
+// ============================ LENS SEÇİCİ ============================
+(function bindLens(){
+  const btn=document.getElementById("lensBtn");
+  const panel=document.getElementById("lensPanel");
+  const legend=document.getElementById("lensLegend");
+  if(!btn) return;
+  btn.onclick=()=>{ panel.style.display = panel.style.display==="none"?"block":"none"; };
+  panel.querySelectorAll(".lensOpt").forEach(opt=>{
+    opt.onclick=()=>{
+      activeLens=opt.dataset.lens;
+      if(activeLens==="branch") computeBranches();
+      panel.style.display="none";
+      updateLensUI();
+    };
+  });
+  function updateLensUI(){
+    // seçili vurgusu
+    panel.querySelectorAll(".lensOpt").forEach(o=>{
+      o.style.background = o.dataset.lens===activeLens ? "var(--bg2)" : "none";
+      o.style.fontWeight = o.dataset.lens===activeLens ? "600" : "400";
+    });
+    // gösterge
+    if(activeLens==="default"){ legend.style.display="none"; return; }
+    let items=[];
+    if(activeLens==="alive"){
+      items=[["Yaşıyor",getVar("--ok")],["Vefat",getVar("--dead")]];
+    } else if(activeLens==="gen"){
+      const maxd=Math.max(...nodes.map(n=>n._depth||0));
+      for(let d=0; d<=maxd; d++) items.push([`${d}. nesil`, GEN_COLORS[Math.min(d,GEN_COLORS.length-1)]]);
+    } else if(activeLens==="branch"){
+      const root=nodes.find(n=>!n._parent);
+      if(root) (root._kids||[]).forEach(k=>items.push([dispName(k.name), BRANCH_COLORS[k.id]]));
+    }
+    legend.innerHTML = `<div style="color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;font-size:10px">${
+      activeLens==="alive"?"Yaşam durumu":activeLens==="gen"?"Nesil":"Kol / soy"}</div>` +
+      items.map(([lbl,col])=>`<div style="display:flex;align-items:center;gap:7px;margin:3px 0">
+        <span style="width:10px;height:10px;border-radius:50%;background:${col};flex:none"></span>
+        <span style="color:var(--text-soft)">${escapeHtml(lbl)}</span></div>`).join("");
+    legend.style.display="block";
+  }
+  window.__updateLensUI=updateLensUI;   // dışarıdan tazelemek için
 })();
 
 let hintT=null;
