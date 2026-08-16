@@ -10,6 +10,7 @@
 
 import { put, del } from '@vercel/blob';
 import { neon } from '@neondatabase/serverless';
+import { jetonDogrula } from './giris.js';
 const sql = neon(process.env.DATABASE_URL);
 
 export const config = { api: { bodyParser: false } };  // ham dosya alacağız
@@ -19,11 +20,6 @@ async function readBody(req){
   for await (const c of req) chunks.push(c);
   return Buffer.concat(chunks);
 }
-async function girisGecerli(token){
-  if(!token) return false;
-  const r = await sql`select kisi_id from oturum where token = ${token}`;
-  return r.length>0;
-}
 
 export default async function handler(req, res){
   res.setHeader('Access-Control-Allow-Origin','*');
@@ -32,9 +28,9 @@ export default async function handler(req, res){
   if(req.method==='OPTIONS') return res.status(200).end();
 
   try{
-    const token = (req.query.token||'').toString();
-    const adminOk = (req.query.admin||'') === process.env.ADMIN_CODE && !!process.env.ADMIN_CODE;
-    if(!(adminOk || await girisGecerli(token))){
+    const jeton = (req.query.jeton||'').toString();
+    const oturum = jetonDogrula(jeton);
+    if(!oturum){
       return res.status(401).json({ok:false, hata:'Giriş gerekli'});
     }
 

@@ -1,20 +1,21 @@
 // Vercel Serverless Function — ÖNERİLER (onay kuyruğu)
-// /api/oneri?adim=gonder    (POST) → SMS ile girmiş kişi değişiklik önerir
+// /api/oneri?adim=gonder    (POST) → aile şifresiyle giren değişiklik önerir
 // /api/oneri?adim=liste     (POST) → admin bekleyen önerileri görür
 // /api/oneri?adim=karar     (POST) → admin onaylar/reddeder
 //
-// Ortam değişkenleri: DATABASE_URL, ADMIN_CODE
+// Ortam değişkenleri: DATABASE_URL, (giriş jetonu /api/giris'ten)
 
 import { neon } from '@neondatabase/serverless';
+import { jetonDogrula } from './giris.js';
 const sql = neon(process.env.DATABASE_URL);
 
-async function oturumKisi(token){
-  if(!token) return null;
-  const r = await sql`select kisi_id, telefon from oturum where token = ${token}`;
-  return r[0] || null;
+// giriş jetonundan rol çıkar (aile / admin / null)
+function oturumRol(body){
+  const o = jetonDogrula(body.jeton);
+  return o ? o.rol : null;
 }
 function adminMi(body){
-  return !!process.env.ADMIN_CODE && body.admin === process.env.ADMIN_CODE;
+  return oturumRol(body) === 'admin';
 }
 
 // iki ağaç arasındaki farkı çıkar (özet + detay)
@@ -46,20 +47,20 @@ export default async function handler(req, res){
   const body=req.body||{};
 
   try{
-    // — kişi değişiklik önerir —
+    // — aile üyesi değişiklik önerir —
     if(adim==='gonder'){
-      const kisi = await oturumKisi((body.token||'').toString());
-      if(!kisi && !adminMi(body)) return res.status(401).json({ok:false, hata:'Giriş gerekli'});
+      const rol = oturumRol(body);
+      if(!rol) return res.status(401).json({ok:false, hata:'Giriş gerekli. Aile şifresiyle girin.'});
       const yeni = body.veri;
       if(!yeni || !Array.isArray(yeni.nodes)) return res.status(400).json({ok:false, hata:'Geçersiz veri'});
-      // mevcut ağaçla farkı çıkar
+      // admin doğrudan kaydeder (öneri değil) — agac.js üzerinden; burada sadece aile önerisi
       const cur = (await sql`select veri from agac where id=1`)[0]?.veri || {nodes:[]};
       const fark = farkCikar(cur, yeni);
       const ozet = ozetle(fark);
       const ad = (body.gonderen_ad||'').toString().slice(0,80);
       await sql`
         insert into oneri (durum, gonderen_id, gonderen_ad, telefon, ozet, veri, fark)
-        values ('bekliyor', ${kisi?kisi.kisi_id:'admin'}, ${ad}, ${kisi?kisi.telefon:null},
+        values ('bekliyor', ${rol}, ${ad}, ${null},
                 ${ozet}, ${JSON.stringify(yeni)}::jsonb, ${JSON.stringify(fark)}::jsonb)
       `;
       return res.status(200).json({ok:true, ozet});

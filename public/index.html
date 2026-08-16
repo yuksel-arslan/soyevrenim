@@ -206,28 +206,18 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
     <button id="skipWho" style="margin-top:16px;background:none;border:none;color:#5f6f88;
       font-size:13px;cursor:pointer;text-decoration:underline">Sadece ağaca bakmak istiyorum</button>
 
-    <!-- SMS ile giriş (yalnızca bulut/canlı modda görünür) -->
+    <!-- AİLE ŞİFRESİ ile giriş (yalnızca bulut/canlı modda görünür) -->
     <div id="smsLogin" style="display:none;margin-top:22px;border-top:1px solid #1c2740;padding-top:20px">
       <div style="font-size:13px;color:#8c9cb4;margin-bottom:10px">
-        Düzenlemek için telefonunla giriş yap</div>
-      <div id="smsStep1">
-        <input id="smsTel" placeholder="Telefon numaran (05xx…)" inputmode="tel" autocomplete="tel"
-          style="width:100%;font-size:16px;color:#e6edf6;background:#131c30;border:1px solid #26324a;
-          border-radius:9px;padding:12px 14px;outline:none;text-align:center;margin-bottom:8px">
-        <button id="smsSend" style="width:100%;font-size:14px;font-weight:600;color:#06121a;
-          background:#5cc8d8;border:none;border-radius:9px;padding:12px;cursor:pointer">Kod gönder</button>
-      </div>
-      <div id="smsStep2" style="display:none">
-        <div id="smsWho" style="font-size:13px;color:#5ac87a;margin-bottom:8px"></div>
-        <input id="smsKod" placeholder="6 haneli kod" inputmode="numeric" maxlength="6"
-          style="width:100%;font-size:20px;letter-spacing:6px;color:#e6edf6;background:#131c30;
-          border:1px solid #26324a;border-radius:9px;padding:12px;outline:none;text-align:center;margin-bottom:8px">
-        <button id="smsVerify" style="width:100%;font-size:14px;font-weight:600;color:#06121a;
-          background:#5ac87a;border:none;border-radius:9px;padding:12px;cursor:pointer">Doğrula ve gir</button>
-        <button id="smsBack" style="margin-top:8px;background:none;border:none;color:#5f6f88;
-          font-size:12px;cursor:pointer;text-decoration:underline">Numarayı değiştir</button>
-      </div>
+        Katılmak için aile şifresiyle giriş yap</div>
+      <input id="ailePass" type="password" placeholder="Aile şifresi" autocomplete="current-password"
+        style="width:100%;font-size:16px;color:#e6edf6;background:#131c30;border:1px solid #26324a;
+        border-radius:9px;padding:12px 14px;outline:none;text-align:center;margin-bottom:8px">
+      <button id="aileGir" style="width:100%;font-size:14px;font-weight:600;color:#06121a;
+        background:#5cc8d8;border:none;border-radius:9px;padding:12px;cursor:pointer">Gir</button>
       <div id="smsErr" style="font-size:12px;color:#e0645a;margin-top:8px;min-height:16px"></div>
+      <div style="font-size:11px;color:#5f6f88;margin-top:6px">
+        Şifreyi aile büyüklerinden alabilirsin. Girenler değişiklik önerebilir ve sohbete yazabilir.</div>
     </div>
 
     <div id="welcomeStats" style="margin-top:28px;display:flex;gap:22px;justify-content:center;
@@ -885,9 +875,9 @@ function setViewer(id){
 // Herkes kendini + ebeveyn/kardeş/çocuk/eşini düzenler. Admin her şeyi.
 let isAdmin=false;
 // SMS ile doğrulanmış oturum
-let sessionToken=null, sessionKisiId=null;
+let sessionToken=null, sessionKisiId=null, sessionRol=null;
 try{ const s=JSON.parse(localStorage.getItem("kok_session")||"null");
-  if(s){ sessionToken=s.token; sessionKisiId=s.kisi_id; } }catch(e){}
+  if(s){ sessionToken=s.jeton||s.token||null; sessionRol=s.rol||null; if(sessionRol==="admin"){ isAdmin=true; window.__adminRol="admin"; } } }catch(e){}
 function relativesOf(id){
   // düzenlenebilir yakınlar kümesi: kendisi + ebeveyn + kardeş + çocuk + eş
   const set=new Set(); const me=byId[id]; if(!me) return set;
@@ -955,14 +945,24 @@ function canEdit(n){
   if(isBranchAdmin(editorId) && branchOf(editorId).has(n.id)) return true;
   return false;
 }
-// admin girişi (basit şifre — ortam değişkeniyle değişebilir; varsayılan aşağıda)
-const ADMIN_CODE = "kok-admin";   // ← kendi kodunla değiştir
-function tryAdminLogin(){
-  const c=prompt("Yönetici (admin) kodu:");
+// admin girişi — sunucuya admin şifresini sorar, jeton alır (client'ta sabit kod YOK)
+async function tryAdminLogin(){
+  const c=prompt("Yönetici (admin) şifresi:");
   if(c===null) return;
-  if(c===ADMIN_CODE){ isAdmin=true; window.__adminCode=c; toast("Yönetici modu açık — her şeyi düzenleyebilirsin");
-    if(selNode) openInspector(selNode); }
-  else toast("Kod yanlış");
+  try{
+    const r=await fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({sifre:c})});
+    const j=await r.json();
+    if(j.ok && j.rol==="admin"){
+      isAdmin=true; sessionToken=j.jeton; sessionRol="admin"; window.__adminRol="admin";
+      try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:"admin"})); }catch(e){}
+      const ab=document.getElementById("approvalBtn"); if(ab) ab.style.display="";
+      if(typeof refreshApprovals==="function") refreshApprovals();
+      if(typeof chatShowBtn==="function") chatShowBtn();
+      toast("Yönetici modu açık — her şeyi düzenleyebilirsin");
+      if(selNode) openInspector(selNode);
+    } else toast("Şifre yanlış");
+  }catch(e){ toast("Bağlantı hatası"); }
 }
 function draw(){
   // hafif otomatik salınım (nefes alan galaksi) — kullanıcı döndürmüyorsa
@@ -1520,8 +1520,7 @@ async function uploadMedia(file, maxW){
     // buluta yükle
     let blob = file;
     if(!isVideo && maxW){ blob = await shrinkImage(file, maxW); }   // fotoğrafı küçült
-    const q = new URLSearchParams({ ad:file.name||"medya",
-      token:sessionToken||"", admin:isAdmin?(window.__adminCode||""):"" });
+    const q = new URLSearchParams({ ad:file.name||"medya", jeton:sessionToken||"" });
     const r = await fetch("/api/medya?"+q.toString(), { method:"POST",
       headers:{"Content-Type":file.type||"application/octet-stream"}, body:blob });
     const j = await r.json();
@@ -1904,7 +1903,7 @@ function renderProfileSections(n){
     cm.appendChild(msgs);
     const inputRow=document.createElement("div"); inputRow.style.cssText="display:flex;gap:6px";
     const inp=document.createElement("input");
-    const canWrite = !!sessionKisiId || isAdmin;
+    const canWrite = !!sessionToken || isAdmin;
     inp.placeholder = canWrite ? `${dispName(n.name)} hakkında yaz…` : "Yazmak için telefonla giriş yap";
     inp.disabled=!canWrite; inp.maxLength=2000;
     inp.style.cssText="flex:1;font-size:14px;color:var(--text);background:var(--bg2);border:1px solid var(--line2);border-radius:8px;padding:9px 11px;outline:none";
@@ -2714,7 +2713,7 @@ function cloudSave(immediate){
       const r = await fetch(CLOUD.url, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ veri: currentGraphJSON(), guncelleyen: kim,
-          token: sessionToken||"", admin: window.__adminCode||"" })
+          jeton: sessionToken||"" })
       });
       if(r.ok){ dirty=false; updateStatus(); }
     }catch(e){}
@@ -2727,7 +2726,7 @@ function cloudSave(immediate){
 let pendingChanges = false;
 function updatePendingBar(){
   let bar=document.getElementById("pendingBar");
-  if(!CLOUD.on || isAdmin || !pendingChanges || !sessionKisiId){
+  if(!CLOUD.on || isAdmin || !pendingChanges || !sessionToken){
     if(bar) bar.style.display="none"; return;
   }
   if(!bar){
@@ -2752,7 +2751,7 @@ async function sendForApproval(){
   try{
     const kim = sessionKisiId ? dispName((byId[sessionKisiId]||{}).name||"") : "";
     const r=await fetch("/api/oneri?adim=gonder",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ veri: currentGraphJSON(), token: sessionToken||"", gonderen_ad: kim })});
+      body:JSON.stringify({ veri: currentGraphJSON(), jeton: sessionToken||"", gonderen_ad: kim })});
     const j=await r.json();
     if(j.ok){
       pendingChanges=false; dirty=false; updatePendingBar(); updateStatus();
@@ -2785,52 +2784,46 @@ setInterval(async ()=>{
 // açılışta bulutu dene (welcome ekranı kapanınca değil, hemen — sessiz)
 cloudLoad();
 
-// ============================ SMS İLE GİRİŞ ============================
-let smsTelSon="";
+// ============================ AİLE ŞİFRESİ İLE GİRİŞ ============================
 function smsShowIfCloud(){
-  // bulut varsa SMS giriş bölümünü göster
   if(CLOUD.on){ const el=document.getElementById("smsLogin"); if(el) el.style.display="block"; }
 }
-(function bindSms(){
+(function bindAileGiris(){
   const $=id=>document.getElementById(id);
   const err=(m)=>{ const e=$("smsErr"); if(e) e.textContent=m||""; };
-  const send=$("smsSend"), verify=$("smsVerify");
-  if(!send) return;
-  send.onclick=async ()=>{
-    const tel=$("smsTel").value.trim(); if(!tel){ err("Numaranı yaz"); return; }
-    err(""); send.disabled=true; send.textContent="Gönderiliyor…";
+  const inp=$("ailePass"), btn=$("aileGir");
+  if(!btn) return;
+  async function gir(){
+    const sifre=(inp.value||"").trim(); if(!sifre){ err("Şifreyi yaz"); return; }
+    err(""); btn.disabled=true; btn.textContent="Giriş yapılıyor…";
     try{
-      const r=await fetch("/api/giris?adim=kod-iste",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({telefon:tel})});
-      const j=await r.json();
-      if(j.ok){ smsTelSon=tel; $("smsStep1").style.display="none"; $("smsStep2").style.display="block";
-        $("smsWho").textContent=`Kod ${j.kisi_adi} adına gönderildi`; $("smsKod").focus(); }
-      else err(j.hata||"Gönderilemedi");
-    }catch(e){ err("Bağlantı hatası"); }
-    send.disabled=false; send.textContent="Kod gönder";
-  };
-  verify.onclick=async ()=>{
-    const kod=$("smsKod").value.trim(); if(kod.length<6){ err("6 haneli kodu gir"); return; }
-    err(""); verify.disabled=true; verify.textContent="Doğrulanıyor…";
-    try{
-      const r=await fetch("/api/giris?adim=dogrula",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({telefon:smsTelSon, kod})});
+      const r=await fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({sifre})});
       const j=await r.json();
       if(j.ok){
-        sessionToken=j.token; sessionKisiId=j.kisi_id;
-        try{ localStorage.setItem("kok_session", JSON.stringify({token:j.token,kisi_id:j.kisi_id})); }catch(e){}
-        // giriş yapan kişi olarak ağaca gir
-        startAs(j.kisi_id);
-      } else err(j.hata||"Kod yanlış");
+        sessionToken=j.jeton; sessionRol=j.rol;
+        if(j.rol==="admin"){ isAdmin=true; window.__adminRol="admin";
+          const ab=document.getElementById("approvalBtn"); if(ab) ab.style.display="";
+          if(typeof refreshApprovals==="function") refreshApprovals();
+        }
+        try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:j.rol})); }catch(e){}
+        const w=document.getElementById("welcome"); if(w) w.style.display="none";
+        if(typeof chatShowBtn==="function") chatShowBtn();
+        toast(j.rol==="admin" ? "Yönetici olarak girildi" : "Aile üyesi olarak girildi");
+        if(typeof cloudLoad==="function") cloudLoad();
+      } else err(j.hata||"Şifre yanlış");
     }catch(e){ err("Bağlantı hatası"); }
-    verify.disabled=false; verify.textContent="Doğrula ve gir";
-  };
-  $("smsBack").onclick=()=>{ $("smsStep2").style.display="none"; $("smsStep1").style.display="block"; err(""); };
+    btn.disabled=false; btn.textContent="Gir";
+  }
+  btn.onclick=gir;
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter") gir(); });
 })();
 
 // admin girişi düğmesi
 document.getElementById("adminBtn").onclick=()=>{
-  if(isAdmin){ isAdmin=false; window.__adminCode=""; toast("Yönetici modu kapandı");
+  if(isAdmin){ isAdmin=false; sessionToken=null; sessionRol=null; window.__adminRol="";
+    try{ localStorage.removeItem("kok_session"); }catch(e){}
+    toast("Yönetici modu kapandı");
     document.getElementById("approvalBtn").style.display="none";
     document.getElementById("approvalPanel").style.display="none";
     if(selNode)openInspector(selNode); }
@@ -2846,7 +2839,7 @@ async function refreshApprovals(){
   if(!isAdmin || !CLOUD.on) return;
   try{
     const r=await fetch("/api/oneri?adim=liste",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({admin:window.__adminCode||"", durum:"bekliyor"})});
+      body:JSON.stringify({jeton: sessionToken||"", durum:"bekliyor"})});
     const j=await r.json();
     if(!j.ok) return;
     const cnt=document.getElementById("approvalCount");
@@ -2888,7 +2881,7 @@ function renderApprovalList(list){
 async function karar(id, karar){
   try{
     const r=await fetch("/api/oneri?adim=karar",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({admin:window.__adminCode||"", id, karar})});
+      body:JSON.stringify({jeton: sessionToken||"", id, karar})});
     const j=await r.json();
     if(j.ok){
       toast(karar==="onayla"?"Onaylandı — ağaca işlendi":"Reddedildi");
@@ -2963,7 +2956,7 @@ async function chatSend(kapsam, input, container){
   try{
     const ad = sessionKisiId ? dispName((byId[sessionKisiId]||{}).name||"") : "Yönetici";
     const r=await fetch("/api/sohbet?adim=yaz",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({kapsam, mesaj, token:sessionToken||"", yazan_ad:ad, admin:isAdmin?(window.__adminCode||""):""})});
+      body:JSON.stringify({kapsam, mesaj, jeton:sessionToken||"", yazan_ad:ad})});
     const j=await r.json();
     if(j.ok) chatLoad(kapsam, container);
     else toast(j.hata||"Gönderilemedi");
@@ -2972,7 +2965,7 @@ async function chatSend(kapsam, input, container){
 async function chatDelete(id, kapsam, container){
   try{
     await fetch("/api/sohbet?adim=sil",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({id, token:sessionToken||"", admin:isAdmin?(window.__adminCode||""):""})});
+      body:JSON.stringify({id, jeton:sessionToken||""})});
     chatLoad(kapsam, container);
   }catch(e){}
 }
@@ -2986,7 +2979,7 @@ async function chatDelete(id, kapsam, container){
   let poll=null;
   const open=()=>{ pnl.style.display="flex"; chatLoad("genel", msgs);
     // giriş yoksa yazmayı kilitle
-    const canWrite = !!sessionKisiId || isAdmin;
+    const canWrite = !!sessionToken || isAdmin;
     input.disabled=!canWrite; send.disabled=!canWrite;
     input.placeholder = canWrite ? "Mesaj yaz…" : "Yazmak için telefonla giriş yap";
     poll=setInterval(()=>{ if(pnl.style.display!=="none") chatLoad("genel", msgs); }, 15000);

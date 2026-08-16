@@ -5,6 +5,7 @@
 // Vercel panel → Project → Settings → Environment Variables → DATABASE_URL ekle.
 
 import { neon } from '@neondatabase/serverless';
+import { jetonDogrula } from './giris.js';
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -37,8 +38,9 @@ export default async function handler(req, res) {
       if (!veri || !Array.isArray(veri.nodes)) {
         return res.status(400).json({ ok: false, hata: 'Geçersiz veri' });
       }
-      // DOĞRUDAN kaydetme yalnızca admin'e açık. Normal kullanıcılar /api/oneri kullanır.
-      const adminOk = body.admin === process.env.ADMIN_CODE && !!process.env.ADMIN_CODE;
+      // DOĞRUDAN kaydetme yalnızca admin'e açık. Aile üyeleri /api/oneri kullanır.
+      const oturum = jetonDogrula(body.jeton);
+      const adminOk = oturum && oturum.rol === 'admin';
       if (!adminOk) {
         return res.status(403).json({ ok: false, hata: 'Doğrudan kayıt sadece yöneticiye açık. Değişikliğini "Onaya gönder" ile ilet.' });
       }

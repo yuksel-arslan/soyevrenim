@@ -6,14 +6,11 @@
 // Ortam değişkenleri: DATABASE_URL, ADMIN_CODE
 
 import { neon } from '@neondatabase/serverless';
+import { jetonDogrula } from './giris.js';
 const sql = neon(process.env.DATABASE_URL);
 
-async function oturumKisi(token){
-  if(!token) return null;
-  const r = await sql`select kisi_id, telefon from oturum where token = ${token}`;
-  return r[0] || null;
-}
-function adminMi(body){ return !!process.env.ADMIN_CODE && body.admin === process.env.ADMIN_CODE; }
+function oturumRol(body){ const o=jetonDogrula(body.jeton); return o?o.rol:null; }
+function adminMi(body){ return oturumRol(body)==='admin'; }
 function temizKapsam(k){
   k = String(k||'genel');
   if(k==='genel') return 'genel';
@@ -43,15 +40,15 @@ export default async function handler(req, res){
       return res.status(200).json({ok:true, mesajlar: rows});
     }
 
-    // — mesaj yaz (SMS ile giren kişi) —
+    // — mesaj yaz (aile şifresiyle giren) —
     if(adim==='yaz'){
-      const kisi = await oturumKisi((body.token||'').toString());
-      if(!kisi && !adminMi(body)) return res.status(401).json({ok:false, hata:'Yazmak için telefonla giriş yap'});
+      const rol = oturumRol(body);
+      if(!rol) return res.status(401).json({ok:false, hata:'Yazmak için aile şifresiyle giriş yap'});
       const kapsam = temizKapsam(body.kapsam);
       const mesaj = String(body.mesaj||'').trim().slice(0, 2000);
       if(!mesaj) return res.status(400).json({ok:false, hata:'Boş mesaj'});
       const ad = String(body.yazan_ad||'').slice(0,80);
-      const yid = kisi ? kisi.kisi_id : 'admin';
+      const yid = rol;   // 'aile' ya da 'admin'
       const rows = await sql`
         insert into sohbet (kapsam, yazan_id, yazan_ad, mesaj)
         values (${kapsam}, ${yid}, ${ad}, ${mesaj})
@@ -60,14 +57,12 @@ export default async function handler(req, res){
       return res.status(200).json({ok:true, mesaj: rows[0]});
     }
 
-    // — mesaj sil (admin ya da mesajı yazan kişi) —
+    // — mesaj sil (sadece admin) —
     if(adim==='sil'){
       const id = parseInt(body.id,10);
-      const kisi = await oturumKisi((body.token||'').toString());
+      if(!adminMi(body)) return res.status(403).json({ok:false, hata:'Silme sadece yöneticiye açık'});
       const rows = await sql`select yazan_id from sohbet where id=${id}`;
       if(!rows[0]) return res.status(404).json({ok:false});
-      const sahip = kisi && kisi.kisi_id===rows[0].yazan_id;
-      if(!(adminMi(body) || sahip)) return res.status(403).json({ok:false, hata:'Yetki yok'});
       await sql`delete from sohbet where id=${id}`;
       return res.status(200).json({ok:true});
     }
