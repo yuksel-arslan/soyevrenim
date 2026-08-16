@@ -1,0 +1,17 @@
+# bağımlılıklar
+node_modules/
+
+# ortam değişkenleri (SIRLAR — asla yükleme!)
+.env
+.env.local
+.env*.local
+
+# Vercel
+.vercel
+
+# işletim sistemi / editör
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/

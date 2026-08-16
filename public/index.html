@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+<title>Kök · Graf Düzenleyici (Bloom)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b1220; --bg2:#0e1526; --panel:#131c30; --panel2:#182238;
+  --line:#26324a; --line2:#334259;
+  --text:#e6edf6; --text-soft:#8c9cb4; --muted:#5f6f88;
+  --male:#4a90d9; --female:#d96a9a; --spine:#e0b64a; --you:#f5d15a;
+  --dead:#5a6578; --edge:#3a4a63; --edge-lit:#e0b64a; --marriage:#c88ad0;
+  --accent:#5cc8d8; --danger:#e0645a; --ok:#5ac87a;
+  --shadow:rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);
+  font-family:"Inter",system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+canvas{display:block;position:fixed;inset:0;touch-action:none}
+
+/* üst bar */
+.topbar{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;gap:12px;
+  padding:12px 16px;background:linear-gradient(180deg,rgba(11,18,32,.95),rgba(11,18,32,0));pointer-events:none}
+.brand{pointer-events:auto;font-weight:700;font-size:16px;letter-spacing:.3px}
+.brand span{color:var(--spine)}
+.brand .sub{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--text-soft);
+  font-weight:400;letter-spacing:2px;text-transform:uppercase;margin-top:1px}
+.spacer{flex:1}
+.search{pointer-events:auto;position:relative}
+.search input{font-family:"Inter";font-size:13px;color:var(--text);background:var(--panel);
+  border:1px solid var(--line);border-radius:7px;padding:9px 12px;width:200px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.results{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel);
+  border:1px solid var(--line);border-radius:7px;max-height:50vh;overflow:auto;display:none;box-shadow:0 12px 40px var(--shadow)}
+.results.show{display:block}
+.results .r{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)}
+.results .r:hover{background:var(--panel2)}
+.results .r small{color:var(--text-soft);margin-left:6px}
+.tbtn{pointer-events:auto;font-family:"Inter";font-size:13px;font-weight:500;color:var(--text);
+  background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:9px 13px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;transition:.15s}
+.tbtn:hover{border-color:var(--line2);background:var(--panel2)}
+.tbtn.primary{background:var(--accent);color:#06121a;border-color:var(--accent);font-weight:600}
+.tbtn.primary:hover{filter:brightness(1.08)}
+
+/* sol araç kolonu */
+.dock{position:fixed;left:16px;top:64px;z-index:9;display:flex;flex-direction:column;gap:6px}
+.dock button{width:40px;height:40px;border-radius:8px;background:var(--panel);border:1px solid var(--line);
+  color:var(--text);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s}
+.dock button:hover{background:var(--panel2);border-color:var(--line2)}
+.dock button.on{background:var(--accent);color:#06121a;border-color:var(--accent)}
+.dock .sep{height:1px;background:var(--line);margin:3px 4px}
+
+/* sağ düzenleme paneli */
+.inspector{position:fixed;right:0;top:0;bottom:0;width:340px;max-width:88vw;z-index:11;
+  background:var(--panel);border-left:1px solid var(--line);box-shadow:-8px 0 40px var(--shadow);
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+.inspector.show{transform:none}
+.inspector .head{padding:18px 18px 14px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:10px}
+.inspector .dot{width:34px;height:34px;border-radius:50%;flex:none;margin-top:2px}
+.inspector h2{margin:0;font-size:19px;font-weight:600;line-height:1.2}
+.inspector .meta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--text-soft);margin-top:3px}
+.inspector .close{margin-left:auto;background:none;border:none;color:var(--text-soft);font-size:20px;cursor:pointer}
+.inspector .body{padding:16px 18px;overflow:auto;flex:1}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;
+  color:var(--text-soft);margin-bottom:5px}
+.field input,.field select{width:100%;font-family:"Inter";font-size:14px;color:var(--text);
+  background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:9px 11px;outline:none}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chip{font-size:12px;background:var(--panel2);border:1px solid var(--line);border-radius:20px;
+  padding:5px 10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip:hover{border-color:var(--line2)}
+.chip .x{color:var(--muted);font-size:13px}
+.chip.add{border-style:dashed;color:var(--text-soft)}
+.section-title{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--muted);margin:18px 0 8px}
+.lineage{font-size:13px;line-height:1.7;color:var(--text-soft)}
+.lineage b{color:var(--spine)}
+.kidlist{display:flex;flex-direction:column;gap:4px}
+.kidlist .k{display:flex;align-items:center;gap:8px;padding:7px 9px;background:var(--bg2);
+  border:1px solid var(--line);border-radius:6px;font-size:13px;cursor:pointer}
+.kidlist .k:hover{border-color:var(--line2)}
+.kidlist .k .kd{width:8px;height:8px;border-radius:50%;flex:none}
+.inspector .foot{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:8px}
+.inspector .foot .tbtn{flex:1;justify-content:center}
+.tbtn.danger{color:var(--danger);border-color:transparent}
+.tbtn.danger:hover{background:rgba(224,100,90,.12);border-color:var(--danger)}
+
+/* alt durum çubuğu */
+.statusbar{position:fixed;left:16px;bottom:14px;z-index:9;font-family:"IBM Plex Mono",monospace;
+  font-size:11px;color:var(--muted);background:rgba(11,18,32,.7);padding:6px 12px;border-radius:6px;
+  border:1px solid var(--line);backdrop-filter:blur(6px)}
+.statusbar b{color:var(--text-soft)}
+
+/* mod ipucu */
+.hint{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:9;background:var(--accent);
+  color:#06121a;font-size:12px;font-weight:600;padding:7px 14px;border-radius:20px;opacity:0;
+  transition:opacity .3s;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.hint.show{opacity:1}
+
+/* toast */
+.toast{position:fixed;bottom:56px;left:50%;transform:translateX(-50%) translateY(16px);z-index:20;
+  background:var(--panel2);border:1px solid var(--line2);color:var(--text);font-size:13px;
+  padding:10px 16px;border-radius:8px;opacity:0;transition:.25s;pointer-events:none;box-shadow:0 8px 30px var(--shadow)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:640px){
+  /* üst bar: kompakt, sarmalı */
+  .topbar{padding:10px 12px;gap:8px}
+  .brand{font-size:14px}
+  .brand .sub{display:none}
+  .search input{width:120px;font-size:16px;padding:8px 10px} /* 16px: iOS zoom engeli */
+  .topbar .tbtn{font-size:12px;padding:8px 10px}
+  .topbar .tbtn .lbl{display:none} /* buton metinleri gizle, ikon kalsın */
+
+  /* sol dock: alt-orta yatay şeride taşı, parmakla rahat */
+  .dock{left:50%;top:auto;bottom:calc(env(safe-area-inset-bottom,0) + 12px);
+    transform:translateX(-50%);flex-direction:row;gap:8px;
+    background:rgba(11,18,32,.82);padding:6px;border-radius:14px;
+    border:1px solid var(--line);backdrop-filter:blur(8px);max-width:calc(100vw - 24px);overflow-x:auto}
+  .dock button{width:46px;height:46px;font-size:18px;flex:none}
+  .dock .sep{width:1px;height:auto;margin:4px 2px}
+
+  /* sağ panel: tam ekran alt sheet gibi */
+  .inspector{width:100%;max-width:100%;top:auto;bottom:0;height:86vh;
+    border-left:none;border-top:1px solid var(--line);border-radius:16px 16px 0 0;
+    transform:translateY(100%);box-shadow:0 -8px 40px var(--shadow)}
+  .inspector.show{transform:none}
+  .inspector .head{padding:16px 16px 12px}
+  .inspector .body{padding:14px 16px;-webkit-overflow-scrolling:touch}
+  .inspector h2{font-size:18px}
+  /* panel üstünde çekme çubuğu */
+  .inspector .head::before{content:"";position:absolute;top:7px;left:50%;transform:translateX(-50%);
+    width:40px;height:4px;border-radius:2px;background:var(--line2)}
+
+  /* alt durum çubuğu: dock ile çakışmasın */
+  .statusbar{bottom:auto;top:calc(env(safe-area-inset-top,0) + 56px);left:12px;font-size:10px;padding:5px 9px}
+
+  /* istatistik/hover kartları taşmasın */
+  #statsPanel{left:12px !important;right:12px;top:64px !important;width:auto !important;max-width:none}
+  #hoverCard{display:none !important} /* mobilde hover yok, kart gereksiz */
+
+  /* dokunulabilir alanları büyüt */
+  .kidlist .k{padding:10px 11px;font-size:14px}
+  .chip{padding:7px 12px;font-size:13px}
+  .field input,.field select{font-size:16px} /* iOS zoom engeli */
+}
+
+/* çok dar ekran (küçük telefon) */
+@media (max-width:380px){
+  .brand{font-size:13px}
+  .search input{width:96px}
+  .dock button{width:42px;height:42px}
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- açılış: kim bakıyor? -->
+<div id="welcome" style="position:fixed;inset:0;z-index:50;display:flex;align-items:center;
+  justify-content:center;background:radial-gradient(120% 90% at 50% 40%,#101a30,#0b1220)">
+  <div style="text-align:center;max-width:420px;padding:0 24px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:3px;
+      text-transform:uppercase;color:#5f6f88;margin-bottom:14px">Abdurrahman Oğulları · Soy Ağacı</div>
+    <h1 style="font-family:'Inter';font-weight:700;font-size:28px;margin:0 0 8px;color:#e6edf6">Bu ağaca kim bakıyor?</h1>
+    <p style="font-size:14px;color:#8c9cb4;line-height:1.5;margin:0 0 22px">
+      Adını seç — ağaç seni merkezine alsın, soyunu köke kadar aydınlatsın.
+      Herkes kendi bakışında ağacın merkezidir.</p>
+    <div style="position:relative">
+      <input id="whoInput" placeholder="adını yaz…" autocomplete="off"
+        style="width:100%;font-family:'Inter';font-size:16px;color:#e6edf6;background:#131c30;
+        border:1px solid #26324a;border-radius:9px;padding:13px 15px;outline:none;text-align:center">
+      <div id="whoResults" style="position:absolute;top:calc(100% + 6px);left:0;right:0;
+        background:#131c30;border:1px solid #26324a;border-radius:9px;max-height:40vh;overflow:auto;
+        display:none;box-shadow:0 16px 50px rgba(0,0,0,.5);text-align:left;z-index:2"></div>
+    </div>
+    <button id="skipWho" style="margin-top:16px;background:none;border:none;color:#5f6f88;
+      font-size:13px;cursor:pointer;text-decoration:underline">Sadece ağaca bakmak istiyorum</button>
+
+    <!-- SMS ile giriş (yalnızca bulut/canlı modda görünür) -->
+    <div id="smsLogin" style="display:none;margin-top:22px;border-top:1px solid #1c2740;padding-top:20px">
+      <div style="font-size:13px;color:#8c9cb4;margin-bottom:10px">
+        Düzenlemek için telefonunla giriş yap</div>
+      <div id="smsStep1">
+        <input id="smsTel" placeholder="Telefon numaran (05xx…)" inputmode="tel" autocomplete="tel"
+          style="width:100%;font-size:16px;color:#e6edf6;background:#131c30;border:1px solid #26324a;
+          border-radius:9px;padding:12px 14px;outline:none;text-align:center;margin-bottom:8px">
+        <button id="smsSend" style="width:100%;font-size:14px;font-weight:600;color:#06121a;
+          background:#5cc8d8;border:none;border-radius:9px;padding:12px;cursor:pointer">Kod gönder</button>
+      </div>
+      <div id="smsStep2" style="display:none">
+        <div id="smsWho" style="font-size:13px;color:#5ac87a;margin-bottom:8px"></div>
+        <input id="smsKod" placeholder="6 haneli kod" inputmode="numeric" maxlength="6"
+          style="width:100%;font-size:20px;letter-spacing:6px;color:#e6edf6;background:#131c30;
+          border:1px solid #26324a;border-radius:9px;padding:12px;outline:none;text-align:center;margin-bottom:8px">
+        <button id="smsVerify" style="width:100%;font-size:14px;font-weight:600;color:#06121a;
+          background:#5ac87a;border:none;border-radius:9px;padding:12px;cursor:pointer">Doğrula ve gir</button>
+        <button id="smsBack" style="margin-top:8px;background:none;border:none;color:#5f6f88;
+          font-size:12px;cursor:pointer;text-decoration:underline">Numarayı değiştir</button>
+      </div>
+      <div id="smsErr" style="font-size:12px;color:#e0645a;margin-top:8px;min-height:16px"></div>
+    </div>
+
+    <div id="welcomeStats" style="margin-top:28px;display:flex;gap:22px;justify-content:center;
+      font-family:'IBM Plex Mono',monospace;color:#5f6f88;font-size:11px"></div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="brand">Kök<span>·</span>Graf<div class="sub">Bloom düzenleyici</div></div>
+  <div class="spacer"></div>
+  <div class="search"><input id="q" placeholder="kişi ara…" autocomplete="off"><div class="results" id="res"></div></div>
+  <button class="tbtn" id="addBtn">＋<span class="lbl"> Kişi</span></button>
+  <button class="tbtn primary" id="exportBtn">↧<span class="lbl"> Dışa aktar</span></button>
+</div>
+
+<div class="dock">
+  <button id="fitBtn" title="Tümünü sığdır">⊡</button>
+  <button id="zinBtn" title="Yakınlaş">＋</button>
+  <button id="zoutBtn" title="Uzaklaş">－</button>
+  <div class="sep"></div>
+  <button id="physBtn" class="on" title="Fizik aç/kapa">⚛</button>
+  <button id="reparentBtn" title="Ebeveyn bağı değiştir">⇄</button>
+  <div class="sep"></div>
+  <button id="statsBtn" title="İstatistikler">📊</button>
+  <button id="adminBtn" title="Yönetici girişi">🔑</button>
+  <button id="approvalBtn" title="Onay kutusu" style="display:none;position:relative">📋<span id="approvalCount" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
+</div>
+
+<!-- admin onay paneli -->
+<div id="approvalPanel" style="position:fixed;right:16px;top:64px;z-index:16;width:min(380px,92vw);
+  max-height:80vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:16px;box-shadow:0 16px 50px var(--shadow);display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="font-weight:700;font-size:15px">Onay kutusu</div>
+    <button id="approvalClose" style="background:none;border:none;color:var(--text-soft);font-size:18px;cursor:pointer">×</button>
+  </div>
+  <div id="approvalList"></div>
+</div>
+
+<!-- istatistik paneli -->
+<div id="statsPanel" style="position:fixed;left:64px;top:64px;z-index:12;width:260px;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;
+  box-shadow:0 16px 50px var(--shadow);display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="font-weight:700;font-size:14px">Ağaç istatistikleri</div>
+    <button id="statsClose" style="background:none;border:none;color:var(--text-soft);font-size:16px;cursor:pointer">×</button>
+  </div>
+  <div id="statsBody"></div>
+</div>
+
+<div class="inspector" id="inspector">
+  <div class="head">
+    <div class="dot" id="iDot"></div>
+    <div>
+      <h2 id="iName">—</h2>
+      <div class="meta" id="iMeta"></div>
+    </div>
+    <button class="close" id="iClose">×</button>
+  </div>
+  <div class="body" id="iBody"></div>
+  <div class="foot">
+    <button class="tbtn" id="iFocus">Odakla</button>
+    <button class="tbtn danger" id="iDelete">Sil</button>
+  </div>
+</div>
+
+<div class="statusbar" id="status"><b>—</b></div>
+<div class="hint" id="hint"></div>
+<div class="toast" id="toast"></div>
+
+<!-- hover foto önizleme -->
+<div id="hoverCard" style="position:fixed;z-index:15;pointer-events:none;display:none;
+  background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:8px;
+  box-shadow:0 12px 40px var(--shadow);width:150px">
+  <div id="hoverPhoto" style="width:134px;height:134px;border-radius:7px;background-size:cover;
+    background-position:center;margin-bottom:6px"></div>
+  <div id="hoverName" style="font-size:13px;font-weight:600;text-align:center;padding:0 2px 2px"></div>
+</div>
+
+<script>
+const GRAPH = {"nodes": [{"id": "p1", "name": "Molla Memiş", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11", "name": "Memiş", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p111", "name": "Barat Ali", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1111", "name": "Osman", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11111", "name": "Ayşe", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11112", "name": "Fatma", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11113", "name": "Ali", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p111131", "name": "Asım", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1111311", "name": "Ali", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1111312", "name": "Kadriye", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1111313", "name": "Ali", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1111314", "name": "Tevfik", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1234341", "name": "Evlat1", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1234342", "name": "Evlat2", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11113141", "name": "Evlat1", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11113142", "name": "Evlat2", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1111315", "name": "Emine", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1111316", "name": "Zeki", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11113161", "name": "Semra", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11113162", "name": "Nermin", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11113163", "name": "Tahsin", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11114", "name": "Tevfik", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1112", "name": "Mustafa", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11121", "name": "Ömer", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11122", "name": "Hasan", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11123", "name": "Şaban", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p111231", "name": "Osman", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1112311", "name": "Mustafa", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11123111", "name": "Kadriye", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11123112", "name": "Asiye", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11123113", "name": "Osman", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11123114", "name": "Emine", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p112", "name": "Karyağdı Mehmet", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1121", "name": "Osman", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1122", "name": "Ali", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11221", "name": "Emine", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11222", "name": "Osman", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p112221", "name": "Nesibe", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p112222", "name": "Faik", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p112223", "name": "Mehmet", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1122231", "name": "Fatma", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1122232", "name": "Ayşe", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1122233", "name": "Metin", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1122234", "name": "Emine", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p112224", "name": "Sulbiye", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11223", "name": "Nazım", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p112231", "name": "Cemal", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p112232", "name": "Kamil", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p112233", "name": "Meliha", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p11224", "name": "Fatma", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1123", "name": "Hurşit", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12", "name": "Abdurrahman", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p121", "name": "Musa", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1211", "name": "Şerif", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1212", "name": "Hasan1", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1213", "name": "Arif", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1214", "name": "Hasan2", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1215", "name": "Mustafa", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12151", "name": "Hasan", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p121511", "name": "Ayşe", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": ["Enver (aileden)"], "kin": "p1222211", "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p121512", "name": "Osman", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1215121", "name": "Asiye", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1215122", "name": "Rüknü", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p121513", "name": "Arif1", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p121514", "name": "Arif2", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p121515", "name": "Mustafa", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1215151", "name": "Tuncay", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123432", "parentRole": "baba", "fatherExt": null}, {"id": "p1215152", "name": "Tülay", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123432", "parentRole": "baba", "fatherExt": null}, {"id": "p1215153", "name": "Nuray", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123432", "parentRole": "baba", "fatherExt": null}, {"id": "p121513A", "name": "Aysel", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122", "name": "Mehmet Yazıcı", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1221", "name": "Ali", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12211", "name": "Osman", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122111", "name": "Nazım", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122112", "name": "Behçet", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1221111", "name": "Hatice", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122112", "parentRole": "baba", "fatherExt": null}, {"id": "p1221121", "name": "İlknur", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122112", "parentRole": "baba", "fatherExt": null}, {"id": "p1221122", "name": "Öznur", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122112", "parentRole": "baba", "fatherExt": null}, {"id": "p1221123", "name": "Fatma", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122113", "name": "Bedriye", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1221131", "name": "Birsen", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1221132", "name": "M. Ali", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1221133", "name": "Aysen", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1221134", "name": "Yılmaz", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122114", "name": "Nazım2", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": ["Müzeyyen (aileden)"], "kin": "p1222231", "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12222311", "name": "Meryem", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222231", "parentRole": "baba", "fatherExt": null}, {"id": "p12222312", "name": "Leman", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222231", "parentRole": "baba", "fatherExt": null}, {"id": "p12222313", "name": "Osman", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222231", "parentRole": "baba", "fatherExt": null}, {"id": "p12222314", "name": "Türkan", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222231", "parentRole": "baba", "fatherExt": null}, {"id": "p12222315", "name": "Sonnur", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222231", "parentRole": "baba", "fatherExt": null}, {"id": "p12222316", "name": "Kadir", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222231", "parentRole": "baba", "fatherExt": null}, {"id": "p12212", "name": "Mehmet", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122121", "name": "Ravi", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122122", "name": "Ruknettin", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1221221", "name": "Haluk", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122122", "parentRole": "baba", "fatherExt": null}, {"id": "p1221222", "name": "Leman", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122122", "parentRole": "baba", "fatherExt": null}, {"id": "p1221223", "name": "Şükran", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122122", "parentRole": "baba", "fatherExt": null}, {"id": "p1221224", "name": "Oktay", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122122", "parentRole": "baba", "fatherExt": null}, {"id": "p1221225", "name": "Yavuz", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122122", "parentRole": "baba", "fatherExt": null}, {"id": "p1221226", "name": "Furuzan", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122122", "parentRole": "baba", "fatherExt": null}, {"id": "p1222", "name": "Hamit", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12221", "name": "Fahri", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122211", "name": "Hamit", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122212", "name": "Ziver", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122213", "name": "Şükriye", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122214", "name": "Ferdane", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12222", "name": "Ömer", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122221", "name": "Emine", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": ["Osman Kutlu"], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1222211", "name": "Enver", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": ["Ayşe (aileden)"], "kin": "p121511", "mother": "p122221", "parentRole": "anne", "fatherExt": "Osman Kutlu"}, {"id": "p12222111", "name": "Fatma", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222211", "parentRole": "baba", "fatherExt": null}, {"id": "p12222112", "name": "Mustafa", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222211", "parentRole": "baba", "fatherExt": null}, {"id": "p12222113", "name": "Gülten", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222211", "parentRole": "baba", "fatherExt": null}, {"id": "p12222114", "name": "Gülen", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222211", "parentRole": "baba", "fatherExt": null}, {"id": "p12222115", "name": "Lütfü", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222211", "parentRole": "baba", "fatherExt": null}, {"id": "p1222212", "name": "Ayten", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": ["Fahri (aileden)"], "kin": "p1222233", "mother": "p122221", "parentRole": "anne", "fatherExt": "Osman Kutlu"}, {"id": "p1222213", "name": "Nehare", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": ["Şerafettin Tataroğlu"], "kin": null, "mother": "p122221", "parentRole": "anne", "fatherExt": "Osman Kutlu"}, {"id": "p12222131", "name": "Fatma", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222213", "parentRole": "anne", "fatherExt": "Şerafettin Tataroğlu"}, {"id": "p12222132", "name": "Metin", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": ["Esra Bakar"], "kin": null, "mother": "p1222213", "parentRole": "anne", "fatherExt": "Şerafettin Tataroğlu"}, {"id": "p122221321", "name": "Nihal Su", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p12222132", "parentRole": "baba", "fatherExt": null}, {"id": "p122221322", "name": "Şeref Mete", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p12222132", "parentRole": "baba", "fatherExt": null}, {"id": "p1222214", "name": "Nurten", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122221", "parentRole": "anne", "fatherExt": "Osman Kutlu"}, {"id": "p12222141", "name": "Gülay", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222214", "parentRole": "anne", "fatherExt": null}, {"id": "p1222215", "name": "Aynur", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": ["Tuncer Şişman"], "kin": null, "mother": "p122221", "parentRole": "anne", "fatherExt": "Osman Kutlu"}, {"id": "p12222151", "name": "Tümer", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222215", "parentRole": "anne", "fatherExt": "Tuncer Şişman"}, {"id": "p12222152", "name": "Tülin", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222215", "parentRole": "anne", "fatherExt": "Tuncer Şişman"}, {"id": "p122222", "name": "Fatma", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1222221", "name": "İlknur", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122222", "parentRole": "anne", "fatherExt": null}, {"id": "p12222211", "name": "Çetin", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222221", "parentRole": "anne", "fatherExt": null}, {"id": "p12222212", "name": "Tekin", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222221", "parentRole": "anne", "fatherExt": null}, {"id": "p12222213", "name": "Ayşe", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222221", "parentRole": "anne", "fatherExt": null}, {"id": "p122223", "name": "Kadir", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": ["Meryem Şişman"], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1222231", "name": "Müzeyyen", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": ["Nazım2 (aileden)"], "kin": "p122114", "mother": "p122223", "parentRole": "baba", "fatherExt": null}, {"id": "p1222232", "name": "Muzaffer", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12222321", "name": "Necmi", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222232", "parentRole": "anne", "fatherExt": null}, {"id": "p12222322", "name": "Necmiye", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222232", "parentRole": "anne", "fatherExt": null}, {"id": "p1222233", "name": "Fahri", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": ["Ayten (aileden)"], "kin": "p1222212", "mother": "p122223", "parentRole": "baba", "fatherExt": null}, {"id": "p12222121", "name": "Aysel", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": ["Cengiz Gümüşoğlu"], "kin": null, "mother": "p1222212", "parentRole": "baba", "fatherExt": null}, {"id": "p122221211", "name": "Cem", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p12222121", "parentRole": "anne", "fatherExt": "Cengiz Gümüşoğlu"}, {"id": "p122221212", "name": "Özge", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p12222121", "parentRole": "anne", "fatherExt": "Cengiz Gümüşoğlu"}, {"id": "p122221213", "name": "Müge", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": ["Denizhan"], "kin": null, "mother": "p12222121", "parentRole": "anne", "fatherExt": "Cengiz Gümüşoğlu"}, {"id": "p12222122", "name": "Günsel", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222212", "parentRole": "baba", "fatherExt": null}, {"id": "p12222123", "name": "Yüksel", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": ["Nevin Kaya (aileden)"], "kin": "pNevinKaya", "mother": "p1222212", "parentRole": "baba", "fatherExt": null}, {"id": "p122221231", "name": "Fahri Kaan", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p12222123", "parentRole": "baba", "fatherExt": null}, {"id": "p1222234", "name": "Nazmi", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": ["Emine Hacepişi"], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12222341", "name": "Neriman", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222234", "parentRole": "baba", "fatherExt": null}, {"id": "p12222342", "name": "Suzan", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222234", "parentRole": "baba", "fatherExt": null}, {"id": "p12222343", "name": "Makbule", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222234", "parentRole": "baba", "fatherExt": null}, {"id": "p12222344", "name": "Meryem", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222234", "parentRole": "baba", "fatherExt": null}, {"id": "p12222345", "name": "Hatice", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222234", "parentRole": "baba", "fatherExt": null}, {"id": "p12222346", "name": "Ayşe", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222234", "parentRole": "baba", "fatherExt": null}, {"id": "p12222347", "name": "Kemal", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222234", "parentRole": "baba", "fatherExt": null}, {"id": "p12222348", "name": "Kenan", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222234", "parentRole": "baba", "fatherExt": null}, {"id": "p122224", "name": "Sevde", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1222241", "name": "Sebiye", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": ["Enver Çiçekoğlu"], "kin": null, "mother": "p122224", "parentRole": "anne", "fatherExt": null}, {"id": "p12222411", "name": "Nursen", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222241", "parentRole": "anne", "fatherExt": "Enver Çiçekoğlu"}, {"id": "p12222412", "name": "Faik", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222241", "parentRole": "anne", "fatherExt": "Enver Çiçekoğlu"}, {"id": "p12222413", "name": "Sevim", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222241", "parentRole": "anne", "fatherExt": "Enver Çiçekoğlu"}, {"id": "p12222414", "name": "Fehmi", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": ["Ayşe"], "kin": null, "mother": "p1222241", "parentRole": "anne", "fatherExt": "Enver Çiçekoğlu"}, {"id": "p122224141", "name": "Sevde Su", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p12222414", "parentRole": "baba", "fatherExt": null}, {"id": "p12222415", "name": "Fatma", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222241", "parentRole": "anne", "fatherExt": "Enver Çiçekoğlu"}, {"id": "p122225", "name": "Mehmet Reşat", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": ["Fatma Koyunoğlu"], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12222251", "name": "Ayla", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122225", "parentRole": "baba", "fatherExt": null}, {"id": "p12222252", "name": "Leyla", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122225", "parentRole": "baba", "fatherExt": null}, {"id": "p12222253", "name": "Necla", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122225", "parentRole": "baba", "fatherExt": null}, {"id": "p12222254", "name": "Tamer", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122225", "parentRole": "baba", "fatherExt": null}, {"id": "p122222541", "name": "Gizem", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p12222254", "parentRole": "baba", "fatherExt": null}, {"id": "p12222255", "name": "Zeki", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122225", "parentRole": "baba", "fatherExt": null}, {"id": "p122222551", "name": "Derin", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p12222255", "parentRole": "baba", "fatherExt": null}, {"id": "p12222256", "name": "Selma", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122225", "parentRole": "baba", "fatherExt": null}, {"id": "p122226", "name": "Fikriye", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1222261", "name": "Dilek", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": ["Deniz Kantaroğlu"], "kin": null, "mother": "p122226", "parentRole": "anne", "fatherExt": null}, {"id": "p12222611", "name": "Derya", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222261", "parentRole": "anne", "fatherExt": "Deniz Kantaroğlu"}, {"id": "p1222262", "name": "Merih", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p122226", "parentRole": "anne", "fatherExt": null}, {"id": "p12222621", "name": "Serkan", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222262", "parentRole": "anne", "fatherExt": null}, {"id": "p12222622", "name": "Selen", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p1222262", "parentRole": "anne", "fatherExt": null}, {"id": "p12223", "name": "Evlat3-Bilinmiyor", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1223", "name": "Hasan", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12231", "name": "Seher", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12232", "name": "Fatma", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12233", "name": "Naciye", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p122331", "name": "Ferdane", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123", "name": "Mustafa Tahsin", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1231", "name": "Ayşe", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1232", "name": "Hatice", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1233", "name": "Mustafa", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12331", "name": "Faik", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12332", "name": "Emine", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1234", "name": "Hasan", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1235", "name": "Mehmet", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12351", "name": "Celal", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12352", "name": "Remziye", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12353", "name": "İlyas", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123531", "name": "Ayşe", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123532", "name": "Fatma", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p13", "name": "Aslan", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p131", "name": "İsmail", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p132", "name": "Hasan", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p133", "name": "Ali-Aziz", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1331", "name": "Fatma", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1332", "name": "Aziz", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p13321", "name": "Nesibe", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1333", "name": "Hasan", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p13331", "name": "Ziya", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p13332", "name": "Neriman", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p13333", "name": "Müzeyyen", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p13334", "name": "Muzaffer", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1334", "name": "Aslan", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12341", "name": "Hatice", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12342", "name": "İhsan", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12343", "name": "Nuri", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123431", "name": "Nazire", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123432", "name": "Nevrestan", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123433", "name": "Adviye", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123434", "name": "Faik", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1235311", "name": "Emine", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123531", "parentRole": "baba", "fatherExt": null}, {"id": "p1235312", "name": "Adnan", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123531", "parentRole": "baba", "fatherExt": null}, {"id": "p1235313", "name": "Bahriye", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123531", "parentRole": "baba", "fatherExt": null}, {"id": "p1235314", "name": "Gülşen", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123531", "parentRole": "baba", "fatherExt": null}, {"id": "p123435", "name": "Ravi", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1234351", "name": "İlkay", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123435", "parentRole": "baba", "fatherExt": null}, {"id": "p1234352", "name": "Mehmet", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123435", "parentRole": "baba", "fatherExt": null}, {"id": "p1234353", "name": "Hatice", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123435", "parentRole": "baba", "fatherExt": null}, {"id": "p12344", "name": "İhsan", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123441", "name": "Hüsnü", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123442", "name": "Ayşe", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123443", "name": "Ekrem", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123444", "name": "Hasan", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p1234441", "name": "Neriman", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123444", "parentRole": "baba", "fatherExt": null}, {"id": "p1234442", "name": "Yüksel", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": "p123444", "parentRole": "baba", "fatherExt": null}, {"id": "p123445", "name": "Neriman", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123446", "name": "Makbule", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123447", "name": "Mehmet", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p123448", "name": "Ekrem", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12345", "name": "Naziye", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p12346", "name": "Lütfiye", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p13341", "name": "Ali", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p13342", "name": "Mehmet", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p13343", "name": "Muhammet", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p134", "name": "Zeliha", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p135", "name": "Nesibe", "sex": "K", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "p136", "name": "Osman", "sex": "E", "alive": false, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "pNevinKaya", "name": "Nevin Kaya", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": ["Yüksel (aileden)"], "kin": "p12222123", "mother": "pNerminKaya", "parentRole": "baba", "fatherExt": null}, {"id": "pCelalKaya", "name": "Celal Kaya", "sex": "E", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}, {"id": "pNerminKaya", "name": "Nermin Kaya", "sex": "K", "alive": true, "spine": false, "you": false, "spouse": [], "kin": null, "mother": null, "parentRole": "baba", "fatherExt": null}], "edges": [{"from": "p1", "to": "p11"}, {"from": "p11", "to": "p111"}, {"from": "p111", "to": "p1111"}, {"from": "p1111", "to": "p11111"}, {"from": "p1111", "to": "p11112"}, {"from": "p1111", "to": "p11113"}, {"from": "p11113", "to": "p111131"}, {"from": "p111131", "to": "p1111311"}, {"from": "p111131", "to": "p1111312"}, {"from": "p111131", "to": "p1111313"}, {"from": "p111131", "to": "p1111314"}, {"from": "p1111314", "to": "p1234341"}, {"from": "p1111314", "to": "p1234342"}, {"from": "p1111314", "to": "p11113141"}, {"from": "p1111314", "to": "p11113142"}, {"from": "p111131", "to": "p1111315"}, {"from": "p111131", "to": "p1111316"}, {"from": "p1111316", "to": "p11113161"}, {"from": "p1111316", "to": "p11113162"}, {"from": "p1111316", "to": "p11113163"}, {"from": "p1111", "to": "p11114"}, {"from": "p111", "to": "p1112"}, {"from": "p1112", "to": "p11121"}, {"from": "p1112", "to": "p11122"}, {"from": "p1112", "to": "p11123"}, {"from": "p11123", "to": "p111231"}, {"from": "p111231", "to": "p1112311"}, {"from": "p1112311", "to": "p11123111"}, {"from": "p1112311", "to": "p11123112"}, {"from": "p1112311", "to": "p11123113"}, {"from": "p1112311", "to": "p11123114"}, {"from": "p11", "to": "p112"}, {"from": "p112", "to": "p1121"}, {"from": "p112", "to": "p1122"}, {"from": "p1122", "to": "p11221"}, {"from": "p1122", "to": "p11222"}, {"from": "p11222", "to": "p112221"}, {"from": "p11222", "to": "p112222"}, {"from": "p11222", "to": "p112223"}, {"from": "p112223", "to": "p1122231"}, {"from": "p112223", "to": "p1122232"}, {"from": "p112223", "to": "p1122233"}, {"from": "p112223", "to": "p1122234"}, {"from": "p11222", "to": "p112224"}, {"from": "p1122", "to": "p11223"}, {"from": "p11223", "to": "p112231"}, {"from": "p11223", "to": "p112232"}, {"from": "p11223", "to": "p112233"}, {"from": "p1122", "to": "p11224"}, {"from": "p112", "to": "p1123"}, {"from": "p1", "to": "p12"}, {"from": "p12", "to": "p121"}, {"from": "p121", "to": "p1211"}, {"from": "p121", "to": "p1212"}, {"from": "p121", "to": "p1213"}, {"from": "p121", "to": "p1214"}, {"from": "p121", "to": "p1215"}, {"from": "p1215", "to": "p12151"}, {"from": "p12151", "to": "p121511"}, {"from": "p12151", "to": "p121512"}, {"from": "p121512", "to": "p1215121"}, {"from": "p121512", "to": "p1215122"}, {"from": "p12151", "to": "p121513"}, {"from": "p12151", "to": "p121514"}, {"from": "p12151", "to": "p121515"}, {"from": "p121515", "to": "p1215151"}, {"from": "p121515", "to": "p1215152"}, {"from": "p121515", "to": "p1215153"}, {"from": "p12151", "to": "p121513A"}, {"from": "p12", "to": "p122"}, {"from": "p122", "to": "p1221"}, {"from": "p1221", "to": "p12211"}, {"from": "p12211", "to": "p122111"}, {"from": "p12211", "to": "p122112"}, {"from": "p122112", "to": "p1221111"}, {"from": "p122112", "to": "p1221121"}, {"from": "p122112", "to": "p1221122"}, {"from": "p122112", "to": "p1221123"}, {"from": "p12211", "to": "p122113"}, {"from": "p122113", "to": "p1221131"}, {"from": "p122113", "to": "p1221132"}, {"from": "p122113", "to": "p1221133"}, {"from": "p122113", "to": "p1221134"}, {"from": "p12211", "to": "p122114"}, {"from": "p122114", "to": "p12222311"}, {"from": "p122114", "to": "p12222312"}, {"from": "p122114", "to": "p12222313"}, {"from": "p122114", "to": "p12222314"}, {"from": "p122114", "to": "p12222315"}, {"from": "p122114", "to": "p12222316"}, {"from": "p1221", "to": "p12212"}, {"from": "p12212", "to": "p122121"}, {"from": "p12212", "to": "p122122"}, {"from": "p122122", "to": "p1221221"}, {"from": "p122122", "to": "p1221222"}, {"from": "p122122", "to": "p1221223"}, {"from": "p122122", "to": "p1221224"}, {"from": "p122122", "to": "p1221225"}, {"from": "p122122", "to": "p1221226"}, {"from": "p122", "to": "p1222"}, {"from": "p1222", "to": "p12221"}, {"from": "p12221", "to": "p122211"}, {"from": "p12221", "to": "p122212"}, {"from": "p12221", "to": "p122213"}, {"from": "p12221", "to": "p122214"}, {"from": "p1222", "to": "p12222"}, {"from": "p12222", "to": "p122221"}, {"from": "p122221", "to": "p1222211"}, {"from": "p1222211", "to": "p12222111"}, {"from": "p1222211", "to": "p12222112"}, {"from": "p1222211", "to": "p12222113"}, {"from": "p1222211", "to": "p12222114"}, {"from": "p1222211", "to": "p12222115"}, {"from": "p122221", "to": "p1222212"}, {"from": "p122221", "to": "p1222213"}, {"from": "p1222213", "to": "p12222131"}, {"from": "p1222213", "to": "p12222132"}, {"from": "p12222132", "to": "p122221321"}, {"from": "p12222132", "to": "p122221322"}, {"from": "p122221", "to": "p1222214"}, {"from": "p1222214", "to": "p12222141"}, {"from": "p122221", "to": "p1222215"}, {"from": "p1222215", "to": "p12222151"}, {"from": "p1222215", "to": "p12222152"}, {"from": "p12222", "to": "p122222"}, {"from": "p122222", "to": "p1222221"}, {"from": "p1222221", "to": "p12222211"}, {"from": "p1222221", "to": "p12222212"}, {"from": "p1222221", "to": "p12222213"}, {"from": "p12222", "to": "p122223"}, {"from": "p122223", "to": "p1222231"}, {"from": "p122223", "to": "p1222232"}, {"from": "p1222232", "to": "p12222321"}, {"from": "p1222232", "to": "p12222322"}, {"from": "p122223", "to": "p1222233"}, {"from": "p1222233", "to": "p12222121"}, {"from": "p12222121", "to": "p122221211"}, {"from": "p12222121", "to": "p122221212"}, {"from": "p12222121", "to": "p122221213"}, {"from": "p1222233", "to": "p12222122"}, {"from": "p1222233", "to": "p12222123"}, {"from": "p12222123", "to": "p122221231"}, {"from": "p122223", "to": "p1222234"}, {"from": "p1222234", "to": "p12222341"}, {"from": "p1222234", "to": "p12222342"}, {"from": "p1222234", "to": "p12222343"}, {"from": "p1222234", "to": "p12222344"}, {"from": "p1222234", "to": "p12222345"}, {"from": "p1222234", "to": "p12222346"}, {"from": "p1222234", "to": "p12222347"}, {"from": "p1222234", "to": "p12222348"}, {"from": "p12222", "to": "p122224"}, {"from": "p122224", "to": "p1222241"}, {"from": "p1222241", "to": "p12222411"}, {"from": "p1222241", "to": "p12222412"}, {"from": "p1222241", "to": "p12222413"}, {"from": "p1222241", "to": "p12222414"}, {"from": "p12222414", "to": "p122224141"}, {"from": "p1222241", "to": "p12222415"}, {"from": "p12222", "to": "p122225"}, {"from": "p122225", "to": "p12222251"}, {"from": "p122225", "to": "p12222252"}, {"from": "p122225", "to": "p12222253"}, {"from": "p122225", "to": "p12222254"}, {"from": "p12222254", "to": "p122222541"}, {"from": "p122225", "to": "p12222255"}, {"from": "p12222255", "to": "p122222551"}, {"from": "p122225", "to": "p12222256"}, {"from": "p12222", "to": "p122226"}, {"from": "p122226", "to": "p1222261"}, {"from": "p1222261", "to": "p12222611"}, {"from": "p122226", "to": "p1222262"}, {"from": "p1222262", "to": "p12222621"}, {"from": "p1222262", "to": "p12222622"}, {"from": "p1222", "to": "p12223"}, {"from": "p122", "to": "p1223"}, {"from": "p1223", "to": "p12231"}, {"from": "p1223", "to": "p12232"}, {"from": "p1223", "to": "p12233"}, {"from": "p12233", "to": "p122331"}, {"from": "p12", "to": "p123"}, {"from": "p123", "to": "p1231"}, {"from": "p123", "to": "p1232"}, {"from": "p123", "to": "p1233"}, {"from": "p1233", "to": "p12331"}, {"from": "p1233", "to": "p12332"}, {"from": "p123", "to": "p1234"}, {"from": "p123", "to": "p1235"}, {"from": "p1235", "to": "p12351"}, {"from": "p1235", "to": "p12352"}, {"from": "p1235", "to": "p12353"}, {"from": "p12353", "to": "p123531"}, {"from": "p12353", "to": "p123532"}, {"from": "p1", "to": "p13"}, {"from": "p13", "to": "p131"}, {"from": "p13", "to": "p132"}, {"from": "p13", "to": "p133"}, {"from": "p133", "to": "p1331"}, {"from": "p133", "to": "p1332"}, {"from": "p1332", "to": "p13321"}, {"from": "p133", "to": "p1333"}, {"from": "p1333", "to": "p13331"}, {"from": "p1333", "to": "p13332"}, {"from": "p1333", "to": "p13333"}, {"from": "p1333", "to": "p13334"}, {"from": "p133", "to": "p1334"}, {"from": "p1334", "to": "p12341"}, {"from": "p1334", "to": "p12342"}, {"from": "p1334", "to": "p12343"}, {"from": "p12343", "to": "p123431"}, {"from": "p12343", "to": "p123432"}, {"from": "p12343", "to": "p123433"}, {"from": "p12343", "to": "p123434"}, {"from": "p123434", "to": "p1235311"}, {"from": "p123434", "to": "p1235312"}, {"from": "p123434", "to": "p1235313"}, {"from": "p123434", "to": "p1235314"}, {"from": "p12343", "to": "p123435"}, {"from": "p123435", "to": "p1234351"}, {"from": "p123435", "to": "p1234352"}, {"from": "p123435", "to": "p1234353"}, {"from": "p1334", "to": "p12344"}, {"from": "p12344", "to": "p123441"}, {"from": "p12344", "to": "p123442"}, {"from": "p12344", "to": "p123443"}, {"from": "p12344", "to": "p123444"}, {"from": "p123444", "to": "p1234441"}, {"from": "p123444", "to": "p1234442"}, {"from": "p12344", "to": "p123445"}, {"from": "p12344", "to": "p123446"}, {"from": "p12344", "to": "p123447"}, {"from": "p12344", "to": "p123448"}, {"from": "p1334", "to": "p12345"}, {"from": "p1334", "to": "p12346"}, {"from": "p1334", "to": "p13341"}, {"from": "p1334", "to": "p13342"}, {"from": "p1334", "to": "p13343"}, {"from": "p13", "to": "p134"}, {"from": "p13", "to": "p135"}, {"from": "p13", "to": "p136"}, {"from": "pCelalKaya", "to": "pNevinKaya"}], "marriages": [{"from": "p1222212", "to": "p1222233", "type": "marriage"}, {"from": "p122114", "to": "p1222231", "type": "marriage"}, {"from": "p121511", "to": "p1222211", "type": "marriage"}, {"from": "p12222123", "to": "pNevinKaya", "type": "marriage"}], "motherEdges": [{"from": "p123432", "to": "p1215151", "type": "mother"}, {"from": "p123432", "to": "p1215152", "type": "mother"}, {"from": "p123432", "to": "p1215153", "type": "mother"}, {"from": "p122112", "to": "p1221111", "type": "mother"}, {"from": "p122112", "to": "p1221121", "type": "mother"}, {"from": "p122112", "to": "p1221122", "type": "mother"}, {"from": "p122122", "to": "p1221221", "type": "mother"}, {"from": "p122122", "to": "p1221222", "type": "mother"}, {"from": "p122122", "to": "p1221223", "type": "mother"}, {"from": "p122122", "to": "p1221224", "type": "mother"}, {"from": "p122122", "to": "p1221225", "type": "mother"}, {"from": "p122122", "to": "p1221226", "type": "mother"}, {"from": "p122221", "to": "p1222211", "type": "mother"}, {"from": "p122221", "to": "p1222212", "type": "mother"}, {"from": "p122221", "to": "p1222213", "type": "mother"}, {"from": "p122221", "to": "p1222214", "type": "mother"}, {"from": "p122221", "to": "p1222215", "type": "mother"}, {"from": "p122222", "to": "p1222221", "type": "mother"}, {"from": "p122223", "to": "p1222231", "type": "mother"}, {"from": "p122223", "to": "p1222233", "type": "mother"}, {"from": "p122224", "to": "p1222241", "type": "mother"}, {"from": "p122226", "to": "p1222261", "type": "mother"}, {"from": "p122226", "to": "p1222262", "type": "mother"}, {"from": "p123435", "to": "p1234351", "type": "mother"}, {"from": "p123435", "to": "p1234352", "type": "mother"}, {"from": "p123435", "to": "p1234353", "type": "mother"}, {"from": "p123444", "to": "p1234441", "type": "mother"}, {"from": "p123444", "to": "p1234442", "type": "mother"}, {"from": "p123531", "to": "p1235311", "type": "mother"}, {"from": "p123531", "to": "p1235312", "type": "mother"}, {"from": "p123531", "to": "p1235313", "type": "mother"}, {"from": "p123531", "to": "p1235314", "type": "mother"}, {"from": "p1222211", "to": "p12222111", "type": "mother"}, {"from": "p1222211", "to": "p12222112", "type": "mother"}, {"from": "p1222211", "to": "p12222113", "type": "mother"}, {"from": "p1222211", "to": "p12222114", "type": "mother"}, {"from": "p1222211", "to": "p12222115", "type": "mother"}, {"from": "p1222212", "to": "p12222121", "type": "mother"}, {"from": "p1222212", "to": "p12222122", "type": "mother"}, {"from": "p1222212", "to": "p12222123", "type": "mother"}, {"from": "p1222213", "to": "p12222131", "type": "mother"}, {"from": "p1222213", "to": "p12222132", "type": "mother"}, {"from": "p1222214", "to": "p12222141", "type": "mother"}, {"from": "p1222215", "to": "p12222151", "type": "mother"}, {"from": "p1222215", "to": "p12222152", "type": "mother"}, {"from": "p1222221", "to": "p12222211", "type": "mother"}, {"from": "p1222221", "to": "p12222212", "type": "mother"}, {"from": "p1222221", "to": "p12222213", "type": "mother"}, {"from": "p122225", "to": "p12222251", "type": "mother"}, {"from": "p122225", "to": "p12222252", "type": "mother"}, {"from": "p122225", "to": "p12222253", "type": "mother"}, {"from": "p122225", "to": "p12222254", "type": "mother"}, {"from": "p122225", "to": "p12222255", "type": "mother"}, {"from": "p122225", "to": "p12222256", "type": "mother"}, {"from": "p1222231", "to": "p12222311", "type": "mother"}, {"from": "p1222231", "to": "p12222312", "type": "mother"}, {"from": "p1222231", "to": "p12222313", "type": "mother"}, {"from": "p1222231", "to": "p12222314", "type": "mother"}, {"from": "p1222231", "to": "p12222315", "type": "mother"}, {"from": "p1222231", "to": "p12222316", "type": "mother"}, {"from": "p1222232", "to": "p12222321", "type": "mother"}, {"from": "p1222232", "to": "p12222322", "type": "mother"}, {"from": "p1222234", "to": "p12222341", "type": "mother"}, {"from": "p1222234", "to": "p12222342", "type": "mother"}, {"from": "p1222234", "to": "p12222343", "type": "mother"}, {"from": "p1222234", "to": "p12222344", "type": "mother"}, {"from": "p1222234", "to": "p12222345", "type": "mother"}, {"from": "p1222234", "to": "p12222346", "type": "mother"}, {"from": "p1222234", "to": "p12222347", "type": "mother"}, {"from": "p1222234", "to": "p12222348", "type": "mother"}, {"from": "p1222241", "to": "p12222411", "type": "mother"}, {"from": "p1222241", "to": "p12222412", "type": "mother"}, {"from": "p1222241", "to": "p12222413", "type": "mother"}, {"from": "p1222241", "to": "p12222414", "type": "mother"}, {"from": "p1222241", "to": "p12222415", "type": "mother"}, {"from": "p1222261", "to": "p12222611", "type": "mother"}, {"from": "p1222262", "to": "p12222621", "type": "mother"}, {"from": "p1222262", "to": "p12222622", "type": "mother"}, {"from": "p12222121", "to": "p122221211", "type": "mother"}, {"from": "p12222121", "to": "p122221212", "type": "mother"}, {"from": "p12222121", "to": "p122221213", "type": "mother"}, {"from": "p12222123", "to": "p122221231", "type": "mother"}, {"from": "p12222132", "to": "p122221321", "type": "mother"}, {"from": "p12222132", "to": "p122221322", "type": "mother"}, {"from": "p12222414", "to": "p122224141", "type": "mother"}, {"from": "p12222255", "to": "p122222551", "type": "mother"}, {"from": "p12222254", "to": "p122222541", "type": "mother"}, {"from": "pNerminKaya", "to": "pNevinKaya", "type": "mother"}]};
+
+</script>
+<script>
+// ============================================================================
+//  KÖK — Bloom tarzı graf düzenleyici
+//  Force-directed yerleşim + tıkla/sürükle + düzenle (ekle/sil/reparent) + export
+//  Kütüphanesiz, tek dosya. Veri: GRAPH {nodes, edges}
+// ============================================================================
+(() => {
+"use strict";
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+let DPR=Math.min(devicePixelRatio||1,2);
+
+// ---- veri modeli ----
+let nodes=[], edges=[], marriages=[], motherEdges=[], byId={};
+function loadGraph(g){
+  nodes=g.nodes.map(n=>({...n,
+    x:(Math.random()-0.5)*600, y:(Math.random()-0.5)*600, vx:0, vy:0, fixed:false}));
+  edges=g.edges.map(e=>({...e}));
+  marriages=(g.marriages||[]).map(m=>({...m}));
+  motherEdges=(g.motherEdges||[]).map(m=>({...m}));
+  reindex();
+  // RADYAL NESİL HALKALARI: merkez Molla Memiş (nesil 0),
+  // her nesil dışa doğru bir halka. Açı = soy dalına göre kama paylaşımı.
+  layoutRadial();
+}
+function reindex(){
+  byId={}; nodes.forEach(n=>byId[n.id]=n);
+  nodes.forEach(n=>{n._kids=[];n._parent=null;});
+  edges.forEach(e=>{ const a=byId[e.from],b=byId[e.to];
+    if(a&&b){ a._kids.push(b); b._parent=a; } });
+  // nesil derinliği (kök=0) — ana ağaç
+  const root=nodes.find(n=>!n._parent);
+  nodes.forEach(n=>{ n._depth=null; });
+  if(root){ (function dfs(n,d){ n._depth=d; (n._kids||[]).forEach(k=>dfs(k,d+1)); })(root,0); }
+  // ana ağaçta olmayan düğümlerin derinliğini yay: eş=aynı, ebeveyn=-1, çocuk=+1
+  // (Nevin eşinden; Celal/Nermin Nevin'den bir üst nesil, vb.)
+  for(let pass=0; pass<12; pass++){
+    let changed=false;
+    // eş bağları (aynı nesil)
+    (marriages||[]).forEach(m=>{ const a=byId[m.from],b=byId[m.to]; if(!a||!b)return;
+      if(a._depth==null && b._depth!=null){ a._depth=b._depth; changed=true; }
+      if(b._depth==null && a._depth!=null){ b._depth=a._depth; changed=true; }
+    });
+    // ebeveyn→çocuk kenarları (baba bir üst, çocuk bir alt)
+    edges.forEach(e=>{ const a=byId[e.from],b=byId[e.to]; if(!a||!b)return;
+      if(a._depth!=null && b._depth==null){ b._depth=a._depth+1; changed=true; }   // çocuğun derinliği = ebeveyn+1
+      if(b._depth!=null && a._depth==null){ a._depth=b._depth-1; changed=true; }   // ebeveynin derinliği = çocuk-1
+    });
+    // anne kenarları (anne bir üst)
+    (motherEdges||[]).forEach(m=>{ const a=byId[m.from],b=byId[m.to]; if(!a||!b)return;
+      if(a._depth!=null && b._depth==null){ b._depth=a._depth+1; changed=true; }
+      if(b._depth!=null && a._depth==null){ a._depth=b._depth-1; changed=true; }
+    });
+    if(!changed) break;
+  }
+  // hâlâ derinliksiz kalan olursa 0'a çek
+  nodes.forEach(n=>{ if(n._depth==null) n._depth=0; });
+}
+// ---- radyal nesil-halkası yerleşimi ----
+const RING_GAP=130;              // halkalar arası mesafe (nesil aralığı)
+let MAXDEPTH=1;
+function ringRadius(d){ return d*RING_GAP; }
+function layoutRadial(){
+  const root=nodes.find(n=>!n._parent); if(!root) return;
+  nodes.forEach(n=>{ n._ang=null; });   // her düzende yeniden hesapla
+  MAXDEPTH=Math.max(...nodes.map(n=>n._depth||0),1);
+  // alt-ağaç yaprak ağırlığı (açı payı için)
+  (function weigh(n){ const k=n._kids||[];
+    n._w = k.length ? k.reduce((s,c)=>s+weigh(c),0) : 1; return n._w; })(root);
+  // açıları kama-paylaşımıyla dağıt (omurga hattı yukarı, -90°'de merkezlensin)
+  const A0=-Math.PI/2 - Math.PI, A1=-Math.PI/2 + Math.PI; // tam tur
+  (function assign(n,a0,a1){
+    const mid=(a0+a1)/2; n._ang=mid;
+    const r=ringRadius(n._depth);
+    n.x=Math.cos(mid)*r; n.y=Math.sin(mid)*r;
+    const k=n._kids||[]; if(!k.length) return;
+    const tot=k.reduce((s,c)=>s+c._w,0)||1;
+    let acc=a0;
+    k.forEach(c=>{ const frac=c._w/tot; const ca0=acc, ca1=acc+(a1-a0)*frac;
+      assign(c,ca0,ca1); acc=ca1; });
+  })(root,A0,A1);
+  // kök merkeze
+  root.x=0; root.y=0; root._ang=-Math.PI/2;
+  // ana ağaçta olmayan düğümler (eşler, onların ebeveynleri): açıyı komşudan al
+  for(let pass=0; pass<12; pass++){
+    nodes.forEach(n=>{
+      if(n._ang!=null) return;
+      // referans açı: eş → aynı açıya yakın; çocuk → çocuğun açısı; ebeveyn → onun açısı
+      let refAng=null, off=0;
+      // eşinden (aynı nesil, hafif yana)
+      (marriages||[]).forEach(m=>{ if(m.from===n.id&&byId[m.to]?._ang!=null){refAng=byId[m.to]._ang;off=0.12;}
+        if(m.to===n.id&&byId[m.from]?._ang!=null){refAng=byId[m.from]._ang;off=0.12;} });
+      // çocuğundan (çocuk bir alt nesil, aynı açı yönü)
+      if(refAng==null) edges.forEach(e=>{ if(e.from===n.id&&byId[e.to]?._ang!=null){refAng=byId[e.to]._ang;} });
+      // ebeveyninden
+      if(refAng==null) edges.forEach(e=>{ if(e.to===n.id&&byId[e.from]?._ang!=null){refAng=byId[e.from]._ang;} });
+      if(refAng!=null){
+        n._ang=refAng+off;
+        const r=ringRadius(n._depth||0);
+        n.x=Math.cos(n._ang)*r; n.y=Math.sin(n._ang)*r;
+      }
+    });
+  }
+}
+
+// veriyi şimdi yükle (tüm radyal fonksiyonlar tanımlı)
+loadGraph(GRAPH);
+
+// ---- görünüm (pan/zoom) ----
+let scale=0.9, ox=0, oy=0;
+function resize(){DPR=Math.min(devicePixelRatio||1,2);
+  canvas.width=innerWidth*DPR;canvas.height=innerHeight*DPR;
+  canvas.style.width=innerWidth+"px";canvas.style.height=innerHeight+"px";}
+resize();
+// perspektif eğimi: dikey ekseni hafif sıkıştır → yukarıdan eğik bakılan disk hissi
+const TILT=0.62;
+function w2s(x,y){return{x:(x*scale+ox)+innerWidth/2, y:(y*TILT*scale+oy)+innerHeight/2};}
+function s2w(sx,sy){return{x:(sx-innerWidth/2-ox)/scale, y:(sy-innerHeight/2-oy)/(scale*TILT)};}
+
+function fit(){
+  if(!nodes.length)return;
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  nodes.forEach(n=>{minX=Math.min(minX,n.x);maxX=Math.max(maxX,n.x);
+    minY=Math.min(minY,n.y);maxY=Math.max(maxY,n.y);});
+  const w=maxX-minX+200,h=maxY-minY+200;
+  scale=Math.min(innerWidth/w,innerHeight/h,1.4)*0.9;
+  ox=-(minX+maxX)/2*scale; oy=-(minY+maxY)/2*scale;
+}
+
+// ---- fizik (force-directed) ----
+let physics=true, alpha=1;
+const REPULSE=9000, SPRING=0.02, SPRING_LEN=95, CENTER=0.008, DAMP=0.86;
+function tick(){
+  if(!physics){ return; }
+  alpha=Math.max(alpha*0.995, 0.02);
+  const n=nodes.length;
+  // aynı halkadaki komşular birbirini açısal iter (çakışmayı açar)
+  for(let i=0;i<n;i++){ const a=nodes[i];
+    for(let j=i+1;j<n;j++){ const b=nodes[j];
+      let dx=a.x-b.x, dy=a.y-b.y; let d2=dx*dx+dy*dy; if(d2<0.01)d2=0.01;
+      const d=Math.sqrt(d2); if(d>RING_GAP*1.4) continue;   // yakın olanları it
+      const f=REPULSE/d2*alpha;
+      a.vx+=dx/d*f; a.vy+=dy/d*f; b.vx-=dx/d*f; b.vy-=dy/d*f;
+    }
+  }
+  // kenar yayı: sadece açısal hizalama (çocuk ebeveynin açısına yaklaşsın)
+  edges.forEach(e=>{ const a=byId[e.from],b=byId[e.to]; if(!a||!b)return;
+    let dx=b.x-a.x, dy=b.y-a.y; const d=Math.hypot(dx,dy)||1;
+    const f=(d-RING_GAP)*SPRING*0.5*alpha;
+    a.vx+=dx/d*f; a.vy+=dy/d*f; b.vx-=dx/d*f; b.vy-=dy/d*f;
+  });
+  // eş (marriage) bağı: eşler birbirine yakın dursun (özellikle eklenen dış eşler)
+  marriages.forEach(m=>{ const a=byId[m.from],b=byId[m.to]; if(!a||!b)return;
+    let dx=b.x-a.x, dy=b.y-a.y; const d=Math.hypot(dx,dy)||1;
+    const f=(d-55)*0.03*alpha;   // kısa mesafede eşleşsinler
+    a.vx+=dx/d*f; a.vy+=dy/d*f; b.vx-=dx/d*f; b.vy-=dy/d*f;
+  });
+  // entegrasyon + YARIÇAPI NESLE KİLİTLE (radyal halka korunur)
+  nodes.forEach(nd=>{ if(nd===dragNode)return;
+    nd.vx*=DAMP; nd.vy*=DAMP;
+    nd.x+=nd.vx; nd.y+=nd.vy;
+    // hedef yarıçapa çek
+    const targetR=ringRadius(nd._depth||0);
+    const r=Math.hypot(nd.x,nd.y)||0.001;
+    const ang=Math.atan2(nd.y,nd.x);
+    const nr=r+(targetR-r)*0.25;        // yarıçapı yumuşak sabitle
+    nd.x=Math.cos(ang)*nr; nd.y=Math.sin(ang)*nr;
+    // omurgayı üst dikeye (-90°) çek
+    if(nd.spine && nd._depth>0){
+      let da=(-Math.PI/2)-ang;
+      while(da>Math.PI)da-=2*Math.PI; while(da<-Math.PI)da+=2*Math.PI;
+      const na=ang+da*0.15;
+      nd.x=Math.cos(na)*nr; nd.y=Math.sin(na)*nr;
+    }
+  });
+  const root=nodes.find(n=>!n._parent); if(root){root.x=0;root.y=0;}
+}
+
+// ---- renk ----
+function nodeColor(n){
+  if(n.id===viewerId) return getVar("--you");        // bakan kişi
+  if(viewerSpine.has(n.id)) return getVar("--spine"); // onun soy hattı
+  if(n.alive===false) return getVar("--dead");
+  return n.sex==="K"?getVar("--female"):getVar("--male");
+}
+function getVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function dispName(s){return String(s).replace("★","").replace(/\s*\d+$/,"").trim();}
+// ağacın adını taşıyan kurucu atalar — her zaman iri
+const FOUNDERS={ "p1":20, "p12":16 };  // Molla Memiş (kök), Abdurrahman
+function radius(n){
+  // Boyutta herkes eşit; kurucu atalar ve merkeze alınan/viewer belirgin.
+  if(n===activeNode) return Math.max(FOUNDERS[n.id]||0, 12+20*(n._grow||0));
+  if(FOUNDERS[n.id]) return FOUNDERS[n.id];   // Molla Memiş & Abdurrahman iri
+  return n.id===viewerId ? 14 : 8;
+}
+
+// ---- render ----
+let hoverNode=null, selNode=null, highlightSet=new Set();
+// DİNAMİK MERKEZ: ağaca bakan kişi (kalıcı değil, oturuma özel)
+let viewerId=null;              // o an merkez olan kişinin id'si
+let viewerSpine=new Set();      // viewer'dan köke inen soy hattı (id'ler)
+function setViewer(id){
+  viewerId=id; viewerSpine.clear();
+  let n=byId[id];
+  while(n){ viewerSpine.add(n.id); n=n._parent; }
+  // omurga bayrağını dinamik olarak ata (yerleşim + renk için)
+  nodes.forEach(x=>x.spine=viewerSpine.has(x.id));
+  nodes.forEach(x=>x.you=(x.id===id));
+  layoutRadial();  // yeni omurgaya göre yeniden diz
+}
+
+// ============================ YETKİ ============================
+// Herkes kendini + ebeveyn/kardeş/çocuk/eşini düzenler. Admin her şeyi.
+let isAdmin=false;
+// SMS ile doğrulanmış oturum
+let sessionToken=null, sessionKisiId=null;
+try{ const s=JSON.parse(localStorage.getItem("kok_session")||"null");
+  if(s){ sessionToken=s.token; sessionKisiId=s.kisi_id; } }catch(e){}
+function relativesOf(id){
+  // düzenlenebilir yakınlar kümesi: kendisi + ebeveyn + kardeş + çocuk + eş
+  const set=new Set(); const me=byId[id]; if(!me) return set;
+  set.add(id);
+  // ebeveyn (baba hattı + anne)
+  if(me._parent) set.add(me._parent.id);
+  if(me.mother && byId[me.mother]) set.add(me.mother);
+  // kardeşler (aynı ebeveynin çocukları)
+  if(me._parent) (me._parent._kids||[]).forEach(k=>set.add(k.id));
+  if(me.mother) (motherEdges||[]).forEach(m=>{ if(m.from===me.mother) set.add(m.to); });
+  // çocuklar (baba hattı + anne olunanlar)
+  (me._kids||[]).forEach(k=>set.add(k.id));
+  (motherEdges||[]).forEach(m=>{ if(m.from===id) set.add(m.to); });
+  // eş(ler) — kin (aileden) düğümü
+  if(me.kin && byId[me.kin]) set.add(me.kin);
+  (marriages||[]).forEach(m=>{ if(m.from===id) set.add(m.to); if(m.to===id) set.add(m.from); });
+  return set;
+}
+function canEdit(n){
+  if(isAdmin) return true;
+  if(!n) return false;
+  // bulut (canlı) modda: sadece SMS ile doğrulanmış kişi düzenler, o da yalnız yakınlarını
+  if(CLOUD.on){
+    if(!sessionKisiId) return false;           // giriş yapmamış → sadece görüntüleme
+    return relativesOf(sessionKisiId).has(n.id);
+  }
+  // offline (tek dosya) modda: eski davranış — viewer'ın yakınları
+  if(!viewerId) return false;
+  return relativesOf(viewerId).has(n.id);
+}
+// admin girişi (basit şifre — ortam değişkeniyle değişebilir; varsayılan aşağıda)
+const ADMIN_CODE = "kok-admin";   // ← kendi kodunla değiştir
+function tryAdminLogin(){
+  const c=prompt("Yönetici (admin) kodu:");
+  if(c===null) return;
+  if(c===ADMIN_CODE){ isAdmin=true; window.__adminCode=c; toast("Yönetici modu açık — her şeyi düzenleyebilirsin");
+    if(selNode) openInspector(selNode); }
+  else toast("Kod yanlış");
+}
+function draw(){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle=getVar("--bg"); ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.scale(DPR,DPR);
+
+  // nesil halkaları — eğik elips (3B disk), uzaklaştıkça belirginleşir
+  const center=w2s(0,0);
+  // zoom faktörü: uzakta (scale küçük) halkalar güçlü, yakında soluk
+  const zoomOut=Math.max(0, Math.min(1, (0.75-scale)/0.6));  // 0..1
+  const ringAlpha=0.18 + 0.55*zoomOut;    // uzakta belirgin
+  const labelAlpha=0.35 + 0.6*zoomOut;
+  for(let d=1; d<=MAXDEPTH; d++){
+    const rr=ringRadius(d)*scale;
+    // eğik elips: yatay yarıçap rr, dikey rr*TILT
+    ctx.beginPath(); ctx.ellipse(center.x,center.y,rr,rr*TILT,0,0,6.283);
+    ctx.strokeStyle=getVar("--line2"); ctx.globalAlpha=ringAlpha; ctx.lineWidth=1+zoomOut; ctx.stroke();
+    ctx.globalAlpha=1;
+    // nesil etiketi — elipsin ÜST yayında (her halka farklı y'de, çakışmaz)
+    if(scale>0.18){
+      ctx.font=`600 ${10+2*zoomOut}px 'IBM Plex Mono', monospace`;
+      ctx.fillStyle=getVar("--text-soft"); ctx.globalAlpha=labelAlpha;
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      const ly=center.y - rr*TILT;   // elipsin tepe noktası
+      ctx.fillText(`${d}. nesil`, center.x, ly-2);
+      ctx.globalAlpha=1;
+    }
+  }
+
+  // kenarlar
+  ctx.lineWidth=1.2;
+  edges.forEach(e=>{ const a=byId[e.from],b=byId[e.to]; if(!a||!b)return;
+    const pa=w2s(a.x,a.y), pb=w2s(b.x,b.y);
+    const lit=highlightSet.has(a.id)&&highlightSet.has(b.id);
+    ctx.strokeStyle=lit?getVar("--edge-lit"):getVar("--edge");
+    ctx.globalAlpha=lit?0.95:0.5;
+    ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
+  });
+  ctx.globalAlpha=1;
+
+  // anne bağları (baba hattından ayrı). Sadece seçiliyle ilgili olan belirgin.
+  motherEdges.forEach(m=>{ const a=byId[m.from],b=byId[m.to]; if(!a||!b)return;
+    const rel = selNode && (m.from===selNode.id || m.to===selNode.id);
+    if(!rel && highlightSet.size) return;       // seçim varken sadece ilgili anne bağı
+    const pa=w2s(a.x,a.y), pb=w2s(b.x,b.y);
+    ctx.strokeStyle=getVar("--accent"); ctx.globalAlpha=rel?0.85:0.14;
+    ctx.setLineDash([2,4]); ctx.lineWidth=rel?2:1;
+    ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+  });
+  // evlilik bağları — hepsi kesikli çizgi (dashline)
+  marriages.forEach(m=>{ const a=byId[m.from],b=byId[m.to]; if(!a||!b)return;
+    const pa=w2s(a.x,a.y), pb=w2s(b.x,b.y);
+    const lit=highlightSet.has(a.id)||highlightSet.has(b.id);
+    const dist=Math.hypot(pb.x-pa.x,pb.y-pa.y);
+    ctx.strokeStyle=getVar("--marriage"); ctx.globalAlpha=lit?0.95:0.6;
+    ctx.setLineDash([5,4]); ctx.lineWidth=lit?2.2:1.6;
+    ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+    // orta noktada evlilik simgesi (yeterince uzaksa)
+    if(scale>0.5 && dist>24){ const mx=(pa.x+pb.x)/2,my=(pa.y+pb.y)/2;
+      ctx.font="11px Inter"; ctx.fillStyle=getVar("--marriage");
+      ctx.globalAlpha=lit?1:0.7; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText("⚭",mx,my); ctx.globalAlpha=1; }
+  });
+  if(reparentMode && selNode){
+    const pa=w2s(selNode.x,selNode.y);
+    ctx.strokeStyle=getVar("--accent"); ctx.setLineDash([5,5]); ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(mouse.x,mouse.y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // düğümler
+  nodes.forEach(n=>{
+    const p=w2s(n.x,n.y); const r=radius(n)*Math.max(0.7,Math.min(1.4,scale));
+    const sel=n===selNode, hov=n===hoverNode, hl=highlightSet.has(n.id);
+    const isViewer=n.id===viewerId, onSpine=viewerSpine.has(n.id);
+    // halo
+    if(sel||hov||isViewer){ ctx.beginPath(); ctx.arc(p.x,p.y,r+6,0,6.283);
+      ctx.fillStyle=isViewer?"rgba(245,209,90,.18)":"rgba(92,200,216,.16)"; ctx.fill(); }
+    // fotoğraf varsa avatar olarak çiz, yoksa renkli daire
+    const prof=PROFILES[n.id];
+    const hasPhoto=prof&&prof.photo;
+    const dimAlpha=(highlightSet.size&&!hl)?0.35:1;
+    if(hasPhoto){
+      // görüntüyü hazırla/önbellekle
+      if(!n._img||n._img._src!==prof.photo){ const im=new Image(); im._src=prof.photo; im.src=prof.photo; n._img=im; }
+      if(n._img.complete&&n._img.naturalWidth){
+        ctx.save();
+        ctx.globalAlpha=dimAlpha;
+        ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283); ctx.clip();
+        const s=Math.max((2*r)/n._img.naturalWidth,(2*r)/n._img.naturalHeight);
+        const iw=n._img.naturalWidth*s, ih=n._img.naturalHeight*s;
+        ctx.drawImage(n._img,p.x-iw/2,p.y-ih/2,iw,ih);
+        ctx.restore();
+        ctx.globalAlpha=1;
+        // cinsiyet/durum renginde çerçeve
+        ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
+        ctx.lineWidth=sel?2.5:2; ctx.strokeStyle=sel?getVar("--accent"):nodeColor(n); ctx.stroke();
+      } else {
+        // yüklenene kadar renkli daire
+        ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
+        ctx.fillStyle=nodeColor(n); ctx.globalAlpha=dimAlpha; ctx.fill(); ctx.globalAlpha=1;
+        ctx.lineWidth=1.2; ctx.strokeStyle="rgba(0,0,0,.35)"; ctx.stroke();
+      }
+    } else {
+      // renkli daire (foto yok)
+      ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
+      ctx.fillStyle=nodeColor(n); ctx.globalAlpha=dimAlpha; ctx.fill();
+      ctx.globalAlpha=1;
+      ctx.lineWidth=sel?2.5:1.2; ctx.strokeStyle=sel?getVar("--accent"):"rgba(0,0,0,.35)"; ctx.stroke();
+      // vefat halkası (sadece fotosuz düğümlerde)
+      if(n.alive===false){ ctx.beginPath(); ctx.arc(p.x,p.y,r*0.5,0,6.283);
+        ctx.fillStyle=getVar("--bg"); ctx.globalAlpha=.5; ctx.fill(); ctx.globalAlpha=1; }
+    }
+    // etiket
+    const isFounder=!!FOUNDERS[n.id];
+    if(scale>0.55 || onSpine || isViewer || sel || hov || isFounder){
+      const fs = isFounder?16:isViewer?14:onSpine?13:12;
+      ctx.font=`${onSpine||isViewer||isFounder?700:500} ${fs}px Inter`;
+      ctx.textAlign="center"; ctx.textBaseline="top";
+      const t=dispName(n.name);
+      const dimmed=(highlightSet.size&&!hl&&!isFounder);
+      const isDead=n.alive===false;
+      // arka gölge (vefat edenlerde daha hafif)
+      ctx.lineWidth=3; ctx.strokeStyle=`rgba(11,18,32,${isDead&&!isFounder?0.55:0.9})`;
+      ctx.strokeText(t,p.x,p.y+r+4);
+      // isim rengi: kurucu → altın; vurgu dışı → muted; vefat → soluk; yaşayan → parlak
+      let col;
+      if(isFounder) col=getVar("--spine");
+      else if(dimmed) col=getVar("--muted");
+      else if(isDead) col="#7c8798";
+      else col=getVar("--text");
+      ctx.globalAlpha=isDead&&!isViewer&&!sel&&!hov&&!isFounder?0.72:1;
+      ctx.fillStyle=col; ctx.fillText(t,p.x,p.y+r+4);
+      ctx.globalAlpha=1;
+    }
+  });
+
+  // ——— AKTİF DÜĞÜM: genişleme + fotoğraf + detay halkası (Bloom tarzı) ———
+  nodes.forEach(n=>{ // grow animasyonu
+    const target=(n===activeNode)?1:0;
+    n._grow=(n._grow||0)+(target-(n._grow||0))*0.18;
+    if(n._grow<0.01)n._grow=target?n._grow:0;
+  });
+  if(activeNode && (activeNode._grow||0)>0.05){
+    const n=activeNode, g=n._grow;
+    const p=w2s(n.x,n.y); const r=radius(n)*Math.max(0.7,Math.min(1.4,scale));
+    // dış parlama
+    ctx.beginPath(); ctx.arc(p.x,p.y,r+10*g,0,6.283);
+    ctx.fillStyle="rgba(92,200,216,"+(0.12*g)+")"; ctx.fill();
+    // içine fotoğraf (varsa) — daire içinde kırpılmış
+    const prof=PROFILES[n.id];
+    if(prof&&prof.photo){
+      if(!n._img||n._img._src!==prof.photo){ const im=new Image(); im._src=prof.photo; im.src=prof.photo; n._img=im; }
+      if(n._img.complete&&n._img.naturalWidth){
+        ctx.save(); ctx.beginPath(); ctx.arc(p.x,p.y,r-2,0,6.283); ctx.clip();
+        const s=Math.max((2*r)/n._img.naturalWidth,(2*r)/n._img.naturalHeight);
+        const iw=n._img.naturalWidth*s, ih=n._img.naturalHeight*s;
+        ctx.globalAlpha=g; ctx.drawImage(n._img,p.x-iw/2,p.y-ih/2,iw,ih); ctx.globalAlpha=1; ctx.restore();
+        ctx.beginPath(); ctx.arc(p.x,p.y,r-2,0,6.283); ctx.lineWidth=2;
+        ctx.strokeStyle=nodeColor(n); ctx.stroke();
+      }
+    }
+    // detay çipleri — düğümün çevresinde halka halinde
+    if(g>0.4){
+      const gen=chainOf(n).length-1;
+      const kidCount=(n._kids?n._kids.length:0)+motherEdges.filter(m=>m.from===n.id&&!(n._kids||[]).some(k=>k.id===m.to)).length;
+      const spouseTxt=(n.spouse&&n.spouse.length)?n.spouse.map(s=>s.replace(" (aileden)","")).join(", "):null;
+      const chips=[];
+      chips.push({ic:"",tx:`${gen}. nesil`});
+      chips.push({ic:"",tx:n.alive===false?"Vefat":"Yaşıyor", col:n.alive===false?getVar("--dead"):getVar("--ok")});
+      if(spouseTxt) chips.push({ic:"⚭",tx:spouseTxt});
+      if(kidCount>0) chips.push({ic:"",tx:`${kidCount} çocuk`});
+      // isim üstte büyük
+      ctx.globalAlpha=g;
+      ctx.font="700 "+(16)+"px Inter"; ctx.textAlign="center"; ctx.textBaseline="bottom";
+      ctx.lineWidth=4; ctx.strokeStyle="rgba(11,18,32,.92)";
+      ctx.strokeText(dispName(n.name),p.x,p.y-r-12);
+      ctx.fillStyle=getVar("--text"); ctx.fillText(dispName(n.name),p.x,p.y-r-12);
+      // çipleri düğümün altına yay
+      let cy=p.y+r+14;
+      ctx.font="500 12px Inter"; ctx.textBaseline="middle";
+      chips.forEach((c,i)=>{
+        const label=(c.ic?c.ic+" ":"")+c.tx;
+        const w=ctx.measureText(label).width+18;
+        const cx=p.x;
+        // kutucuk
+        ctx.fillStyle="rgba(24,34,56,.92)"; roundRect(ctx,cx-w/2,cy-11,w,22,11); ctx.fill();
+        ctx.strokeStyle="var(--line2)"; ctx.strokeStyle=getVar("--line2"); ctx.lineWidth=1; roundRect(ctx,cx-w/2,cy-11,w,22,11); ctx.stroke();
+        ctx.fillStyle=c.col||getVar("--text-soft"); ctx.textAlign="center";
+        ctx.fillText(label,cx,cy);
+        cy+=27;
+      });
+      // ipucu: çift tık = düzenle
+      ctx.font="400 10px 'IBM Plex Mono', monospace"; ctx.fillStyle=getVar("--muted");
+      ctx.fillText("tekrar dokun: düzenle",p.x,cy+2);
+      ctx.globalAlpha=1;
+    }
+  }
+
+  requestAnimationFrame(loop);
+}
+function roundRect(ctx,x,y,w,h,r){ ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function loop(){ tick(); draw(); }
+requestAnimationFrame(loop);
+
+// ---- pointer: pan / drag / select ----
+let mouse={x:0,y:0}, down=null, dragNode=null, panning=false, moved=0;
+function pick(sx,sy){
+  let best=null,bd=1e9;
+  for(const n of nodes){ const p=w2s(n.x,n.y);
+    const d=Math.hypot(p.x-sx,p.y-sy);
+    const r=radius(n)*Math.max(0.7,Math.min(1.4,scale))+8;
+    if(d<r && d<bd){bd=d;best=n;} }
+  return best;
+}
+canvas.addEventListener("pointerdown",e=>{ down={x:e.clientX,y:e.clientY}; moved=0;
+  mouse={x:e.clientX,y:e.clientY};
+  const hit=pick(e.clientX,e.clientY);
+  if(reparentMode && selNode){ // reparent hedefi seçiliyor
+    if(hit && hit!==selNode){ doReparent(selNode,hit); }
+    setReparent(false); return;
+  }
+  if(hit){ dragNode=hit; hit.fixed=true; canvas.setPointerCapture(e.pointerId); }
+  else { panning=true; }
+});
+canvas.addEventListener("pointermove",e=>{
+  mouse={x:e.clientX,y:e.clientY};
+  if(down) moved+=Math.abs(e.movementX)+Math.abs(e.movementY);
+  if(dragNode){ const w=s2w(e.clientX,e.clientY); dragNode.x=w.x; dragNode.y=w.y; dragNode.vx=dragNode.vy=0; alpha=Math.max(alpha,0.5); document.getElementById("hoverCard").style.display="none"; }
+  else if(panning){ ox+=e.movementX; oy+=e.movementY; document.getElementById("hoverCard").style.display="none"; }
+  else { const h=pick(e.clientX,e.clientY); if(h!==hoverNode){ hoverNode=h; canvas.style.cursor=h?"pointer":"default"; updateHoverCard(h,e.clientX,e.clientY); }
+    else if(h){ updateHoverCard(h,e.clientX,e.clientY); } }
+});
+// hover foto önizleme kartı
+function updateHoverCard(n,mx,my){
+  const card=document.getElementById("hoverCard");
+  const prof = n ? (PROFILES[n.id]||null) : null;
+  if(!n || !prof || !prof.photo){ card.style.display="none"; return; }
+  document.getElementById("hoverPhoto").style.backgroundImage=`url(${prof.photo})`;
+  document.getElementById("hoverName").textContent=dispName(n.name);
+  card.style.display="block";
+  // imlecin sağ-üstünde, ekran kenarına taşmasın
+  const cw=166, ch=190;
+  let x=mx+16, y=my-ch-8;
+  if(x+cw>innerWidth) x=mx-cw-16;
+  if(y<8) y=my+16;
+  card.style.left=x+"px"; card.style.top=y+"px";
+}
+canvas.addEventListener("pointerleave",()=>{ hoverNode=null; document.getElementById("hoverCard").style.display="none"; });
+let lastTap=0, lastTapNode=null;
+canvas.addEventListener("pointerup",e=>{
+  if(dragNode){ dragNode.fixed=false;
+    if(moved<5){ // tıklama
+      const now=Date.now();
+      if(now-lastTap<320 && lastTapNode===dragNode){ // çift tık → panel
+        openPanel(dragNode); lastTap=0; lastTapNode=null;
+      } else if(dragNode===activeNode){ // zaten merkezdeyse tekrar dokunuş → panel (mobil dostu)
+        openPanel(dragNode); lastTap=now; lastTapNode=dragNode;
+      } else { // tek tık → merkeze al + genişlet + detay halkası
+        focusCenter(dragNode); lastTap=now; lastTapNode=dragNode;
+      }
+    }
+    dragNode=null;
+  } else if(panning){ panning=false; if(moved<5){ // boşluğa tık → seçimi bırak
+    activeNode=null; highlightSet.clear(); document.getElementById("hoverCard").style.display="none"; } }
+  down=null;
+});
+canvas.addEventListener("wheel",e=>{ e.preventDefault();
+  const before=s2w(e.clientX,e.clientY);
+  scale*=e.deltaY>0?0.9:1.11; scale=Math.max(0.15,Math.min(4,scale));
+  const after=s2w(e.clientX,e.clientY);
+  ox+=(after.x-before.x)*scale; oy+=(after.y-before.y)*scale;
+},{passive:false});
+// pinch
+let pinch=null;
+canvas.addEventListener("touchstart",e=>{if(e.touches.length===2)pinch=tdist(e.touches);},{passive:true});
+canvas.addEventListener("touchmove",e=>{if(e.touches.length===2&&pinch){const d=tdist(e.touches);
+  scale*=d/pinch; scale=Math.max(0.15,Math.min(4,scale)); pinch=d;}},{passive:true});
+canvas.addEventListener("touchend",()=>pinch=null);
+function tdist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
+
+addEventListener("resize",resize);
+addEventListener("orientationchange",()=>setTimeout(resize,200));
+if(window.visualViewport){ visualViewport.addEventListener("resize",resize); }
+
+// ---- seçim + vurgulama (soy zinciri) ----
+function chainOf(n){ const c=[]; let x=n; while(x){c.unshift(x);x=x._parent;} return c; }
+let activeNode=null;   // merkeze alınıp genişletilen kişi (panel açık olmayabilir)
+
+function highlightFor(n){
+  highlightSet.clear();
+  if(!n) return;
+  chainOf(n).forEach(x=>highlightSet.add(x.id));
+  (n._kids||[]).forEach(k=>highlightSet.add(k.id));
+  if(n.kin) highlightSet.add(n.kin);
+  if(n.mother) highlightSet.add(n.mother);
+  motherEdges.forEach(m=>{ if(m.from===n.id) highlightSet.add(m.to); });
+}
+// tek tık: kişiyi merkeze al, genişlet, detay halkası göster (panel AÇMA)
+function focusCenter(n){
+  activeNode=n; highlightFor(n);
+  document.getElementById("hoverCard").style.display="none";
+  focus(n);  // kamerayı ortala
+}
+// çift tık: düzenleme panelini aç
+function openPanel(n){
+  activeNode=n; highlightFor(n); selNode=n; openInspector(n);
+}
+// eski selectNode API'si (arama, çocuk tıklama vb. için) → merkeze al
+function selectNode(n){
+  if(n){ focusCenter(n); }
+  else { activeNode=null; highlightSet.clear(); closeInspector(); }
+}
+
+// ============================ PROFİL DEPOSU (cihazda) ============================
+// İletişim, sosyal medya, fotoğraf, anılar — localStorage'da saklanır.
+// Dışa/içe aktarma ile aile arasında dosya olarak paylaşılır.
+const PROFILE_KEY="kok_profiles_v1";
+let PROFILES={};
+try{ PROFILES=JSON.parse(localStorage.getItem(PROFILE_KEY)||"{}"); }catch(e){ PROFILES={}; }
+function getProfile(id){ return PROFILES[id] || {contact:{},social:{},photo:"",gallery:[],memories:[]}; }
+function saveProfile(id,p){ PROFILES[id]=p;
+  // bulut modunda profiller ağaç verisinin parçası → buluta kaydet
+  if(CLOUD.on){ try{ (byId[id]||{}).profile = p; }catch(e){} cloudSave(false); }
+  try{ localStorage.setItem(PROFILE_KEY, JSON.stringify(PROFILES)); }
+  catch(e){ /* dolu olabilir; bulutta zaten var */ } }
+
+// dosyayı yükle: bulut varsa Vercel Blob'a (URL döner), yoksa yerelde data-uri
+// resimleri küçültür; videolar olduğu gibi (max 50MB) yüklenir
+async function uploadMedia(file, maxW){
+  const isVideo = file.type.startsWith("video/");
+  if(CLOUD.on){
+    // buluta yükle
+    let blob = file;
+    if(!isVideo && maxW){ blob = await shrinkImage(file, maxW); }   // fotoğrafı küçült
+    const q = new URLSearchParams({ ad:file.name||"medya",
+      token:sessionToken||"", admin:isAdmin?(window.__adminCode||""):"" });
+    const r = await fetch("/api/medya?"+q.toString(), { method:"POST",
+      headers:{"Content-Type":file.type||"application/octet-stream"}, body:blob });
+    const j = await r.json();
+    if(j.ok) return { url:j.url, video:isVideo };
+    throw new Error(j.hata||"Yükleme başarısız");
+  } else {
+    // offline: data-uri (video için de, ama büyük olabilir)
+    const url = await new Promise((res,rej)=>{
+      if(!isVideo && maxW){ shrinkImage(file,maxW).then(b=>{
+        const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(b); }); }
+      else { const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }
+    });
+    return { url, video:isVideo };
+  }
+}
+// resmi küçült (Blob döner)
+function shrinkImage(file, maxW){
+  return new Promise((resolve)=>{
+    const r=new FileReader();
+    r.onload=()=>{ const img=new Image();
+      img.onload=()=>{ const sc=Math.min(1, maxW/img.width);
+        const c=document.createElement("canvas"); c.width=img.width*sc; c.height=img.height*sc;
+        c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+        c.toBlob(b=>resolve(b), "image/jpeg", 0.82); };
+      img.src=r.result; };
+    r.readAsDataURL(file);
+  });
+}
+// dosya→base64 (fotoğraf küçültülerek)
+function fileToDataURL(file, maxW, cb){
+  const r=new FileReader();
+  r.onload=()=>{ const img=new Image();
+    img.onload=()=>{ const sc=Math.min(1, maxW/img.width);
+      const c=document.createElement("canvas"); c.width=img.width*sc; c.height=img.height*sc;
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      cb(c.toDataURL("image/jpeg",0.82)); };
+    img.src=r.result; };
+  r.readAsDataURL(file);
+}
+
+// ============================ INSPECTOR (düzenleme) ============================
+const inspector=document.getElementById("inspector");
+const iName=document.getElementById("iName"), iMeta=document.getElementById("iMeta"),
+  iDot=document.getElementById("iDot"), iBody=document.getElementById("iBody");
+function closeInspector(){ inspector.classList.remove("show"); selNode=null; highlightSet.clear(); }
+document.getElementById("iClose").onclick=()=>{ closeInspector(); };
+
+function openInspector(n){
+  inspector.classList.add("show");
+  const prof=getProfile(n.id);
+  // profil fotoğrafı (varsa) yoksa renkli dot + kamera simgesi
+  if(prof.photo){ iDot.style.background=`center/cover url(${prof.photo})`; iDot.style.backgroundSize="cover"; iDot.textContent=""; }
+  else { iDot.style.background=nodeColor(n); iDot.style.display="flex"; iDot.style.alignItems="center";
+    iDot.style.justifyContent="center"; iDot.style.fontSize="15px"; iDot.textContent="📷"; }
+  iDot.style.cursor="pointer"; iDot.title="Fotoğraf eklemek/değiştirmek için tıkla";
+  iDot.onclick=()=>pickPhoto(n);
+  iName.textContent=dispName(n.name);
+  const gen=chainOf(n).length-1;
+  iMeta.textContent=`${gen}. nesil · ${byId[n.id]?n.id:""}`;
+
+  iBody.innerHTML="";
+  // düzenlenebilir alanlar
+  const f=document.createElement("div");
+  f.innerHTML=`
+    <div class="field"><label>Ad</label><input id="fName" value="${escapeHtml(n.name)}"></div>
+    <div class="row2">
+      <div class="field"><label>Cinsiyet</label>
+        <select id="fSex"><option value="E"${n.sex==="E"?" selected":""}>Erkek</option>
+        <option value="K"${n.sex==="K"?" selected":""}>Kadın</option></select></div>
+      <div class="field"><label>Durum</label>
+        <select id="fAlive"><option value="1"${n.alive!==false?" selected":""}>Yaşıyor</option>
+        <option value="0"${n.alive===false?" selected":""}>Vefat</option></select></div>
+    </div>
+    <div class="field"><label>Eş(ler)</label><div class="chips" id="fSpouse"></div></div>
+  `;
+  iBody.appendChild(f);
+  renderSpouseChips(n);
+
+  // giriş telefonu (yalnız admin görür/düzenler — SMS girişi için)
+  if(isAdmin){
+    const tw=document.createElement("div");
+    tw.innerHTML=`<div class="field"><label>Giriş telefonu (SMS ile giriş için)</label>
+      <input id="fTel" value="${escapeHtml(n.tel||"")}" placeholder="05xx… — bu kişi bu numarayla giriş yapar"></div>`;
+    iBody.appendChild(tw);
+    tw.querySelector("#fTel").onchange=e=>{ n.tel=e.target.value.trim()||null; touch(); };
+  }
+
+  // soy zinciri
+  const lin=document.createElement("div");
+  lin.innerHTML=`<div class="section-title">Soy zinciri</div>
+    <div class="lineage">${chainOf(n).map((x,i,a)=>i===a.length-1?`<b>${dispName(x.name)}</b>`:dispName(x.name)).join(" › ")}</div>`;
+  iBody.appendChild(lin);
+
+  // ebeveyn
+  const par=document.createElement("div");
+  par.innerHTML=`<div class="section-title">Ebeveyn</div>`;
+  const pk=document.createElement("div"); pk.className="kidlist";
+  if(n._parent){ const pp=n._parent;
+    const role=n.parentRole||"baba";
+    pk.innerHTML=`<div class="k" data-id="${pp.id}"><span class="kd" style="background:${nodeColor(pp)}"></span>${dispName(pp.name)} <small style="color:var(--muted);margin-left:4px">${role}</small></div>`;
+  } else { pk.innerHTML=`<div style="color:var(--muted);font-size:13px">Kök — ebeveyni yok</div>`; }
+  // dışarıdan gelen baba (E'li — ağaçta düğüm değil, ama kişinin babası)
+  if(n.fatherExt){
+    const frow=document.createElement("div"); frow.className="k"; frow.style.cursor="default";
+    frow.innerHTML=`<span class="kd" style="background:var(--dead)"></span>${escapeHtml(n.fatherExt)} <small style="color:var(--muted);margin-left:4px">baba · dışarıdan</small>`;
+    pk.appendChild(frow);
+  }
+  // anne (motherEdges üzerinden, ağaç-ebeveyni zaten anne değilse)
+  if(n.mother && byId[n.mother] && n.parentRole!=="anne" && (!n._parent || byId[n.mother]!==n._parent)){
+    const mm=byId[n.mother];
+    const mrow=document.createElement("div"); mrow.className="k"; mrow.dataset.id=mm.id;
+    mrow.innerHTML=`<span class="kd" style="background:${nodeColor(mm)}"></span>${dispName(mm.name)} <small style="color:var(--muted);margin-left:4px">anne</small>`;
+    pk.appendChild(mrow);
+  }
+  par.appendChild(pk);
+  // baba ekle (ağaç-ebeveyni yoksa veya dış babaysa)
+  const hasTreeFather = n._parent && (n.parentRole||"baba")==="baba";
+  if(!hasTreeFather){
+    const addF=document.createElement("button"); addF.className="tbtn"; addF.style.marginTop="8px";
+    addF.style.width="100%"; addF.style.justifyContent="center"; addF.textContent="＋ Baba ekle";
+    addF.onclick=()=>addParent(n,"baba");
+    par.appendChild(addF);
+  }
+  // anne ekle (anne yoksa)
+  const hasMother = n.mother && byId[n.mother] || (n._parent && n.parentRole==="anne");
+  if(!hasMother){
+    const addM=document.createElement("button"); addM.className="tbtn"; addM.style.marginTop="6px";
+    addM.style.width="100%"; addM.style.justifyContent="center"; addM.textContent="＋ Anne ekle";
+    addM.onclick=()=>addParent(n,"anne");
+    par.appendChild(addM);
+  }
+  // ebeveyni değiştir (var olan ağaç-ebeveynini başkasıyla)
+  if(n._parent){
+    const rep=document.createElement("button"); rep.className="tbtn"; rep.style.marginTop="6px"; rep.style.width="100%";
+    rep.style.justifyContent="center"; rep.textContent="⇄ Ebeveyni değiştir";
+    rep.onclick=()=>setReparent(true);
+    par.appendChild(rep);
+  }
+  iBody.appendChild(par);
+
+  // çocuklar
+  // baba-hattı çocuklar + anne olunan çocuklar (eş üzerinden, baba hattında duranlar)
+  const kids=n._kids||[];
+  const kidIds=new Set(kids.map(k=>k.id));
+  // motherEdges: bu kişi anne olan çocuklar
+  const momKids = motherEdges.filter(m=>m.from===n.id).map(m=>byId[m.to]).filter(Boolean)
+    .filter(k=>!kidIds.has(k.id));   // baba-hattında zaten varsa tekrarlama
+  const totalKids = kids.length + momKids.length;
+
+  const kc=document.createElement("div");
+  kc.innerHTML=`<div class="section-title">Çocuklar (${totalKids})</div>`;
+  const kl=document.createElement("div"); kl.className="kidlist";
+  kids.forEach(k=>{ const row=document.createElement("div"); row.className="k"; row.dataset.id=k.id;
+    row.innerHTML=`<span class="kd" style="background:${nodeColor(k)}"></span>${dispName(k.name)}`;
+    kl.appendChild(row); });
+  // anne olunan çocuklar (baba hattında görünenler) — küçük "eşinden" notu
+  momKids.forEach(k=>{ const row=document.createElement("div"); row.className="k"; row.dataset.id=k.id;
+    const dad = k._parent ? dispName(k._parent.name) : "";
+    row.innerHTML=`<span class="kd" style="background:${nodeColor(k)}"></span>${dispName(k.name)}
+      <small style="color:var(--muted);margin-left:auto">${dad?dad+' ile':'eşinden'}</small>`;
+    kl.appendChild(row); });
+  const addKid=document.createElement("div"); addKid.className="k"; addKid.style.color="var(--accent)";
+  addKid.innerHTML=`＋ Çocuk ekle`; addKid.onclick=()=>addChild(n);
+  kl.appendChild(addKid);
+  kc.appendChild(kl); iBody.appendChild(kc);
+
+  // ——— KARDEŞLER (aynı ebeveynin diğer çocukları) ———
+  const sibs=[];
+  if(n._parent){ (n._parent._kids||[]).forEach(k=>{ if(k!==n) sibs.push(k); }); }
+  // anne üzerinden kardeşler (aynı anneye bağlı, henüz eklenmemiş)
+  if(n.mother){ motherEdges.forEach(m=>{ if(m.from===n.mother && m.to!==n.id){ const s=byId[m.to];
+    if(s && !sibs.includes(s)) sibs.push(s); } }); }
+  const sc=document.createElement("div");
+  sc.innerHTML=`<div class="section-title">Kardeşler (${sibs.length})</div>`;
+  const sl=document.createElement("div"); sl.className="kidlist";
+  sibs.forEach(s=>{ const row=document.createElement("div"); row.className="k"; row.dataset.id=s.id;
+    row.innerHTML=`<span class="kd" style="background:${nodeColor(s)}"></span>${dispName(s.name)}`;
+    sl.appendChild(row); });
+  // kardeş ekle — ebeveyni olan varsa aynı ebeveyne, yoksa uyar
+  const addSib=document.createElement("div"); addSib.className="k"; addSib.style.color="var(--accent)";
+  addSib.innerHTML=`＋ Kardeş ekle`; addSib.onclick=()=>addSibling(n);
+  sl.appendChild(addSib);
+  sc.appendChild(sl); iBody.appendChild(sc);
+
+  // ——— PROFİL: iletişim, sosyal, galeri, anılar ———
+  renderProfileSections(n);
+
+  // olaylar
+  iBody.querySelectorAll(".kidlist .k[data-id]").forEach(row=>{
+    row.onclick=()=>{ const t=byId[row.dataset.id]; if(t){selectNode(t);focus(t);} };
+  });
+  document.getElementById("fName").oninput=e=>{ n.name=e.target.value; iName.textContent=dispName(n.name); touch(); };
+  document.getElementById("fSex").onchange=e=>{ n.sex=e.target.value; iDot.style.background=nodeColor(n); touch(); };
+  document.getElementById("fAlive").onchange=e=>{ n.alive=e.target.value==="1"; iDot.style.background=nodeColor(n); touch(); };
+
+  // ——— YETKİ: bu kişiyi düzenleyebilir miyim? ———
+  applyEditPermission(n);
+}
+
+function applyEditPermission(n){
+  const editable = canEdit(n);
+  // profil fotoğrafı tıklaması
+  iDot.style.pointerEvents = editable ? "auto" : "none";
+  iDot.style.opacity = editable ? "1" : "0.9";
+  // tüm input / select / textarea / düzenleme düğmelerini durumuna göre ayarla
+  iBody.querySelectorAll("input, select, textarea").forEach(el=>{
+    el.disabled = !editable;
+    el.style.opacity = editable ? "1" : "0.6";
+  });
+  // ekleme/silme/değiştirme düğmeleri (navigasyon hariç: .k[data-id] tıklanabilir kalır)
+  iBody.querySelectorAll("button, .k").forEach(el=>{
+    if(el.matches("[data-id]")) return;         // kişiye gitme linki — açık kalsın
+    const txt=(el.textContent||"");
+    // "Paylaş", "Fotoğraf ekle" (kendi profili) gibi zararsızları admin dışında da bırakmıyoruz;
+    // sadece düzenlenebilirse aktif
+    el.style.pointerEvents = editable ? "auto" : "none";
+    el.style.opacity = editable ? "1" : "0.45";
+  });
+  // silme düğmesi sadece admin (yanlışlıkla kişi silinmesin)
+  const del=document.getElementById("iDelete");
+  if(del){ del.style.display = isAdmin ? "" : "none"; }
+
+  // üst bilgi şeridi
+  let banner=document.getElementById("permBanner");
+  if(!banner){ banner=document.createElement("div"); banner.id="permBanner";
+    banner.style.cssText="font-size:12px;padding:8px 11px;border-radius:8px;margin-bottom:12px;text-align:center";
+    iBody.insertBefore(banner, iBody.firstChild);
+  }
+  if(isAdmin){
+    banner.style.background="rgba(224,182,74,.14)"; banner.style.color=getVar("--spine");
+    banner.textContent="🔓 Yönetici modu — tüm kişileri düzenleyebilirsin";
+  } else if(editable){
+    banner.style.background="rgba(90,200,122,.12)"; banner.style.color=getVar("--ok");
+    banner.textContent="✎ Bu kişiyi düzenleyebilirsin (yakının)";
+  } else {
+    banner.style.background="rgba(140,156,180,.12)"; banner.style.color=getVar("--text-soft");
+    banner.textContent=viewerId ? "👁 Sadece görüntüleme — bu kişi senin yakının değil" : "👁 Sadece görüntüleme";
+  }
+}
+
+// ============================ PROFİL BÖLÜMLERİ ============================
+const SOCIALS=[
+  {k:"instagram",label:"Instagram",icon:"◎",pre:"@"},
+  {k:"x",label:"X",icon:"✕",pre:"@"},
+  {k:"facebook",label:"Facebook",icon:"f",pre:""},
+  {k:"linkedin",label:"LinkedIn",icon:"in",pre:""},
+  {k:"whatsapp",label:"WhatsApp",icon:"✆",pre:""},
+];
+function renderProfileSections(n){
+  const prof=getProfile(n.id);
+  const wrap=document.createElement("div");
+
+  // — Profil fotoğrafı (belirgin) —
+  const photoSec=document.createElement("div");
+  photoSec.innerHTML=`<div class="section-title">Profil fotoğrafı</div>`;
+  const pv=document.createElement("div");
+  pv.style.cssText=`display:flex;align-items:center;gap:12px;margin-bottom:8px`;
+  const big=document.createElement("div");
+  big.style.cssText=`width:64px;height:64px;border-radius:50%;flex:none;cursor:pointer;
+    border:2px solid var(--line2);background:${prof.photo?`center/cover url(${prof.photo})`:nodeColor(n)};
+    background-size:cover;display:flex;align-items:center;justify-content:center;font-size:24px`;
+  if(!prof.photo) big.textContent="📷";
+  big.onclick=()=>pickPhoto(n);
+  const btn=document.createElement("button"); btn.className="tbtn"; btn.style.flex="1";
+  btn.style.justifyContent="center"; btn.textContent=prof.photo?"Fotoğrafı değiştir":"＋ Fotoğraf ekle";
+  btn.onclick=()=>pickPhoto(n);
+  pv.appendChild(big); pv.appendChild(btn); photoSec.appendChild(pv);
+  wrap.appendChild(photoSec);
+
+  // — İletişim —
+  const contactSec=document.createElement("div");
+  contactSec.innerHTML=`<div class="section-title">İletişim</div>
+    <div class="field"><label>Telefon</label><input id="pcPhone" value="${escapeHtml(prof.contact.phone||"")}" placeholder="+90…"></div>
+    <div class="field"><label>E-posta</label><input id="pcEmail" value="${escapeHtml(prof.contact.email||"")}" placeholder="ad@ornek.com"></div>
+    <div class="field"><label>Adres</label><input id="pcAddr" value="${escapeHtml(prof.contact.address||"")}" placeholder="Şehir / adres"></div>`;
+  wrap.appendChild(contactSec);
+
+  // — Sosyal medya —
+  const soc=document.createElement("div");
+  soc.innerHTML=`<div class="section-title">Sosyal medya</div>`;
+  SOCIALS.forEach(s=>{
+    const v=(prof.social&&prof.social[s.k])||"";
+    const fd=document.createElement("div"); fd.className="field";
+    fd.innerHTML=`<label>${s.label}</label>
+      <input data-soc="${s.k}" value="${escapeHtml(v)}" placeholder="${s.pre}kullanıcıadı veya bağlantı">`;
+    soc.appendChild(fd);
+  });
+  wrap.appendChild(soc);
+
+  // — Fotoğraf galerisi —
+  const gal=document.createElement("div");
+  const galItems=(prof.gallery||[]);
+  gal.innerHTML=`<div class="section-title">Fotoğraf & Video (${galItems.length})</div>`;
+  const grid=document.createElement("div");
+  grid.style.cssText="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px";
+  galItems.forEach((item,i)=>{
+    const isVid = item && typeof item==="object" && item.video;
+    const src = isVid ? item.url : item;
+    const cell=document.createElement("div");
+    cell.style.cssText=`aspect-ratio:1;border-radius:7px;position:relative;cursor:pointer;
+      border:1px solid var(--line);overflow:hidden;background:#0e1526`;
+    if(isVid){
+      cell.innerHTML=`<video src="${src}#t=0.1" style="width:100%;height:100%;object-fit:cover" muted playsinline preload="metadata"></video>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+          font-size:26px;color:#fff;text-shadow:0 2px 8px #000;pointer-events:none">▶</div>`;
+    } else {
+      cell.style.background=`center/cover url(${src})`;
+    }
+    cell.onclick=()=>openLightbox(src, isVid);
+    const del=document.createElement("button");
+    del.textContent="×"; del.style.cssText=`position:absolute;top:2px;right:4px;background:rgba(0,0,0,.6);
+      border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:12px;line-height:1;z-index:2`;
+    del.onclick=(e)=>{ e.stopPropagation(); prof.gallery.splice(i,1); saveProfile(n.id,prof); renderProfileSections._rerun(n); };
+    cell.appendChild(del); grid.appendChild(cell);
+  });
+  gal.appendChild(grid);
+  const addPhoto=document.createElement("button"); addPhoto.className="tbtn"; addPhoto.style.width="100%";
+  addPhoto.style.justifyContent="center"; addPhoto.textContent="＋ Fotoğraf / Video ekle";
+  addPhoto.onclick=()=>pickGallery(n);
+  gal.appendChild(addPhoto);
+  wrap.appendChild(gal);
+
+  // — Anılar —
+  const mem=document.createElement("div");
+  mem.innerHTML=`<div class="section-title">Anılar (${(prof.memories||[]).length})</div>`;
+  (prof.memories||[]).forEach((m,i)=>{
+    const card=document.createElement("div");
+    card.style.cssText="background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px";
+    card.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">${escapeHtml(m.date||"")}</span>
+      </div>
+      ${m.photo?`<div style="margin:6px 0;border-radius:6px;aspect-ratio:16/10;background:center/cover url(${m.photo})"></div>`:""}
+      <div style="font-size:13px;line-height:1.5;margin-top:4px">${escapeHtml(m.text||"")}</div>`;
+    const row=document.createElement("div"); row.style.cssText="display:flex;gap:8px;margin-top:8px";
+    const shareBtn=document.createElement("button"); shareBtn.className="tbtn"; shareBtn.style.flex="1";
+    shareBtn.style.justifyContent="center"; shareBtn.style.fontSize="12px"; shareBtn.textContent="↗ Paylaş";
+    shareBtn.onclick=()=>shareMemory(n,m);
+    const delBtn=document.createElement("button"); delBtn.className="tbtn danger"; delBtn.style.fontSize="12px";
+    delBtn.textContent="Sil"; delBtn.onclick=()=>{ prof.memories.splice(i,1); saveProfile(n.id,prof); renderProfileSections._rerun(n); };
+    row.appendChild(shareBtn); row.appendChild(delBtn); card.appendChild(row);
+    mem.appendChild(card);
+  });
+  const addMem=document.createElement("button"); addMem.className="tbtn"; addMem.style.width="100%";
+  addMem.style.justifyContent="center"; addMem.textContent="＋ Anı ekle";
+  addMem.onclick=()=>addMemory(n);
+  mem.appendChild(addMem);
+  wrap.appendChild(mem);
+
+  // — Kaydet butonu (belirgin) —
+  const saveBar=document.createElement("div");
+  saveBar.style.cssText="margin-top:16px";
+  const saveBtn=document.createElement("button");
+  saveBtn.className="tbtn primary"; saveBtn.style.cssText="width:100%;justify-content:center;font-size:14px;padding:12px";
+  saveBtn.textContent="✓ Bilgileri kaydet";
+  saveBar.appendChild(saveBtn);
+  wrap.appendChild(saveBar);
+
+  iBody.appendChild(wrap);
+
+  // olaylar — kaydetme
+  const save=(showToast)=>{ const p=getProfile(n.id);
+    p.contact={phone:val("pcPhone"),email:val("pcEmail"),address:val("pcAddr")};
+    p.social=p.social||{};
+    wrap.querySelectorAll("input[data-soc]").forEach(inp=>{ p.social[inp.dataset.soc]=inp.value.trim(); });
+    saveProfile(n.id,p);
+    if(showToast) toast("Bilgiler kaydedildi"); };
+  saveBtn.onclick=()=>save(true);
+  // otomatik da kaydet (input'tan çıkınca — yedek)
+  wrap.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",()=>save(false)));
+  function val(id){ const e=document.getElementById(id); return e?e.value.trim():""; }
+}
+renderProfileSections._rerun=(n)=>{ // profil bölümünü tazele (galeri/anı değişince)
+  // en basit: kartı yeniden aç
+  openInspector(n);
+};
+
+function pickPhoto(n){
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
+  inp.onchange=async ()=>{ if(!inp.files[0])return;
+    toast("Yükleniyor…");
+    try{
+      const {url}=await uploadMedia(inp.files[0], 400);
+      const p=getProfile(n.id); p.photo=url; PROFILES[n.id]=p; saveProfile(n.id,p);
+      const im=new Image(); im._src=url; im.onload=()=>{ n._img=im; }; im.src=url; n._img=im;
+      iDot.style.background=`center/cover url(${url})`; iDot.style.backgroundSize="cover";
+      toast("Profil fotoğrafı eklendi");
+    }catch(e){ toast("Yükleme başarısız: "+e.message); } };
+  inp.click();
+}
+function pickGallery(n){
+  const inp=document.createElement("input"); inp.type="file";
+  inp.accept="image/*,video/*"; inp.multiple=true;   // foto VE video
+  inp.onchange=async ()=>{ const files=[...inp.files]; if(!files.length)return;
+    toast(`${files.length} dosya yükleniyor…`);
+    for(const f of files){
+      try{
+        const {url,video}=await uploadMedia(f, 900);
+        const p=getProfile(n.id); p.gallery=p.gallery||[];
+        p.gallery.push(video ? {url, video:true} : url);   // video ise nesne, foto ise düz url
+        saveProfile(n.id,p);
+      }catch(e){ toast("Bir dosya yüklenemedi: "+e.message); }
+    }
+    renderProfileSections._rerun(n); toast("Yükleme tamam");
+  };
+  inp.click();
+}
+function addMemory(n){
+  const overlay=document.createElement("div");
+  overlay.style.cssText=`position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);
+    display:flex;align-items:center;justify-content:center;padding:20px`;
+  overlay.innerHTML=`<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:20px;width:min(420px,92vw);box-shadow:0 20px 60px var(--shadow)">
+    <h3 style="margin:0 0 14px;font-size:17px">Anı ekle</h3>
+    <div class="field"><label>Tarih</label><input id="mDate" placeholder="örn. 1985 yazı, ya da 12.06.1985"></div>
+    <div class="field"><label>Anı</label><textarea id="mText" rows="4" style="width:100%;font-family:'Inter';
+      font-size:14px;color:var(--text);background:var(--bg2);border:1px solid var(--line);border-radius:6px;
+      padding:9px 11px;outline:none;resize:vertical" placeholder="Bu anıyı anlat…"></textarea></div>
+    <div class="field"><label>Fotoğraf (opsiyonel)</label>
+      <button id="mPhotoBtn" class="tbtn" style="width:100%;justify-content:center">＋ Fotoğraf seç</button>
+      <div id="mPhotoPrev" style="margin-top:8px"></div></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="mCancel" class="tbtn" style="flex:1;justify-content:center">Vazgeç</button>
+      <button id="mSave" class="tbtn primary" style="flex:1;justify-content:center">Kaydet</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  let photoData="";
+  overlay.querySelector("#mPhotoBtn").onclick=()=>{ const inp=document.createElement("input");
+    inp.type="file"; inp.accept="image/*"; inp.onchange=()=>{ if(inp.files[0])fileToDataURL(inp.files[0],1000,(url)=>{
+      photoData=url; overlay.querySelector("#mPhotoPrev").innerHTML=`<div style="border-radius:7px;aspect-ratio:16/10;background:center/cover url(${url})"></div>`; }); };
+    inp.click(); };
+  overlay.querySelector("#mCancel").onclick=()=>overlay.remove();
+  overlay.querySelector("#mSave").onclick=()=>{
+    const p=getProfile(n.id); p.memories=p.memories||[];
+    p.memories.unshift({date:overlay.querySelector("#mDate").value.trim(),
+      text:overlay.querySelector("#mText").value.trim(), photo:photoData});
+    saveProfile(n.id,p); overlay.remove(); renderProfileSections._rerun(n); toast("Anı eklendi");
+  };
+}
+function openLightbox(src, isVideo){
+  const o=document.createElement("div");
+  o.style.cssText=`position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.92);display:flex;
+    align-items:center;justify-content:center;cursor:zoom-out;padding:20px`;
+  if(isVideo){
+    o.innerHTML=`<video src="${src}" controls autoplay playsinline
+      style="max-width:96%;max-height:96%;border-radius:8px" onclick="event.stopPropagation()"></video>`;
+  } else {
+    o.innerHTML=`<img src="${src}" style="max-width:95%;max-height:95%;border-radius:8px">`;
+  }
+  o.onclick=()=>o.remove(); document.body.appendChild(o);
+}
+function shareMemory(n,m){
+  const text=`${dispName(n.name)} — ${m.date||""}\n\n${m.text||""}\n\n(Abdurrahman Oğulları Soy Ağacı)`;
+  if(navigator.share){ navigator.share({title:"Aile anısı",text}).catch(()=>{}); }
+  else { navigator.clipboard?.writeText(text).then(()=>toast("Anı panoya kopyalandı"),()=>toast("Kopyalanamadı")); }
+}
+function renderSpouseChips(n){
+  const box=document.getElementById("fSpouse"); if(!box)return;
+  n.spouse=n.spouse||[]; box.innerHTML="";
+  n.spouse.forEach((s,i)=>{ const c=document.createElement("span"); c.className="chip";
+    const isKin=s.includes("(aileden)");
+    const cleanName=s.replace(" (aileden)","").trim();
+    c.style.cursor="pointer";
+    c.innerHTML=`<span class="sp-name">${escapeHtml(cleanName)}</span>${isKin?' <small style="color:var(--muted)">aileden</small>':''} <span class="x">×</span>`;
+    // isme tıkla → panel aç (aileden) ya da düğüm ekle (dışarıdan)
+    c.querySelector(".sp-name").onclick=(e)=>{ e.stopPropagation(); openSpouse(n, cleanName, isKin); };
+    c.querySelector(".x").onclick=(e)=>{ e.stopPropagation(); n.spouse.splice(i,1); renderSpouseChips(n); touch(); };
+    box.appendChild(c); });
+  const add=document.createElement("span"); add.className="chip add"; add.textContent="＋ eş ekle";
+  add.onclick=()=>{ const v=prompt("Eş adı (evlilikle katılan):"); if(v&&v.trim()){ n.spouse.push(v.trim()); renderSpouseChips(n); touch(); } };
+  box.appendChild(add);
+}
+// eş çipine tıklanınca: aileden→o düğümü aç; dışarıdan→düğüm ekle & bağla
+function openSpouse(n, spouseName, isKin){
+  // aileden eş: n.kin ile ya da isimle ağaçtaki düğümü bul
+  if(isKin){
+    let t = n.kin ? byId[n.kin] : null;
+    if(!t){ // isimle ara
+      t = nodes.find(x=>dispName(x.name)===spouseName && x!==n);
+    }
+    if(t){ openPanel(t); focus(t); return; }
+  }
+  // dışarıdan eş: ağaçta düğüm değil → eklemek ister misin?
+  if(confirm(`"${spouseName}" ağaçta ayrı bir kişi olarak eklensin mi?\n(Dışarıdan evlilikle katılan eş olarak, ${dispName(n.name)} ile bağlı)`)){
+    const id="n"+(function(){let i=1;while(byId["n"+i])i++;return i;})();
+    const nn={id, name:spouseName, sex:(n.sex==="E"?"K":"E"), alive:true, spouse:[dispName(n.name)+" (aileden)"],
+      kin:n.id, x:n.x+40+(Math.random()-0.5)*40, y:n.y+40, vx:0, vy:0, fixed:false};
+    nodes.push(nn);
+    // eş bağı (marriage) ekle
+    marriages.push({from:n.id, to:id, type:"marriage"});
+    // n'in kin'ini de işaretle
+    n.kin=id;
+    // n'in spouse listesinde "aileden" olarak güncelle (artık düğüm)
+    const idx=n.spouse.findIndex(s=>s.replace(" (aileden)","").trim()===spouseName);
+    if(idx>=0 && !n.spouse[idx].includes("(aileden)")) n.spouse[idx]=spouseName+" (aileden)";
+    reindex(); layoutRadial(); alpha=1; touch();
+    openPanel(nn); focus(nn);
+    toast(`${spouseName} eklendi ve bağlandı`);
+  }
+}
+document.getElementById("iFocus").onclick=()=>{ if(selNode)focus(selNode); };
+document.getElementById("iDelete").onclick=()=>{ if(selNode)deleteNode(selNode); };
+
+function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+// ---- odak (kamera) ----
+function focus(n){ const dur=500,t0=performance.now();
+  const sox=ox,soy=oy,ss=scale, ts=Math.max(scale,0.9);
+  const tox=-n.x*ts, toy=-n.y*ts;
+  (function step(now){ let k=Math.min(1,(now-t0)/dur); k=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    ox=sox+(tox-sox)*k; oy=soy+(toy-soy)*k; scale=ss+(ts-ss)*k;
+    if(k<1)requestAnimationFrame(step); })(performance.now());
+}
+
+// ============================ DÜZENLEME İŞLEMLERİ ============================
+let dirty=false;
+let touch=function(){ dirty=true; updateStatus(); };
+function newId(){ let i=1; while(byId["n"+i]) i++; return "n"+i; }
+
+function addChild(parent){
+  const id=newId();
+  const nn={id,name:"Yeni kişi",sex:"E",alive:true,spine:false,you:false,spouse:[],
+    x:parent.x+(Math.random()-0.5)*60, y:parent.y+60, vx:0,vy:0,fixed:false};
+  nodes.push(nn); edges.push({from:parent.id,to:id}); reindex();
+  alpha=1; touch(); selectNode(nn);
+  toast("Çocuk eklendi — adını düzenleyebilirsin");
+}
+// kişiye ebeveyn ekle: baba → ağaç bağı, anne → anne-bağı
+function addParent(child, role){
+  const label = role==="baba" ? "Baba adı" : "Anne adı";
+  const name = prompt(label + ":");
+  if(!name || !name.trim()) return;
+  const id=newId();
+  const nn={id, name:name.trim(), sex:(role==="baba"?"E":"K"), alive:true, spine:false, you:false,
+    spouse:[], x:child.x+(Math.random()-0.5)*40, y:child.y-70, vx:0, vy:0, fixed:false};
+  nodes.push(nn);
+  if(role==="baba"){
+    // varsa eski ağaç-baba bağını kaldır (diziyi yerinde değiştir, referans korunsun)
+    for(let i=edges.length-1;i>=0;i--){ if(edges[i].to===child.id) edges.splice(i,1); }
+    edges.push({from:id, to:child.id});
+    child.parentRole="baba";
+    delete child.fatherExt;   // artık gerçek baba düğümü var
+  } else {
+    // anne bağı (motherEdge) — ağaç yapısını değiştirmez
+    // varsa eski anne bağını kaldır
+    for(let i=motherEdges.length-1;i>=0;i--){ if(motherEdges[i].to===child.id) motherEdges.splice(i,1); }
+    motherEdges.push({from:id, to:child.id, type:"mother"});
+    child.mother=id;
+  }
+  reindex(); layoutRadial(); alpha=1; touch();
+  openPanel(child);   // çocuğun paneline dön (ebeveyn artık görünür)
+  toast(`${role==="baba"?"Baba":"Anne"} eklendi: ${name.trim()}`);
+}
+// kardeş ekle: aynı ebeveyne bağlı yeni çocuk
+function addSibling(person){
+  // ağaç-ebeveyni (baba hattı) varsa ona bağla
+  let parent = person._parent;
+  let viaMother = false;
+  if(!parent && person.mother){ parent = byId[person.mother]; viaMother = true; }
+  if(!parent){
+    toast("Önce bu kişiye ebeveyn ekle — kardeş aynı ebeveyne bağlanır");
+    return;
+  }
+  const name = prompt("Kardeş adı:");
+  if(!name || !name.trim()) return;
+  const id=newId();
+  const nn={id, name:name.trim(), sex:"E", alive:true, spine:false, you:false, spouse:[],
+    x:parent.x+(Math.random()-0.5)*60, y:parent.y+60, vx:0, vy:0, fixed:false};
+  nodes.push(nn);
+  if(viaMother){
+    // anne üzerinden kardeş → anne bağı
+    motherEdges.push({from:parent.id, to:id, type:"mother"});
+    nn.mother=parent.id;
+  } else {
+    edges.push({from:parent.id, to:id});
+  }
+  reindex(); layoutRadial(); alpha=1; touch();
+  openPanel(nn);
+  toast(`Kardeş eklendi: ${name.trim()} — adını/cinsiyetini düzenleyebilirsin`);
+}
+document.getElementById("addBtn").onclick=()=>{
+  const id=newId();
+  const c=s2w(innerWidth/2,innerHeight/2);
+  const nn={id,name:"Yeni kişi",sex:"E",alive:true,spine:false,you:false,spouse:[],
+    x:c.x,y:c.y,vx:0,vy:0,fixed:false};
+  nodes.push(nn); reindex(); alpha=1; touch(); selectNode(nn);
+  toast("Kişi eklendi — bir ebeveyne bağlamak için ⇄ kullan");
+};
+
+function deleteNode(n){
+  const kids=n._kids||[];
+  if(!confirm(`"${dispName(n.name)}" silinsin mi?`+(kids.length?` (${kids.length} çocuğu ebeveynine bağlanacak)`:""))) return;
+  // çocukları büyükanne/babaya bağla
+  const gp=n._parent;
+  edges=edges.filter(e=>e.from!==n.id && e.to!==n.id);
+  if(gp){ kids.forEach(k=>edges.push({from:gp.id,to:k.id})); }
+  nodes=nodes.filter(x=>x!==n); reindex(); touch();
+  closeInspector(); toast("Kişi silindi");
+}
+
+// ---- reparent (ebeveyn bağı değiştir) ----
+let reparentMode=false;
+function setReparent(on){ reparentMode=on;
+  document.getElementById("reparentBtn").classList.toggle("on",on);
+  showHint(on?"Yeni ebeveyni tıkla (kişiyi bağlamak için)":"" );
+}
+document.getElementById("reparentBtn").onclick=()=>{ if(!selNode){toast("Önce bir kişi seç");return;} setReparent(!reparentMode); };
+function doReparent(child,newParent){
+  // döngü önleme: newParent, child'ın altsoyu olamaz
+  let p=newParent; while(p){ if(p===child){ toast("Olmaz: kendi altına bağlanamaz"); return; } p=p._parent; }
+  edges=edges.filter(e=>e.to!==child.id);
+  edges.push({from:newParent.id,to:child.id});
+  reindex(); alpha=1; touch();
+  toast(`${dispName(child.name)} → ${dispName(newParent.name)} altına taşındı`);
+  selectNode(child);
+}
+
+// ============================ ARAÇLAR ============================
+document.getElementById("fitBtn").onclick=fit;
+document.getElementById("zinBtn").onclick=()=>{scale=Math.min(4,scale*1.25);};
+document.getElementById("zoutBtn").onclick=()=>{scale=Math.max(0.15,scale*0.8);};
+const physBtn=document.getElementById("physBtn");
+physBtn.onclick=()=>{ physics=!physics; physBtn.classList.toggle("on",physics); if(physics)alpha=0.6; };
+
+
+// ---- arama ----
+const q=document.getElementById("q"),res=document.getElementById("res");
+const norm=s=>s.toLocaleLowerCase("tr").replace(/\d+$/,"").trim();
+q.addEventListener("input",()=>{ const v=norm(q.value); if(v.length<2){res.classList.remove("show");return;}
+  const hits=nodes.filter(n=>norm(n.name).includes(v)).slice(0,40);
+  res.innerHTML=hits.length?hits.map(n=>`<div class="r" data-id="${n.id}">${dispName(n.name)}
+    <small>${chainOf(n).length-1}. nesil</small></div>`).join("")
+    :`<div class="r" style="color:var(--muted)">bulunamadı</div>`;
+  res.classList.add("show");
+  res.querySelectorAll(".r[data-id]").forEach(r=>r.onclick=()=>{const n=byId[r.dataset.id];
+    selectNode(n);focus(n);res.classList.remove("show");q.value="";});
+});
+document.addEventListener("click",e=>{if(!e.target.closest(".search"))res.classList.remove("show");});
+
+// ---- dışa / içe aktarma ----
+document.getElementById("exportBtn").onclick=()=>{
+  const c=prompt("Ne aktarmak istersin?\n1 = Tam yedek (ağaç + profiller + fotoğraflar) — paylaşmak için\n2 = CSV (sade kişi listesi)\n3 = İçe aktar (dosyadan yükle)","1");
+  if(c==="1") exportFull();
+  else if(c==="2") exportCSV();
+  else if(c==="3") importFull();
+};
+function buildTree(){
+  const root=nodes.find(n=>!n._parent);
+  function build(n){ const o={id:n.id,name:n.name,sex:n.sex,alive:n.alive!==false};
+    if(n.spouse&&n.spouse.length)o.spouse=n.spouse;
+    if(n.kin)o.kin=n.kin; if(n.mother)o.mother=n.mother;
+    const kids=n._kids||[]; if(kids.length)o.children=kids.map(build); return o; }
+  return root?build(root):{nodes,edges};
+}
+function exportFull(){
+  const data={ version:1, tree:buildTree(),
+    marriages, motherEdges, profiles:PROFILES };
+  download("kok-aile-yedek.json", JSON.stringify(data));
+  toast("Tam yedek indirildi — aileyle paylaşabilirsin");
+}
+function exportCSV(){
+  const head=["ID","name","sex","alive","parentID","spouse"];
+  const lines=[head.join(",")];
+  nodes.forEach(n=>{ const p=n._parent?n._parent.id:"";
+    const row=[n.id, csv(n.name), n.sex||"", n.alive===false?"Ölü":"Diri", p, csv((n.spouse||[]).join("; "))];
+    lines.push(row.join(",")); });
+  download("kok-aile.csv", lines.join("\n"));
+  toast("CSV indirildi");
+}
+function csv(s){ s=String(s); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
+function importFull(){
+  const inp=document.createElement("input"); inp.type="file"; inp.accept=".json,application/json";
+  inp.onchange=()=>{ const f=inp.files[0]; if(!f)return; const r=new FileReader();
+    r.onload=()=>{ try{
+      const data=JSON.parse(r.result);
+      if(data.profiles){ // profilleri birleştir (mevcut + gelen)
+        Object.assign(PROFILES, data.profiles);
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(PROFILES));
+      }
+      if(data.tree){ // ağacı yeniden yükle
+        const g=treeToGraph(data.tree, data.marriages||[], data.motherEdges||[]);
+        loadGraph(g); layoutRadial(); fit();
+        toast("İçe aktarıldı — ağaç ve profiller yüklendi");
+      } else { toast("Profiller içe aktarıldı"); if(selNode)openInspector(selNode); }
+    }catch(e){ toast("Dosya okunamadı"); } };
+    r.readAsText(f); };
+  inp.click();
+}
+function treeToGraph(tree,marr,mome){
+  const ns=[],es=[];
+  (function walk(n,parent){ ns.push({id:n.id,name:n.name,sex:n.sex,alive:n.alive,
+      spouse:n.spouse||[],kin:n.kin,mother:n.mother});
+    if(parent)es.push({from:parent,to:n.id}); (n.children||[]).forEach(c=>walk(c,n.id)); })(tree,null);
+  return {nodes:ns,edges:es,marriages:marr,motherEdges:mome};
+}
+function download(name,text){ const b=new Blob([text],{type:"text/plain;charset=utf-8"});
+  const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(u),1000); }
+
+// ---- durum / ipucu / toast ----
+function updateStatus(){ document.getElementById("status").innerHTML=
+  `<b>${nodes.length}</b> kişi · <b>${edges.length}</b> bağ`+(dirty?` · <span style="color:var(--ok)">düzenlendi</span>`:"");
+  if(document.getElementById("statsPanel")?.style.display==="block") renderStats(); }
+updateStatus();
+
+// ---- istatistikler ----
+function computeStats(){
+  const total=nodes.length;
+  let alive=0,male=0,female=0;
+  nodes.forEach(n=>{ if(n.alive!==false)alive++; if(n.sex==="E")male++; else if(n.sex==="K")female++; });
+  const dead=total-alive;
+  const maxD=Math.max(...nodes.map(n=>n._depth||0),0);
+  const root=nodes.find(n=>!n._parent);
+  function sub(n){ let c=1; (n._kids||[]).forEach(k=>c+=sub(k)); return c; }
+  const branches=(root?._kids||[]).map(k=>({name:dispName(k.name),count:sub(k)})).sort((a,b)=>b.count-a.count);
+  return {total,alive,dead,male,female,gens:maxD+1,branches,
+    marriages:marriages.length, spouses:nodes.reduce((s,n)=>s+(n.spouse?n.spouse.length:0),0)};
+}
+function statRow(label,val,extra){
+  return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">
+    <span style="color:var(--text-soft)">${label}</span>
+    <span style="font-weight:600">${val}${extra?` <small style="color:var(--muted);font-weight:400">${extra}</small>`:""}</span></div>`;
+}
+function renderStats(){
+  const s=computeStats();
+  const bar=(a,b,ca,cb)=>{ const t=a+b||1; return `<div style="display:flex;height:7px;border-radius:4px;overflow:hidden;margin:6px 0 2px">
+    <div style="width:${a/t*100}%;background:${ca}"></div><div style="width:${b/t*100}%;background:${cb}"></div></div>`; };
+  const body=document.getElementById("statsBody"); if(!body) return;
+  body.innerHTML=
+    statRow("Toplam kişi",s.total)+
+    statRow("Yaşayan",s.alive)+statRow("Vefat",s.dead)+
+    bar(s.alive,s.dead,getVar("--male"),getVar("--dead"))+
+    statRow("Erkek",s.male)+statRow("Kadın",s.female)+
+    bar(s.male,s.female,getVar("--male"),getVar("--female"))+
+    statRow("Nesil",s.gens)+
+    statRow("Akraba evlilik",s.marriages)+
+    statRow("Dışarıdan eş",s.spouses)+
+    `<div style="margin-top:12px;margin-bottom:2px;font-size:11px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase">Ana kollar</div>`+
+    s.branches.map(b=>statRow(b.name,b.count,"kişi")).join("");
+  const ws=document.getElementById("welcomeStats");
+  if(ws) ws.innerHTML=`<span>${s.total} kişi</span><span>${s.gens} nesil</span><span>${s.alive} yaşayan</span>`;
+}
+(function bindStats(){
+  const sp=document.getElementById("statsPanel");
+  document.getElementById("statsBtn").onclick=()=>{
+    if(sp.style.display!=="none"){ sp.style.display="none"; }
+    else { renderStats(); sp.style.display="block"; } };
+  document.getElementById("statsClose").onclick=()=>sp.style.display="none";
+  renderStats(); // açılış özetini doldur
+})();
+
+let hintT=null;
+function showHint(msg){ const h=document.getElementById("hint");
+  if(!msg){ h.classList.remove("show"); return; }
+  h.textContent=msg; h.classList.add("show"); clearTimeout(hintT);
+  hintT=setTimeout(()=>h.classList.remove("show"),3500); }
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),2400); }
+
+addEventListener("keydown",e=>{ if(e.key==="Escape"){ setReparent(false); closeInspector(); res.classList.remove("show"); }
+  if(e.key==="Delete"&&selNode) deleteNode(selNode); });
+
+// ============================ AÇILIŞ: KİM BAKIYOR? ============================
+const welcome=document.getElementById("welcome");
+const whoInput=document.getElementById("whoInput");
+const whoResults=document.getElementById("whoResults");
+function startAs(id){
+  if(id){ setViewer(id); }
+  else { layoutRadial(); }        // nötr: kimse merkez değil
+  welcome.style.transition="opacity .5s"; welcome.style.opacity="0";
+  setTimeout(()=>welcome.remove(),500);
+  fit();
+  if(id){ selectNode(byId[id]); }
+  showHint(id?"Bu senin ağacın · sürükle, tıkla, düzenle":"Nesil halkaları · tıkla-seç · düzenle");
+}
+whoInput.addEventListener("input",()=>{
+  const v=whoInput.value.toLocaleLowerCase("tr").replace(/\d+$/,"").trim();
+  if(v.length<2){ whoResults.style.display="none"; return; }
+  // ölüler kendini seçemez — sadece yaşayanlar
+  const hits=nodes.filter(n=>n.alive!==false && dispName(n.name).toLocaleLowerCase("tr").includes(v)).slice(0,40);
+  whoResults.innerHTML=hits.length?hits.map(n=>{
+    const gen=(function(){let c=[],x=n;while(x){c.push(x);x=x._parent;}return c.length-1;})();
+    return `<div class="whoR" data-id="${n.id}" style="padding:10px 14px;cursor:pointer;
+      border-bottom:1px solid #26324a;font-size:14px;color:#e6edf6;display:flex;justify-content:space-between">
+      <span>${dispName(n.name)}</span><small style="color:#5f6f88">${gen}. nesil</small></div>`;
+  }).join(""):`<div style="padding:10px 14px;color:#5f6f88;font-size:13px">yaşayan biri bulunamadı</div>`;
+  whoResults.style.display="block";
+  whoResults.querySelectorAll(".whoR[data-id]").forEach(r=>{
+    r.onmouseenter=()=>r.style.background="#182238"; r.onmouseleave=()=>r.style.background="";
+    r.onclick=()=>startAs(r.dataset.id);
+  });
+});
+document.getElementById("skipWho").onclick=()=>startAs(null);
+whoInput.addEventListener("keydown",e=>{ if(e.key==="Enter"){
+  const first=whoResults.querySelector(".whoR[data-id]"); if(first)startAs(first.dataset.id); }});
+setTimeout(()=>whoInput.focus(),300);
+
+// ============================ BULUT SENKRONU (Vercel + Neon) ============================
+// Aynı sunucuda /api/agac varsa ortak buluttan çalışır; yoksa (dosya olarak açılınca)
+// sessizce yerel/offline devam eder. Fotoğraflar yine cihazda (localStorage) kalır.
+const CLOUD = { url:"/api/agac", on:false, saving:false, timer:null, lastServer:null };
+
+// mevcut ağacı graf JSON'a çevir (buluta göndermek için)
+function currentGraphJSON(){
+  return {
+    nodes: nodes.map(n=>({ id:n.id, name:n.name, sex:n.sex, alive:n.alive!==false,
+      spouse:n.spouse||[], kin:n.kin||null, mother:n.mother||null,
+      parentRole:n.parentRole||"baba", fatherExt:n.fatherExt||null, tel:n.tel||null,
+      profile: PROFILES[n.id] || undefined })),
+    edges: edges.map(e=>({from:e.from,to:e.to})),
+    marriages: (marriages||[]).map(m=>({from:m.from,to:m.to,type:"marriage"})),
+    motherEdges: (motherEdges||[]).map(m=>({from:m.from,to:m.to,type:"mother"})),
+  };
+}
+
+function absorbCloudProfiles(g){
+  // bulut ağaç verisindeki profilleri yerel PROFILES'e al (foto/video URL'leri dahil)
+  (g.nodes||[]).forEach(n=>{ if(n.profile){ PROFILES[n.id]=n.profile; } });
+}
+async function cloudLoad(){
+  try{
+    const r = await fetch(CLOUD.url, {method:"GET"});
+    if(!r.ok) throw new Error("yok");
+    const j = await r.json();
+    if(j && j.ok && j.veri && Array.isArray(j.veri.nodes) && j.veri.nodes.length){
+      CLOUD.on = true;
+      absorbCloudProfiles(j.veri);
+      loadGraph(j.veri); layoutRadial(); fit();
+      CLOUD.lastServer = j.guncelleme || null;
+      smsShowIfCloud();
+      showHint("Ortak ağaca bağlandın · düzenlemek için telefonla giriş yap");
+    } else if(j && j.ok){
+      // bulut boş → mevcut yerel ağacı buluta ilk kez yaz
+      CLOUD.on = true; cloudSave(true); smsShowIfCloud();
+      showHint("Ortak ağaç oluşturuldu");
+    }
+  }catch(e){
+    CLOUD.on = false;   // offline / dosya modu — sessizce yerel devam
+  }
+}
+
+// ağacı buluta kaydet — SADECE admin doğrudan yazar.
+// Normal kullanıcının değişiklikleri yerelde birikir, "Onaya gönder" ile öneri olur.
+function cloudSave(immediate){
+  if(!CLOUD.on) return;
+  if(!isAdmin){
+    // kullanıcı: doğrudan kaydetme yok — sadece "bekleyen değişiklik" işaretle
+    pendingChanges = true;
+    updatePendingBar();
+    return;
+  }
+  clearTimeout(CLOUD.timer);
+  const doSave = async ()=>{
+    if(CLOUD.saving) { CLOUD.timer=setTimeout(doSave,800); return; }
+    CLOUD.saving = true;
+    try{
+      const kim = viewerId ? dispName((byId[viewerId]||{}).name||"") : "Yönetici";
+      const r = await fetch(CLOUD.url, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ veri: currentGraphJSON(), guncelleyen: kim,
+          token: sessionToken||"", admin: window.__adminCode||"" })
+      });
+      if(r.ok){ dirty=false; updateStatus(); }
+    }catch(e){}
+    CLOUD.saving = false;
+  };
+  if(immediate) doSave(); else CLOUD.timer = setTimeout(doSave, 1200);
+}
+
+// bekleyen değişiklik (kullanıcı için) — "Onaya gönder" çubuğu
+let pendingChanges = false;
+function updatePendingBar(){
+  let bar=document.getElementById("pendingBar");
+  if(!CLOUD.on || isAdmin || !pendingChanges || !sessionKisiId){
+    if(bar) bar.style.display="none"; return;
+  }
+  if(!bar){
+    bar=document.createElement("div"); bar.id="pendingBar";
+    bar.style.cssText=`position:fixed;left:50%;transform:translateX(-50%);
+      bottom:calc(env(safe-area-inset-bottom,0) + 74px);z-index:20;display:flex;gap:8px;align-items:center;
+      background:var(--panel);border:1px solid var(--spine);border-radius:12px;padding:8px 10px 8px 14px;
+      box-shadow:0 12px 40px var(--shadow);font-size:13px`;
+    bar.innerHTML=`<span style="color:var(--text-soft)">Kaydedilmemiş değişikliklerin var</span>
+      <button id="sendApprovalBtn" style="background:var(--spine);color:#06121a;border:none;
+        border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Onaya gönder</button>`;
+    document.body.appendChild(bar);
+    document.getElementById("sendApprovalBtn").onclick=sendForApproval;
+  }
+  bar.style.display="flex";
+}
+
+// değişiklikleri öneri olarak gönder
+async function sendForApproval(){
+  const btn=document.getElementById("sendApprovalBtn");
+  if(btn){ btn.disabled=true; btn.textContent="Gönderiliyor…"; }
+  try{
+    const kim = sessionKisiId ? dispName((byId[sessionKisiId]||{}).name||"") : "";
+    const r=await fetch("/api/oneri?adim=gonder",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ veri: currentGraphJSON(), token: sessionToken||"", gonderen_ad: kim })});
+    const j=await r.json();
+    if(j.ok){
+      pendingChanges=false; dirty=false; updatePendingBar(); updateStatus();
+      toast("Değişikliğin yöneticiye onaya gönderildi ✓");
+    } else toast(j.hata||"Gönderilemedi");
+  }catch(e){ toast("Bağlantı hatası"); }
+  if(btn){ btn.disabled=false; btn.textContent="Onaya gönder"; }
+}
+
+// touch() her değişiklikte çağrılıyor → buluta da yaz
+const _touch_local = touch;
+touch = function(){ _touch_local(); cloudSave(false); };
+
+// diğer kullanıcıların değişikliklerini periyodik çek (30 sn'de bir, düzenleme yokken)
+setInterval(async ()=>{
+  if(!CLOUD.on || CLOUD.saving || dirty) return;
+  try{
+    const r = await fetch(CLOUD.url, {method:"GET"}); if(!r.ok) return;
+    const j = await r.json();
+    if(j && j.ok && j.guncelleme && j.guncelleme !== CLOUD.lastServer){
+      CLOUD.lastServer = j.guncelleme;
+      const keepViewer = viewerId;
+      loadGraph(j.veri); layoutRadial();
+      if(keepViewer && byId[keepViewer]) setViewer(keepViewer);
+      showHint("Ağaç güncellendi — biri yeni bilgi ekledi");
+    }
+  }catch(e){}
+}, 30000);
+
+// açılışta bulutu dene (welcome ekranı kapanınca değil, hemen — sessiz)
+cloudLoad();
+
+// ============================ SMS İLE GİRİŞ ============================
+let smsTelSon="";
+function smsShowIfCloud(){
+  // bulut varsa SMS giriş bölümünü göster
+  if(CLOUD.on){ const el=document.getElementById("smsLogin"); if(el) el.style.display="block"; }
+}
+(function bindSms(){
+  const $=id=>document.getElementById(id);
+  const err=(m)=>{ const e=$("smsErr"); if(e) e.textContent=m||""; };
+  const send=$("smsSend"), verify=$("smsVerify");
+  if(!send) return;
+  send.onclick=async ()=>{
+    const tel=$("smsTel").value.trim(); if(!tel){ err("Numaranı yaz"); return; }
+    err(""); send.disabled=true; send.textContent="Gönderiliyor…";
+    try{
+      const r=await fetch("/api/giris?adim=kod-iste",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({telefon:tel})});
+      const j=await r.json();
+      if(j.ok){ smsTelSon=tel; $("smsStep1").style.display="none"; $("smsStep2").style.display="block";
+        $("smsWho").textContent=`Kod ${j.kisi_adi} adına gönderildi`; $("smsKod").focus(); }
+      else err(j.hata||"Gönderilemedi");
+    }catch(e){ err("Bağlantı hatası"); }
+    send.disabled=false; send.textContent="Kod gönder";
+  };
+  verify.onclick=async ()=>{
+    const kod=$("smsKod").value.trim(); if(kod.length<6){ err("6 haneli kodu gir"); return; }
+    err(""); verify.disabled=true; verify.textContent="Doğrulanıyor…";
+    try{
+      const r=await fetch("/api/giris?adim=dogrula",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({telefon:smsTelSon, kod})});
+      const j=await r.json();
+      if(j.ok){
+        sessionToken=j.token; sessionKisiId=j.kisi_id;
+        try{ localStorage.setItem("kok_session", JSON.stringify({token:j.token,kisi_id:j.kisi_id})); }catch(e){}
+        // giriş yapan kişi olarak ağaca gir
+        startAs(j.kisi_id);
+      } else err(j.hata||"Kod yanlış");
+    }catch(e){ err("Bağlantı hatası"); }
+    verify.disabled=false; verify.textContent="Doğrula ve gir";
+  };
+  $("smsBack").onclick=()=>{ $("smsStep2").style.display="none"; $("smsStep1").style.display="block"; err(""); };
+})();
+
+// admin girişi düğmesi
+document.getElementById("adminBtn").onclick=()=>{
+  if(isAdmin){ isAdmin=false; window.__adminCode=""; toast("Yönetici modu kapandı");
+    document.getElementById("approvalBtn").style.display="none";
+    document.getElementById("approvalPanel").style.display="none";
+    if(selNode)openInspector(selNode); }
+  else tryAdminLogin();
+};
+
+// ============================ ADMIN ONAY KUTUSU ============================
+function showApprovalBtn(){
+  const b=document.getElementById("approvalBtn");
+  if(b && CLOUD.on && isAdmin){ b.style.display=""; refreshApprovals(); }
+}
+async function refreshApprovals(){
+  if(!isAdmin || !CLOUD.on) return;
+  try{
+    const r=await fetch("/api/oneri?adim=liste",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({admin:window.__adminCode||"", durum:"bekliyor"})});
+    const j=await r.json();
+    if(!j.ok) return;
+    const cnt=document.getElementById("approvalCount");
+    if(j.oneriler.length){ cnt.style.display=""; cnt.textContent=j.oneriler.length; }
+    else cnt.style.display="none";
+    renderApprovalList(j.oneriler);
+  }catch(e){}
+}
+function renderApprovalList(list){
+  const box=document.getElementById("approvalList"); if(!box) return;
+  if(!list.length){ box.innerHTML=`<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Bekleyen öneri yok</div>`; return; }
+  box.innerHTML="";
+  list.forEach(o=>{
+    const card=document.createElement("div");
+    card.style.cssText="background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:10px";
+    const zaman=new Date(o.olusma).toLocaleString("tr-TR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+    const f=o.fark||{};
+    const detay=[];
+    if(f.eklenen&&f.eklenen.length) detay.push(`<span style="color:var(--ok)">+ ${f.eklenen.join(", ")}</span>`);
+    if(f.degisen&&f.degisen.length) detay.push(`<span style="color:var(--spine)">✎ ${f.degisen.join(", ")}</span>`);
+    if(f.silinen&&f.silinen.length) detay.push(`<span style="color:var(--danger)">− ${f.silinen.join(", ")}</span>`);
+    card.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-weight:600;font-size:13px">${escapeHtml(o.gonderen_ad||"Bilinmeyen")}</span>
+        <span style="font-size:11px;color:var(--muted)">${zaman}</span></div>
+      <div style="font-size:12px;color:var(--text-soft);margin-bottom:8px">${escapeHtml(o.ozet||"")}</div>
+      <div style="font-size:12px;line-height:1.6;margin-bottom:10px">${detay.join("<br>")||""}</div>`;
+    const row=document.createElement("div"); row.style.cssText="display:flex;gap:8px";
+    const onay=document.createElement("button"); onay.textContent="✓ Onayla";
+    onay.style.cssText="flex:1;background:var(--ok);color:#06121a;border:none;border-radius:7px;padding:9px;font-weight:600;cursor:pointer;font-size:13px";
+    onay.onclick=()=>karar(o.id,"onayla");
+    const ret=document.createElement("button"); ret.textContent="✕ Reddet";
+    ret.style.cssText="flex:1;background:none;color:var(--danger);border:1px solid var(--danger);border-radius:7px;padding:9px;font-weight:600;cursor:pointer;font-size:13px";
+    ret.onclick=()=>karar(o.id,"reddet");
+    row.appendChild(onay); row.appendChild(ret); card.appendChild(row);
+    box.appendChild(card);
+  });
+}
+async function karar(id, karar){
+  try{
+    const r=await fetch("/api/oneri?adim=karar",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({admin:window.__adminCode||"", id, karar})});
+    const j=await r.json();
+    if(j.ok){
+      toast(karar==="onayla"?"Onaylandı — ağaca işlendi":"Reddedildi");
+      if(karar==="onayla"){ // ağacı tazele
+        const g=await (await fetch(CLOUD.url)).json();
+        if(g.ok && g.veri){ absorbCloudProfiles(g.veri); loadGraph(g.veri); layoutRadial();
+          if(viewerId&&byId[viewerId]) setViewer(viewerId); }
+      }
+      refreshApprovals();
+    } else toast(j.hata||"İşlem başarısız");
+  }catch(e){ toast("Bağlantı hatası"); }
+}
+(function bindApproval(){
+  const b=document.getElementById("approvalBtn"), pnl=document.getElementById("approvalPanel");
+  if(!b) return;
+  b.onclick=()=>{ if(pnl.style.display==="none"){ pnl.style.display="block"; refreshApprovals(); } else pnl.style.display="none"; };
+  document.getElementById("approvalClose").onclick=()=>pnl.style.display="none";
+})();
+// admin modu açılınca onay düğmesini göster (tryAdminLogin sonrası)
+const _tryAdmin_orig = tryAdminLogin;
+tryAdminLogin = function(){ _tryAdmin_orig(); setTimeout(showApprovalBtn, 100); };
+// periyodik: yeni öneri geldi mi (admin açıkken)
+setInterval(()=>{ if(isAdmin && CLOUD.on) refreshApprovals(); }, 45000);
+
+})();
+
+</script>
+</body>
+</html>

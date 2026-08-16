@@ -1,0 +1,10 @@
+{
+  "name": "kok-soy-agaci",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Abdurrahman Oğulları — ortak soy ağacı (Vercel + Neon)",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "@vercel/blob": "^0.27.0"
+  }
+}
