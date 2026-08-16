@@ -64,6 +64,8 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   color:var(--text);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s}
 .dock button:hover{background:var(--panel2);border-color:var(--line2)}
 .dock button.on{background:var(--accent);color:#06121a;border-color:var(--accent)}
+.dock button svg{width:19px;height:19px;stroke:currentColor;stroke-width:1.7;fill:none;
+  stroke-linecap:round;stroke-linejoin:round;display:block}
 .dock .sep{height:1px;background:var(--line);margin:3px 4px}
 
 /* sağ düzenleme paneli */
@@ -236,19 +238,19 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 </div>
 
 <div class="dock">
-  <button id="fitBtn" title="Tümünü sığdır">⊡</button>
-  <button id="zinBtn" title="Yakınlaş">＋</button>
-  <button id="zoutBtn" title="Uzaklaş">－</button>
+  <button id="fitBtn" title="Tümünü sığdır"><svg viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></svg></button>
+  <button id="zinBtn" title="Yakınlaş"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M11 8v6M8 11h6M20 20l-3.5-3.5"/></svg></button>
+  <button id="zoutBtn" title="Uzaklaş"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M8 11h6M20 20l-3.5-3.5"/></svg></button>
   <div class="sep"></div>
-  <button id="physBtn" class="on" title="Fizik aç/kapa">⚛</button>
-  <button id="reparentBtn" title="Ebeveyn bağı değiştir">⇄</button>
+  <button id="physBtn" class="on" title="Fizik aç/kapa"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><ellipse cx="12" cy="12" rx="10" ry="4.4"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(120 12 12)"/></svg></button>
+  <button id="reparentBtn" title="Ebeveyn bağı değiştir"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
   <div class="sep"></div>
-  <button id="statsBtn" title="İstatistikler">📊</button>
-  <button id="lensBtn" title="Katman / renklendirme">◑</button>
-  <button id="themeBtn" title="Gece / Gündüz modu">🌙</button>
-  <button id="chatBtn" title="Aile sohbeti" style="display:none">💬</button>
-  <button id="adminBtn" title="Yönetici girişi">🔑</button>
-  <button id="approvalBtn" title="Onay kutusu" style="display:none;position:relative">📋<span id="approvalCount" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
+  <button id="statsBtn" title="İstatistikler"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></button>
+  <button id="lensBtn" title="Katman / renklendirme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg></button>
+  <button id="themeBtn" title="Gece / Gündüz modu"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
+  <button id="chatBtn" title="Aile sohbeti" style="display:none"><svg viewBox="0 0 24 24"><path d="M20 12a7 7 0 0 1-9.5 6.5L4 20l1.5-4.5A7 7 0 1 1 20 12z"/></svg></button>
+  <button id="adminBtn" title="Yönetici girişi"><svg viewBox="0 0 24 24"><circle cx="8" cy="10" r="4"/><path d="M11 12l7 7M16 20l2-2M18 18l2-2"/></svg></button>
+  <button id="approvalBtn" title="Onay kutusu" style="display:none;position:relative"><svg viewBox="0 0 24 24"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span id="approvalCount" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
 </div>
 
 <!-- genel aile sohbeti -->
@@ -282,21 +284,37 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 </div>
 
 <!-- istatistik paneli -->
+<!-- TAM SAYFA ANALİZ EKRANI -->
+<!-- SAĞ ÜST: seçili kişi kartı (koniyi kapatmaz) -->
+<div id="activeCard" style="position:fixed;right:16px;top:76px;z-index:14;width:250px;
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;
+  box-shadow:0 16px 50px var(--shadow);display:none">
+  <div style="display:flex;align-items:center;gap:13px">
+    <div id="acPhoto" style="width:56px;height:56px;border-radius:50%;flex:none;overflow:hidden;
+      background:var(--bg2);border:2px solid var(--you);display:flex;align-items:center;justify-content:center"></div>
+    <div style="min-width:0">
+      <div id="acName" style="font-weight:700;font-size:16px;line-height:1.2;overflow:hidden;text-overflow:ellipsis"></div>
+      <div id="acMeta" style="font-size:12px;color:var(--text-soft);margin-top:3px"></div>
+    </div>
+  </div>
+  <div id="acInfo" style="font-size:12px;color:var(--text-soft);margin-top:11px;line-height:1.6;display:none"></div>
+  <div style="font-size:10px;color:var(--muted);margin-top:11px;font-family:'IBM Plex Mono',monospace">düzenlemek için tekrar dokun</div>
+</div>
+
 <!-- KATMAN / LENS seçici -->
 <div id="lensPanel" style="position:fixed;left:64px;top:64px;z-index:16;width:210px;
   background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;
   box-shadow:0 16px 50px var(--shadow);display:none">
   <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 6px 8px">Renklendirme katmanı</div>
   <button class="lensOpt" data-lens="default" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Varsayılan (cinsiyet · soy hattı)</button>
-  <button class="lensOpt" data-lens="alive" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Yaşam durumu</button>
-  <button class="lensOpt" data-lens="gen" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Nesil</button>
   <button class="lensOpt" data-lens="branch" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Kol / soy</button>
+  <button class="lensOpt" data-lens="work" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">İş durumu</button>
+  <button class="lensOpt" data-lens="alive" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Yaşam durumu</button>
 </div>
 <!-- lens göstergesi (legend) -->
-<div id="lensLegend" style="position:fixed;left:16px;bottom:56px;z-index:9;
+<div id="lensLegend" style="position:fixed;left:16px;bottom:56px;z-index:9;min-width:170px;
   background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px 11px;
   box-shadow:0 8px 30px var(--shadow);display:none;max-width:240px;font-size:11px"></div>
-
 <div id="analysisScreen" style="position:fixed;inset:0;z-index:40;background:var(--bg);
   display:none;flex-direction:column;overflow:hidden">
   <div style="display:flex;justify-content:space-between;align-items:center;
@@ -311,8 +329,6 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   <div id="analysisBody" style="flex:1;overflow-y:auto;padding:24px;
     display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-content:start"></div>
 </div>
-
-<!-- (eski küçük panel — analiz ekranına yönlendiriliyor) -->
 <div id="statsPanel" style="display:none"><div id="statsBody"></div></div>
 
 <div class="inspector" id="inspector">
@@ -498,19 +514,70 @@ function resize(){DPR=Math.min(devicePixelRatio||1,2);
   canvas.width=innerWidth*DPR;canvas.height=innerHeight*DPR;
   canvas.style.width=innerWidth+"px";canvas.style.height=innerHeight+"px";}
 resize();
-// perspektif eğimi: dikey ekseni hafif sıkıştır → yukarıdan eğik bakılan disk hissi
-const TILT=0.62;
-function w2s(x,y){return{x:(x*scale+ox)+innerWidth/2, y:(y*TILT*scale+oy)+innerHeight/2};}
-function s2w(sx,sy){return{x:(sx-innerWidth/2-ox)/scale, y:(sy-innerHeight/2-oy)/(scale*TILT)};}
+// ========================= 3D PERSPEKTİF =========================
+// Düğümler yatay bir disk üzerinde (x = sağ-sol, y = derinlik/ileri-geri).
+// Diski Y ekseni (dikey) etrafında YAW açısıyla döndürüp perspektifle yansıtıyoruz.
+const TILT=0.62;               // kamera eğimi (diske yukarıdan bakış)
+let yaw=0, yawTarget=0;        // yatay dönme (fareyle sürükle)
+let yawRest=0, autoT=0;        // salınım merkezi + zaman
+let autoSpin=0.02;             // hafif otomatik salınım hızı
+const CAM_DIST=1400;           // kamera uzaklığı (perspektif gücü)
+const DEPTH_K=0.9;             // derinlik→ölçek etkisi
+// KONİ/TOPAÇ modu: her nesil farklı yükseklikte. Molla Memiş (nesil 0) altta,
+// üst nesiller yukarıda ve daha geniş halkada → yukarı açılan koni.
+let coneMode=true;
+const CONE_H=115;              // nesiller arası dikey mesafe (yükseklik)
+
+// dünya (x,y) + yükseklik(h) → ekran + derinlik. h yukarı taşır (koni).
+function project(wx, wy, h){
+  h = h||0;
+  // world → 3B: diski yaw ile döndür (Y ekseni etrafında). h dikey eksen.
+  const c=Math.cos(yaw), s=Math.sin(yaw);
+  const rx = wx*c - wy*s;      // döndürülmüş x (yatay)
+  const rz = wx*s + wy*c;      // döndürülmüş derinlik (z)
+  // kamera perspektifi: uzaktaki (rz büyük) küçülür — çarpanı pozitif tut
+  const denom = CAM_DIST + rz*DEPTH_K*scale;
+  const persp = CAM_DIST / Math.max(denom, CAM_DIST*0.25);
+  const sx = rx*scale*persp + ox + innerWidth/2;
+  // dikey ekran: derinliğin eğik izdüşümü (rz*TILT) + yükseklik (h yukarı = negatif y)
+  const sy = (rz*TILT - h)*scale*persp + oy + innerHeight/2;
+  return { x:sx, y:sy, z:rz, k:persp };
+}
+// bir düğümün koni yüksekliği (nesil derinliğine göre)
+function nodeHeight(n){
+  if(!coneMode) return 0;
+  const d = (n && n._depth!=null) ? n._depth : 0;
+  return d * CONE_H;   // nesil 0 = 0 (altta), nesil 8 = 8*CONE_H (yukarıda)
+}
+// geriye uyumluluk: w2s (dönmesiz, düz)
+function w2s(x,y){ const p=project(x,y); return {x:p.x, y:p.y}; }
+// düğümü koni yüksekliğiyle ekrana yansıt (kenarlar için)
+function w2sn(node){ const p=project(node.x,node.y,nodeHeight(node)); return {x:p.x, y:p.y}; }
+function s2w(sx,sy){
+  // yaw=0 varsayımıyla ters (tıklama seçimi için yeterince yakın; pick zaten project kullanır)
+  const c=Math.cos(-yaw), s=Math.sin(-yaw);
+  const rx=(sx-innerWidth/2-ox)/scale;
+  const rz=(sy-innerHeight/2-oy)/(scale*TILT);
+  return { x: rx*c - rz*s, y: rx*s + rz*c };
+}
 
 function fit(){
   if(!nodes.length)return;
   let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
   nodes.forEach(n=>{minX=Math.min(minX,n.x);maxX=Math.max(maxX,n.x);
     minY=Math.min(minY,n.y);maxY=Math.max(maxY,n.y);});
-  const w=maxX-minX+200,h=maxY-minY+200;
-  scale=Math.min(innerWidth/w,innerHeight/h,1.4)*0.9;
-  ox=-(minX+maxX)/2*scale; oy=-(minY+maxY)/2*scale;
+  const w=maxX-minX+200, hFlat=maxY-minY+200;
+  if(coneMode){
+    // koni: yatay çap + dikey (nesil yüksekliği toplamı) kadrajı
+    const coneHeight = (MAXDEPTH*CONE_H)*TILT + hFlat*TILT + 200;
+    scale=Math.min(innerWidth/w, innerHeight/coneHeight, 1.2)*0.85;
+    ox=-(minX+maxX)/2*scale;
+    // koniyi dikeyde ortala: Molla Memiş altta, üst nesiller yukarıda
+    oy = (MAXDEPTH*CONE_H*0.5)*scale;   // merkezi yukarı kaydır ki taban alta gelsin
+  } else {
+    scale=Math.min(innerWidth/w,innerHeight/hFlat,1.4)*0.9;
+    ox=-(minX+maxX)/2*scale; oy=-(minY+maxY)/2*scale;
+  }
 }
 
 // ---- fizik (force-directed) ----
@@ -599,9 +666,21 @@ function nodeColor(n){
   if(activeLens==="branch"){
     const b=BRANCH_OF[n.id]; return b? (BRANCH_COLORS[b]||getVar("--muted")) : getVar("--muted");
   }
+  if(activeLens==="work"){
+    const w=(PROFILES[n.id]?.info?.work||"").trim();
+    return WORK_COLORS[w] || getVar("--muted");   // veri yoksa gri
+  }
   // yedek
   return n.sex==="K"?getVar("--female"):getVar("--male");
 }
+// iş durumu renkleri
+const WORK_COLORS = {
+  "Çalışıyor": "#4ab8d9",
+  "Emekli":    "#d9954a",
+  "Öğrenci":   "#8ad94a",
+  "Ev hanımı": "#d96a9a",
+  "Çalışmıyor":"#8794a8"
+};
 function getVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 function dispName(s){return String(s).replace("★","").replace(/\s*\d+$/,"").trim();}
 // ağacın adını taşıyan kurucu atalar — her zaman iri
@@ -715,6 +794,15 @@ function tryAdminLogin(){
   else toast("Kod yanlış");
 }
 function draw(){
+  // hafif otomatik salınım (nefes alan galaksi) — kullanıcı döndürmüyorsa
+  if(!panning && !dragNode){
+    autoT=(autoT||0)+0.008;
+    const gentle=Math.sin(autoT)*0.12;   // ±0.12 rad yavaş salınım
+    yawTarget = yawRest + gentle;
+  }
+  // yaw'ı hedefe yumuşat
+  yaw += (yawTarget - yaw)*0.08;
+
   ctx.setTransform(1,0,0,1,0,0);
   ctx.fillStyle=getVar("--bg"); ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.scale(DPR,DPR);
@@ -726,22 +814,27 @@ function draw(){
   const ringAlpha=0.18 + 0.55*zoomOut;    // uzakta belirgin
   const labelAlpha=0.35 + 0.6*zoomOut;
   for(let d=1; d<=MAXDEPTH; d++){
-    const rr=ringRadius(d)*scale;
-    // eğik elips: yatay yarıçap rr, dikey rr*TILT
-    ctx.beginPath(); ctx.ellipse(center.x,center.y,rr,rr*TILT,0,0,6.283);
+    const rr=ringRadius(d);   // dünya yarıçapı
+    const rh=coneMode? d*CONE_H : 0;   // bu neslin koni yüksekliği
+    // halkayı world uzayında bir daire olarak, project'ten geçirerek çiz (yaw ile döner)
+    ctx.beginPath();
+    const STEPS=64;
+    for(let i=0;i<=STEPS;i++){
+      const a=(i/STEPS)*Math.PI*2;
+      const pp=project(Math.cos(a)*rr, Math.sin(a)*rr, rh);
+      if(i===0) ctx.moveTo(pp.x,pp.y); else ctx.lineTo(pp.x,pp.y);
+    }
     ctx.strokeStyle=getVar("--line2"); ctx.globalAlpha=ringAlpha; ctx.lineWidth=1+zoomOut; ctx.stroke();
     ctx.globalAlpha=1;
-    // nesil etiketi — elipsin sol-üst çapraz yayında, her halka farklı noktada
+    // nesil etiketi — halkanın sol-üst noktasında (project ile döner)
     if(scale>0.22){
       ctx.font=`600 ${10+2*zoomOut}px 'IBM Plex Mono', monospace`;
       ctx.fillStyle=getVar("--muted");
       ctx.globalAlpha=(0.3 + 0.5*zoomOut);
       ctx.textAlign="right"; ctx.textBaseline="middle";
-      // 210° açıda (sol-üst) — her halkanın yarıçapı farklı olduğu için ayrışırlar
       const ang=Math.PI*1.18;
-      const ex=center.x + Math.cos(ang)*rr;
-      const ey=center.y + Math.sin(ang)*rr*TILT;
-      ctx.fillText(`${d}. nesil`, ex-4, ey);
+      const ep=project(Math.cos(ang)*rr, Math.sin(ang)*rr, rh);
+      ctx.fillText(`${d}. nesil`, ep.x-4, ep.y);
       ctx.globalAlpha=1;
     }
   }
@@ -749,8 +842,18 @@ function draw(){
   // kenarlar
   ctx.lineWidth=1.2;
   edges.forEach(e=>{ const a=byId[e.from],b=byId[e.to]; if(!a||!b)return;
-    const pa=w2s(a.x,a.y), pb=w2s(b.x,b.y);
+    const pa=w2sn(a), pb=w2sn(b);
     const lit=highlightSet.has(a.id)&&highlightSet.has(b.id);
+    // KOL LENSİ: kenar iki ucu aynı koldaysa o kolun renginde (açık ton)
+    if(activeLens==="branch" && !lit){
+      const ba=BRANCH_OF[a.id], bb=BRANCH_OF[b.id];
+      if(ba && ba===bb && BRANCH_COLORS[ba]){
+        ctx.strokeStyle=BRANCH_COLORS[ba]; ctx.globalAlpha=0.42; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
+        ctx.lineWidth=1.2;
+        return;
+      }
+    }
     ctx.strokeStyle=lit?getVar("--edge-lit"):getVar("--edge");
     ctx.globalAlpha=lit?0.95:0.5;
     ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
@@ -761,7 +864,7 @@ function draw(){
   motherEdges.forEach(m=>{ const a=byId[m.from],b=byId[m.to]; if(!a||!b)return;
     const rel = selNode && (m.from===selNode.id || m.to===selNode.id);
     if(!rel && highlightSet.size) return;       // seçim varken sadece ilgili anne bağı
-    const pa=w2s(a.x,a.y), pb=w2s(b.x,b.y);
+    const pa=w2sn(a), pb=w2sn(b);
     ctx.strokeStyle=getVar("--accent"); ctx.globalAlpha=rel?0.85:0.14;
     ctx.setLineDash([2,4]); ctx.lineWidth=rel?2:1;
     ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
@@ -769,7 +872,7 @@ function draw(){
   });
   // evlilik bağları — hepsi kesikli çizgi (dashline)
   marriages.forEach(m=>{ const a=byId[m.from],b=byId[m.to]; if(!a||!b)return;
-    const pa=w2s(a.x,a.y), pb=w2s(b.x,b.y);
+    const pa=w2sn(a), pb=w2sn(b);
     const lit=highlightSet.has(a.id)||highlightSet.has(b.id);
     const dist=Math.hypot(pb.x-pa.x,pb.y-pa.y);
     ctx.strokeStyle=getVar("--marriage"); ctx.globalAlpha=lit?0.95:0.6;
@@ -789,12 +892,18 @@ function draw(){
     ctx.setLineDash([]);
   }
 
-  // düğümler
+  // düğümler — derinliğe göre sırala (arkadakiler önce, öndekiler üstte)
   const drawnLabels=[];   // çizilmiş isim kutuları (çakışma önleme)
-  nodes.forEach(n=>{
-    const p=w2s(n.x,n.y); const r=radius(n)*Math.max(0.7,Math.min(1.4,scale));
+  const ordered = nodes.map(n=>{ const pr=project(n.x,n.y,nodeHeight(n)); return {n, pr}; })
+                       .sort((a,b)=> a.pr.z - b.pr.z);   // z küçük=uzak, önce çiz
+  ordered.forEach(({n,pr})=>{
+    const p={x:pr.x, y:pr.y};
+    const depthK=pr.k;   // 1=yakın (büyük), <1=uzak (küçük)
+    const r=radius(n)*Math.max(0.7,Math.min(1.4,scale))*depthK;
     const sel=n===selNode, hov=n===hoverNode, hl=highlightSet.has(n.id);
     const isViewer=n.id===viewerId, onSpine=viewerSpine.has(n.id);
+    // derinlik soluklaştırması: arkadakiler biraz saydam
+    const depthAlpha = 0.55 + 0.45*depthK;
     // halo
     if(sel||hov||isViewer){ ctx.beginPath(); ctx.arc(p.x,p.y,r+6,0,6.283);
       ctx.fillStyle=isViewer?"rgba(245,209,90,.18)":"rgba(92,200,216,.16)"; ctx.fill(); }
@@ -802,7 +911,7 @@ function draw(){
     // (aktif/merkeze alınan düğüm hariç — o, aşağıdaki aktif blokta büyük çizilir)
     const prof=PROFILES[n.id];
     const hasPhoto=prof&&prof.photo;
-    const dimAlpha=(highlightSet.size&&!hl)?0.35:1;
+    const dimAlpha=((highlightSet.size&&!hl)?0.35:1) * depthAlpha;
     if(n===activeNode && (n._grow||0)>0.05){
       // aktif düğüm: sadece taban daire (foto/detay aktif blokta) — çakışmayı önle
       ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
@@ -840,32 +949,44 @@ function draw(){
     }
     // etiket
     const isFounder=!!FOUNDERS[n.id];
-    const important = isFounder||isViewer||sel||hov||onSpine;
+    // her zaman görünecekler: kurucular, seçili, hover, merkeze alınan kişi (viewer)
+    const alwaysShow = isFounder||isViewer||sel||hov;
     // aktif düğüm (merkeze alınan) — ismi aktif blokta büyük yazılıyor, burada atla
     const isActive = (n===activeNode && (n._grow||0)>0.3);
-    // isim gösterme eşiği: yakınlaşınca göster; kalabalıkta önemli olanlar öncelikli
-    const showLabel = (important || scale>0.62) && !isActive;
+    // KADEMELİ İSİM GÖSTERME (uzakta gizli, yakınlaştıkça belirir):
+    //  scale < 0.5  → sadece alwaysShow (kurucu/seçili/hover)
+    //  0.5 – 0.9    → + soy hattı (omurga)
+    //  scale > 0.9  → tüm isimler
+    let showLabel = alwaysShow;
+    if(!showLabel){
+      if(scale > 0.9) showLabel = true;              // yakın: herkes
+      else if(scale > 0.5 && onSpine) showLabel = true;  // orta: omurga
+      // uzak: hiçbiri (sadece alwaysShow)
+    }
+    showLabel = showLabel && !isActive;
+    // "important" — çakışma önlemeden muaf tutulacaklar
+    const important = alwaysShow || onSpine;
     if(showLabel){
-      const fs = isFounder?16:isViewer?14:onSpine?13:12;
-      ctx.font=`${onSpine||isViewer||isFounder?700:500} ${fs}px Inter`;
       const t=dispName(n.name);
-      // OMURGA (soy hattı) düğümleri dikey hizada — isimleri SAĞA yaz ki çakışmasın.
-      // Diğerleri düğümün altına, ortalı.
+      // font boyutu derinliğe göre ölçeklenir (uzak küçük, yakın büyük) ama makul sınırda
+      const baseFs = isFounder?15:isViewer?14:onSpine?13:11.5;
+      const fs = Math.max(9, Math.min(20, Math.round(baseFs*depthK)));
+      const weight = onSpine||isViewer||isFounder?700:500;
+      ctx.font=`${weight} ${fs}px Inter, system-ui, sans-serif`;
       const onBackbone = onSpine || isViewer || isFounder;
+      const tw=ctx.measureText(t).width;
       let lx, ly, box;
       if(onBackbone){
         ctx.textAlign="left"; ctx.textBaseline="middle";
         lx=p.x+r+6; ly=p.y;
-        const tw=ctx.measureText(t).width;
-        box={x:lx, y:ly-fs/2, w:tw, h:fs};
+        box={x:lx-3, y:ly-fs*0.65, w:tw+6, h:fs*1.3};
       } else {
-        ctx.textAlign="center"; ctx.textBaseline="top";
-        lx=p.x; ly=p.y+r+4;
-        const tw=ctx.measureText(t).width;
-        box={x:lx-tw/2, y:ly, w:tw, h:fs};
+        ctx.textAlign="center"; ctx.textBaseline="middle";
+        lx=p.x; ly=p.y+r+fs*0.85;
+        box={x:lx-tw/2-3, y:ly-fs*0.65, w:tw+6, h:fs*1.3};
       }
       let clash=false;
-      if(!important){ // önemli düğümler her zaman çizilir; diğerleri çakışırsa atlanır
+      if(!important){
         for(const b of drawnLabels){
           if(box.x < b.x+b.w && box.x+box.w > b.x && box.y < b.y+b.h && box.y+box.h > b.y){ clash=true; break; }
         }
@@ -874,16 +995,22 @@ function draw(){
         drawnLabels.push(box);
         const dimmed=(highlightSet.size&&!hl&&!isFounder);
         const isDead=n.alive===false;
-        // gölge tema-duyarlı (gündüz/gece)
-        const shadow=getVar("--bg");
-        ctx.lineWidth=4; ctx.strokeStyle=shadow;
-        ctx.strokeText(t,lx,ly);
+        // arka plan şeridi: metni her modda korur — daha opak, önemli düğümlerde tam opak
+        const bg=getVar("--bg");
+        const bgAlpha=(important?0.9:0.72)*Math.max(0.5,depthAlpha);
+        ctx.globalAlpha=bgAlpha;
+        ctx.fillStyle=bg;
+        roundRect(ctx, box.x, box.y, box.w, box.h, fs*0.35); ctx.fill();
+        // ince çerçeve (kontrastı netleştirir, halkalardan ayırır)
+        ctx.globalAlpha=bgAlpha*0.5; ctx.strokeStyle=getVar("--line");
+        ctx.lineWidth=1; roundRect(ctx, box.x, box.y, box.w, box.h, fs*0.35); ctx.stroke();
+        ctx.globalAlpha=1;
         let col;
         if(isFounder) col=getVar("--spine");
         else if(dimmed) col=getVar("--muted");
-        else if(isDead) col="#7c8798";
+        else if(isDead) col=getVar("--dead");
         else col=getVar("--text");
-        ctx.globalAlpha=isDead&&!isViewer&&!sel&&!hov&&!isFounder?0.72:1;
+        ctx.globalAlpha=(isDead&&!isViewer&&!sel&&!hov&&!isFounder?0.72:1)*Math.max(0.6,depthAlpha);
         ctx.fillStyle=col; ctx.fillText(t,lx,ly);
         ctx.globalAlpha=1;
       }
@@ -899,56 +1026,22 @@ function draw(){
   if(activeNode && (activeNode._grow||0)>0.05){
     const n=activeNode, g=n._grow;
     const p=w2s(n.x,n.y); const r=radius(n)*Math.max(0.7,Math.min(1.4,scale));
-    // dış parlama
-    ctx.beginPath(); ctx.arc(p.x,p.y,r+10*g,0,6.283);
-    ctx.fillStyle="rgba(92,200,216,"+(0.12*g)+")"; ctx.fill();
-    // içine fotoğraf (varsa) — daire içinde kırpılmış, taşmaz
-    const prof=PROFILES[n.id];
-    if(prof&&prof.photo){
-      if(!n._img||n._img._src!==prof.photo){ const im=new Image(); im._src=prof.photo; im.src=prof.photo; n._img=im; }
-      if(n._img.complete&&n._img.naturalWidth){
-        ctx.save(); ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283); ctx.clip();
-        const s=Math.max((2*r)/n._img.naturalWidth,(2*r)/n._img.naturalHeight);
-        const iw=n._img.naturalWidth*s, ih=n._img.naturalHeight*s;
-        ctx.globalAlpha=g; ctx.drawImage(n._img,p.x-iw/2,p.y-ih/2,iw,ih); ctx.globalAlpha=1; ctx.restore();
-        // çerçeve tam kenarda
-        ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283); ctx.lineWidth=3;
-        ctx.strokeStyle=n.id===viewerId?getVar("--you"):nodeColor(n); ctx.stroke();
-      }
-    }
-    // detay çipleri — düğümün çevresinde halka halinde
+    // koni üzerinde SADECE vurgu: dış parlama + halka (detaylar sağ üst kartta)
+    ctx.beginPath(); ctx.arc(p.x,p.y,r+9*g,0,6.283);
+    ctx.fillStyle="rgba(92,200,216,"+(0.14*g)+")"; ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x,p.y,r+4,0,6.283); ctx.lineWidth=2.5;
+    ctx.strokeStyle=n.id===viewerId?getVar("--you"):getVar("--accent"); ctx.globalAlpha=g; ctx.stroke();
+    ctx.globalAlpha=1;
+    // ismi küçük, düğümün hemen üstünde (koniyi kapatmaz)
     if(g>0.4){
-      const gen=chainOf(n).length-1;
-      const kidCount=(n._kids?n._kids.length:0)+motherEdges.filter(m=>m.from===n.id&&!(n._kids||[]).some(k=>k.id===m.to)).length;
-      const spouseTxt=(n.spouse&&n.spouse.length)?n.spouse.map(s=>s.replace(" (aileden)","")).join(", "):null;
-      const chipBg=getVar("--panel"), chipLine=getVar("--line2"), chipTx=getVar("--text");
-      // isim üstte büyük — güçlü gölge
       ctx.globalAlpha=g;
-      ctx.font="700 16px Inter"; ctx.textAlign="center"; ctx.textBaseline="bottom";
-      ctx.lineWidth=5; ctx.strokeStyle=getVar("--bg");
-      ctx.strokeText(dispName(n.name),p.x,p.y-r-12);
-      ctx.fillStyle=chipTx; ctx.fillText(dispName(n.name),p.x,p.y-r-12);
-      // KOMPAKT bilgi: 1. satır "nesil · durum", 2. satır (varsa) "⚭ eş · N çocuk"
-      const durum = n.alive===false ? "Vefat" : "Yaşıyor";
-      const line1 = `${gen}. nesil · ${durum}`;
-      const bits2=[]; if(spouseTxt) bits2.push("⚭ "+spouseTxt); if(kidCount>0) bits2.push(kidCount+" çocuk");
-      const line2 = bits2.join(" · ");
-      const rows = line2 ? [line1, line2] : [line1];
-      let cy=p.y+r+16;
-      ctx.font="600 12px Inter"; ctx.textBaseline="middle";
-      rows.forEach((tx,i)=>{
-        const w=ctx.measureText(tx).width+22;
-        ctx.globalAlpha=g;
-        ctx.fillStyle=chipBg; roundRect(ctx,p.x-w/2,cy-12,w,24,12); ctx.fill();
-        ctx.strokeStyle=chipLine; ctx.lineWidth=1.2; roundRect(ctx,p.x-w/2,cy-12,w,24,12); ctx.stroke();
-        // durum rengini "Yaşıyor/Vefat" kelimesine vermek yerine tüm satır nötr; sade tut
-        ctx.fillStyle=chipTx; ctx.textAlign="center"; ctx.fillText(tx,p.x,cy);
-        cy+=28;
-      });
-      // ipucu
-      ctx.font="400 10px 'IBM Plex Mono', monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.lineWidth=3; ctx.strokeStyle=getVar("--bg"); ctx.strokeText("düzenlemek için tekrar dokun",p.x,cy+3);
-      ctx.fillStyle=getVar("--muted"); ctx.fillText("düzenlemek için tekrar dokun",p.x,cy+3);
+      ctx.font="700 13px Inter, system-ui, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      const nm=dispName(n.name); const nmw=ctx.measureText(nm).width;
+      const nmy=p.y-r-14;
+      ctx.fillStyle=getVar("--bg"); ctx.globalAlpha=g*0.75;
+      roundRect(ctx, p.x-nmw/2-7, nmy-10, nmw+14, 20, 7); ctx.fill();
+      ctx.globalAlpha=g;
+      ctx.fillStyle=getVar("--text"); ctx.fillText(nm,p.x,nmy);
       ctx.globalAlpha=1;
     }
   }
@@ -965,9 +1058,9 @@ requestAnimationFrame(loop);
 let mouse={x:0,y:0}, down=null, dragNode=null, panning=false, moved=0;
 function pick(sx,sy){
   let best=null,bd=1e9;
-  for(const n of nodes){ const p=w2s(n.x,n.y);
-    const d=Math.hypot(p.x-sx,p.y-sy);
-    const r=radius(n)*Math.max(0.7,Math.min(1.4,scale))+8;
+  for(const n of nodes){ const pr=project(n.x,n.y,nodeHeight(n));
+    const d=Math.hypot(pr.x-sx,pr.y-sy);
+    const r=radius(n)*Math.max(0.7,Math.min(1.4,scale))*pr.k+8;
     if(d<r && d<bd){bd=d;best=n;} }
   return best;
 }
@@ -988,7 +1081,13 @@ canvas.addEventListener("pointermove",e=>{
   mouse={x:e.clientX,y:e.clientY};
   if(down) moved+=Math.abs(e.movementX)+Math.abs(e.movementY);
   if(dragNode){ const w=s2w(e.clientX,e.clientY); dragNode.x=w.x; dragNode.y=w.y; dragNode.vx=dragNode.vy=0; alpha=Math.max(alpha,0.5); document.getElementById("hoverCard").style.display="none"; }
-  else if(panning){ ox+=e.movementX; oy+=e.movementY; document.getElementById("hoverCard").style.display="none"; }
+  else if(panning){
+    // yatay sürükleme → diski döndür (yaw); dikey sürükleme → kaydır
+    yawRest += e.movementX * 0.005;
+    yawTarget = yawRest; yaw = yawRest;
+    oy += e.movementY;
+    document.getElementById("hoverCard").style.display="none";
+  }
   else { const h=pick(e.clientX,e.clientY); if(h!==hoverNode){ hoverNode=h; canvas.style.cursor=h?"pointer":"default"; updateHoverCard(h,e.clientX,e.clientY); }
     else if(h){ updateHoverCard(h,e.clientX,e.clientY); } }
 });
@@ -1046,7 +1145,7 @@ canvas.addEventListener("pointerup",e=>{
     }
     dragNode=null;
   } else if(panning){ panning=false; if(moved<5){ // boşluğa tık → seçimi bırak
-    activeNode=null; highlightSet.clear(); document.getElementById("hoverCard").style.display="none"; } }
+    activeNode=null; highlightSet.clear(); document.getElementById("hoverCard").style.display="none"; showActiveCard(null); } }
   down=null;
 });
 canvas.addEventListener("wheel",e=>{ e.preventDefault();
@@ -1080,11 +1179,40 @@ function highlightFor(n){
   if(n.mother) highlightSet.add(n.mother);
   motherEdges.forEach(m=>{ if(m.from===n.id) highlightSet.add(m.to); });
 }
-// tek tık: kişiyi merkeze al, genişlet, detay halkası göster (panel AÇMA)
+// tek tık: kişiyi merkeze al, genişlet, sağ üst kartı göster (panel AÇMA)
 function focusCenter(n){
   activeNode=n; highlightFor(n);
   document.getElementById("hoverCard").style.display="none";
+  showActiveCard(n);   // sağ üstte detay
   focus(n);  // kamerayı ortala
+}
+// SAĞ ÜST kart — seçili kişinin detayı (koniyi kapatmaz)
+function showActiveCard(n){
+  const card=document.getElementById("activeCard"); if(!card) return;
+  if(!n){ card.style.display="none"; return; }
+  const prof=PROFILES[n.id]||{};
+  const gen=chainOf(n).length-1;
+  const kidCount=(n._kids?n._kids.length:0)+motherEdges.filter(m=>m.from===n.id&&!(n._kids||[]).some(k=>k.id===m.to)).length;
+  const spouseTxt=(n.spouse&&n.spouse.length)?n.spouse.map(s=>s.replace(" (aileden)","")).join(", "):null;
+  // foto
+  const ph=document.getElementById("acPhoto");
+  if(prof.photo){ ph.innerHTML=`<img src="${prof.photo}" style="width:100%;height:100%;object-fit:cover">`; }
+  else { const col=nodeColor(n); ph.innerHTML=`<span style="font-size:22px;color:${col}">${n.sex==="K"?"♀":"♂"}</span>`; }
+  ph.style.borderColor = n.id===viewerId?getVar("--you"):getVar("--accent");
+  document.getElementById("acName").textContent=dispName(n.name);
+  const durum=n.alive===false?"Vefat":"Yaşıyor";
+  document.getElementById("acMeta").textContent=`${gen}. nesil · ${durum}`;
+  // ek bilgi satırları
+  const info=prof.info||{};
+  const lines=[];
+  if(spouseTxt) lines.push(`⚭ ${spouseTxt}`);
+  if(kidCount>0) lines.push(`${kidCount} çocuk`);
+  if(info.job) lines.push(info.job);
+  if(info.work) lines.push(info.work);
+  const acInfo=document.getElementById("acInfo");
+  if(lines.length){ acInfo.innerHTML=lines.map(escapeHtml).join(" · "); acInfo.style.display="block"; }
+  else acInfo.style.display="none";
+  card.style.display="block";
 }
 // çift tık: düzenleme panelini aç
 function openPanel(n){
@@ -1093,7 +1221,7 @@ function openPanel(n){
 // eski selectNode API'si (arama, çocuk tıklama vb. için) → merkeze al
 function selectNode(n){
   if(n){ focusCenter(n); }
-  else { activeNode=null; highlightSet.clear(); closeInspector(); }
+  else { activeNode=null; highlightSet.clear(); closeInspector(); showActiveCard(null); }
 }
 
 // ============================ PROFİL DEPOSU (cihazda) ============================
@@ -1690,14 +1818,32 @@ document.getElementById("iDelete").onclick=()=>{ if(selNode)deleteNode(selNode);
 function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 // ---- odak (kamera) ----
-function focus(n){ const dur=500,t0=performance.now();
-  const sox=ox,soy=oy,ss=scale, ts=Math.max(scale,0.9);
-  // kişiyi tam merkeze değil, biraz yukarıya al — altındaki detay çipleri ve dock için yer bırak
-  const yOffset = innerHeight*0.12;   // ekranın %12'si kadar yukarı
-  const tox=-n.x*ts, toy=-n.y*TILT*ts - yOffset;
-  (function step(now){ let k=Math.min(1,(now-t0)/dur); k=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
-    ox=sox+(tox-sox)*k; oy=soy+(toy-soy)*k; scale=ss+(ts-ss)*k;
-    if(k<1)requestAnimationFrame(step); })(performance.now());
+function focus(n){
+  // kişi zaten ekranda rahat görünüyorsa kamerayı OYNATMA (koni sabit kalsın).
+  // sadece kişi ekran dışında/kenardaysa yumuşakça görünür alana çek.
+  const cur = project(n.x, n.y, nodeHeight(n));
+  const margin = 90;
+  const cardZone = (cur.x > innerWidth-300 && cur.y < 300); // sağ üst kart bölgesi
+  const offscreen = cur.x<margin || cur.x>innerWidth-margin || cur.y<margin || cur.y>innerHeight-margin;
+  if(!offscreen && !cardZone) return;   // görünür ve kartla çakışmıyor → dokunma
+
+  const dur=450, t0=performance.now();
+  const ss=scale, ts=ss, sox=ox, soy=oy;
+  const targetSX = innerWidth*0.42;
+  const targetSY = innerHeight*0.52;
+  (function step(now){
+    let k=Math.min(1,(now-t0)/dur); k=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    scale = ss+(ts-ss)*k;
+    const savedOx=ox, savedOy=oy;
+    ox=0; oy=0;
+    const raw = project(n.x, n.y, nodeHeight(n));
+    ox=savedOx; oy=savedOy;
+    const needOx = targetSX - raw.x;
+    const needOy = targetSY - raw.y;
+    ox = sox+(needOx-sox)*k;
+    oy = soy+(needOy-soy)*k;
+    if(k<1) requestAnimationFrame(step);
+  })(performance.now());
 }
 
 // ============================ DÜZENLEME İŞLEMLERİ ============================
@@ -2067,21 +2213,29 @@ function renderAnalysis(){
     });
     // gösterge
     if(activeLens==="default"){ legend.style.display="none"; return; }
-    let items=[];
+    let items=[];   // [etiket, renk, sayı]
     if(activeLens==="alive"){
-      items=[["Yaşıyor",getVar("--ok")],["Vefat",getVar("--dead")]];
-    } else if(activeLens==="gen"){
-      const maxd=Math.max(...nodes.map(n=>n._depth||0));
-      for(let d=0; d<=maxd; d++) items.push([`${d}. nesil`, GEN_COLORS[Math.min(d,GEN_COLORS.length-1)]]);
+      const a=nodes.filter(n=>n.alive!==false).length, d=nodes.length-a;
+      items=[["Yaşıyor",getVar("--ok"),a],["Vefat",getVar("--dead"),d]];
     } else if(activeLens==="branch"){
       const root=nodes.find(n=>!n._parent);
-      if(root) (root._kids||[]).forEach(k=>items.push([dispName(k.name), BRANCH_COLORS[k.id]]));
+      if(root) (root._kids||[]).forEach(k=>{
+        const cnt=nodes.filter(n=>BRANCH_OF[n.id]===k.id).length;
+        items.push([dispName(k.name), BRANCH_COLORS[k.id], cnt]);
+      });
+    } else if(activeLens==="work"){
+      const counts={};
+      nodes.forEach(n=>{ const w=(PROFILES[n.id]?.info?.work||"").trim(); if(w) counts[w]=(counts[w]||0)+1; });
+      Object.keys(WORK_COLORS).forEach(w=>{ if(counts[w]) items.push([w, WORK_COLORS[w], counts[w]]); });
+      const none=nodes.length - Object.values(counts).reduce((a,b)=>a+b,0);
+      if(none>0) items.push(["Belirtilmemiş", getVar("--muted"), none]);
     }
-    legend.innerHTML = `<div style="color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;font-size:10px">${
-      activeLens==="alive"?"Yaşam durumu":activeLens==="gen"?"Nesil":"Kol / soy"}</div>` +
-      items.map(([lbl,col])=>`<div style="display:flex;align-items:center;gap:7px;margin:3px 0">
+    const title = activeLens==="alive"?"Yaşam durumu":activeLens==="work"?"İş durumu":"Kol / soy";
+    legend.innerHTML = `<div style="color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;font-size:10px">${title}</div>` +
+      items.map(([lbl,col,cnt])=>`<div style="display:flex;align-items:center;gap:7px;margin:3px 0">
         <span style="width:10px;height:10px;border-radius:50%;background:${col};flex:none"></span>
-        <span style="color:var(--text-soft)">${escapeHtml(lbl)}</span></div>`).join("");
+        <span style="color:var(--text-soft);flex:1">${escapeHtml(lbl)}</span>
+        <span style="color:var(--text);font-weight:600">${cnt}</span></div>`).join("");
     legend.style.display="block";
   }
   window.__updateLensUI=updateLensUI;   // dışarıdan tazelemek için
@@ -2095,8 +2249,7 @@ function showHint(msg){ const h=document.getElementById("hint");
 function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
   clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),2400); }
 
-addEventListener("keydown",e=>{ if(e.key==="Escape"){ setReparent(false); closeInspector(); res.classList.remove("show");
-  const as=document.getElementById("analysisScreen"); if(as&&as.style.display!=="none") as.style.display="none"; }
+addEventListener("keydown",e=>{ if(e.key==="Escape"){ setReparent(false); closeInspector(); res.classList.remove("show"); const as=document.getElementById("analysisScreen"); if(as&&as.style.display!=="none") as.style.display="none"; }
   if(e.key==="Delete"&&selNode) deleteNode(selNode); });
 
 // ============================ AÇILIŞ: KİM BAKIYOR? ============================
@@ -2146,11 +2299,13 @@ applyEvren();
 (function initTheme(){
   const KEY="kok_theme";
   const btn=document.getElementById("themeBtn");
+  const SUN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5.6 5.6L4.2 4.2M19.8 19.8l-1.4-1.4M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4"/></svg>';
+  const MOON='<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
   function apply(mode){
     if(mode==="light"){ document.documentElement.setAttribute("data-theme","light");
-      if(btn) btn.textContent="☀️"; }
+      if(btn) btn.innerHTML=SUN; }
     else { document.documentElement.removeAttribute("data-theme");
-      if(btn) btn.textContent="🌙"; }
+      if(btn) btn.innerHTML=MOON; }
   }
   let saved="dark";
   try{ saved=localStorage.getItem(KEY)||"dark"; }catch(e){}
