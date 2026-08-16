@@ -12,9 +12,9 @@
   --bg:#0b1220; --bg2:#0e1526; --panel:#131c30; --panel2:#182238;
   --line:#26324a; --line2:#334259;
   --text:#e6edf6; --text-soft:#8c9cb4; --muted:#5f6f88;
-  --male:#4a90d9; --female:#d96a9a; --spine:#e0b64a; --you:#f5d15a;
-  --dead:#5a6578; --edge:#3a4a63; --edge-lit:#e0b64a; --marriage:#c88ad0;
-  --accent:#5cc8d8; --danger:#e0645a; --ok:#5ac87a;
+  --male:#4aa3ff; --female:#ff6fae; --spine:#ffc94a; --you:#ffd642;
+  --dead:#6b7689; --edge:#42597a; --edge-lit:#ffc94a; --marriage:#e08aef;
+  --accent:#3dd6ec; --danger:#ff6a5e; --ok:#4ade80;
   --shadow:rgba(0,0,0,.45);
 }
 /* GÜNDÜZ (light) modu */
@@ -158,7 +158,13 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 
   /* istatistik/hover kartları taşmasın */
   #statsPanel{left:12px !important;right:12px;top:64px !important;width:auto !important;max-width:none}
-  /* mobilde hover kartı dokununca çıkar (aşağıda JS ile) */
+  /* sağ üst seçili kişi kartı: üstte tam genişlik */
+  #activeCard{right:12px !important;left:12px;top:calc(env(safe-area-inset-top,0) + 60px) !important;width:auto !important}
+  /* lens paneli ve göstergesi mobilde */
+  #lensPanel{left:12px !important;right:12px;top:auto !important;bottom:calc(env(safe-area-inset-bottom,0) + 74px);width:auto !important}
+  #lensLegend{left:12px !important;right:auto;bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;font-size:11px;max-width:60vw}
+  /* dock SVG ikonları biraz daha büyük (dokunma) */
+  .dock button svg{width:22px;height:22px}
 
   /* dokunulabilir alanları büyüt */
   .kidlist .k{padding:10px 11px;font-size:14px}
@@ -903,7 +909,7 @@ function draw(){
     const sel=n===selNode, hov=n===hoverNode, hl=highlightSet.has(n.id);
     const isViewer=n.id===viewerId, onSpine=viewerSpine.has(n.id);
     // derinlik soluklaştırması: arkadakiler biraz saydam
-    const depthAlpha = 0.55 + 0.45*depthK;
+    const depthAlpha = 0.72 + 0.28*depthK;
     // halo
     if(sel||hov||isViewer){ ctx.beginPath(); ctx.arc(p.x,p.y,r+6,0,6.283);
       ctx.fillStyle=isViewer?"rgba(245,209,90,.18)":"rgba(92,200,216,.16)"; ctx.fill(); }
@@ -938,11 +944,17 @@ function draw(){
         ctx.lineWidth=1.2; ctx.strokeStyle="rgba(0,0,0,.35)"; ctx.stroke();
       }
     } else {
-      // renkli daire (foto yok)
+      // renkli daire (foto yok) — hafif ışıltıyla canlı
+      const col=nodeColor(n);
+      ctx.save();
+      ctx.shadowColor=col; ctx.shadowBlur=hl||sel||hov?10:5;
       ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
-      ctx.fillStyle=nodeColor(n); ctx.globalAlpha=dimAlpha; ctx.fill();
+      ctx.fillStyle=col; ctx.globalAlpha=dimAlpha; ctx.fill();
+      ctx.restore();
       ctx.globalAlpha=1;
-      ctx.lineWidth=sel?2.5:1.2; ctx.strokeStyle=sel?getVar("--accent"):"rgba(0,0,0,.35)"; ctx.stroke();
+      // ince açık kenar (koyu yerine — daha canlı)
+      ctx.lineWidth=sel?2.5:1; ctx.strokeStyle=sel?getVar("--accent"):"rgba(255,255,255,.22)"; 
+      ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283); ctx.stroke();
       // vefat halkası (sadece fotosuz düğümlerde)
       if(n.alive===false){ ctx.beginPath(); ctx.arc(p.x,p.y,r*0.5,0,6.283);
         ctx.fillStyle=getVar("--bg"); ctx.globalAlpha=.5; ctx.fill(); ctx.globalAlpha=1; }
