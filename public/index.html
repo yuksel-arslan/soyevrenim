@@ -846,11 +846,18 @@ function getVar(v){return getComputedStyle(document.documentElement).getProperty
 function dispName(s){return String(s).replace("★","").replace(/\s*\d+$/,"").trim();}
 // ağacın adını taşıyan kurucu atalar — her zaman iri
 const FOUNDERS={ "p1":20, "p12":16 };  // Molla Memiş (kök), Abdurrahman
+// Zoom'a göre düğüm ölçeği — yakınlaştıkça büyür, uzaklaştıkça küçülür.
+// Eskiden 1.4'te tavan yapıyordu: scale>1.4'te mesafeler açılırken düğümler
+// sabit kaldığı için ağaç "incelmiş" görünüyordu. Artık zoom'u boydan boya izler.
+// Alt sınır 0.5: genel bakışta düğümler tamamen kaybolmasın.
+// Üst sınır 3.4: en yakın zoom'da ekranı kaplamasın.
+function zoomK(){ return Math.max(0.5, Math.min(3.4, scale)); }
+
 function radius(n){
   // Boyutta herkes eşit; kurucu atalar ve merkeze alınan/viewer belirgin.
   if(n===activeNode) return Math.max(FOUNDERS[n.id]||0, 12+20*(n._grow||0));
   if(FOUNDERS[n.id]) return FOUNDERS[n.id];   // Molla Memiş & Abdurrahman iri
-  let base = n.id===viewerId ? 14 : 8;
+  let base = n.id===viewerId ? 16 : 10.5;
   // lens boyut vurgusu (hafif): yaşam durumu lensinde yaşayanlar biraz iri
   if(activeLens==="alive" && n.alive!==false) base += 1.5;
   return base;
@@ -1074,7 +1081,7 @@ function draw(){
   ordered.forEach(({n,pr})=>{
     const p={x:pr.x, y:pr.y};
     const depthK=pr.k;   // 1=yakın (büyük), <1=uzak (küçük)
-    const r=radius(n)*Math.max(0.35,Math.min(1.4,scale))*depthK;
+    const r=radius(n)*zoomK()*depthK;
     const sel=n===selNode, hov=n===hoverNode, hl=highlightSet.has(n.id);
     const isViewer=n.id===viewerId, onSpine=viewerSpine.has(n.id);
     // derinlik soluklaştırması: arkadakiler biraz saydam
@@ -1208,7 +1215,7 @@ function draw(){
   });
   if(activeNode && (activeNode._grow||0)>0.05){
     const n=activeNode, g=n._grow;
-    const p=w2s(n.x,n.y); const r=radius(n)*Math.max(0.7,Math.min(1.4,scale));
+    const p=w2s(n.x,n.y); const r=radius(n)*zoomK();
     // koni üzerinde SADECE vurgu: dış parlama + halka (detaylar sağ üst kartta)
     ctx.beginPath(); ctx.arc(p.x,p.y,r+9*g,0,6.283);
     ctx.fillStyle="rgba(92,200,216,"+(0.14*g)+")"; ctx.fill();
@@ -1243,7 +1250,7 @@ function pick(sx,sy){
   let best=null,bd=1e9;
   for(const n of nodes){ const pr=project(n.x,n.y,nodeHeight(n));
     const d=Math.hypot(pr.x-sx,pr.y-sy);
-    const r=radius(n)*Math.max(0.7,Math.min(1.4,scale))*pr.k+8;
+    const r=radius(n)*zoomK()*pr.k+8;   // +8: dokunma/tıklama payı
     if(d<r && d<bd){bd=d;best=n;} }
   return best;
 }
