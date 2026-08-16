@@ -100,6 +100,23 @@ select id, durum, gonderen_ad, ozet, olusma from oneri order by olusma desc limi
 
 ---
 
+## Sohbet — aile buluşma alanı
+
+İki tür sohbet var:
+
+1. **Genel aile sohbeti** — sol alttaki 💬 düğmesiyle açılır. Tüm ailenin
+   yazdığı ortak akış. Anı paylaşımı, sohbet, haberleşme için.
+2. **Kişi yorumları** — her kişinin panelinde "Yorumlar" bölümü. O kişi
+   hakkında yazılır (anı, not, "seni özledik" gibi).
+
+**Kim yazar:** SMS ile giren herkes yazabilir (onaya gerek yok — sohbet akıcı olsun).
+Giriş yapmayanlar okur ama yazamaz. Herkes kendi mesajını silebilir; admin hepsini silebilir.
+
+> Sohbet mesajları ağaç düzenlemesinden farklı — onaydan geçmez, anında görünür.
+> (Ağaç değişiklikleri hâlâ senin onayından geçer; sadece sohbet serbest.)
+
+---
+
 ## Fotoğraf & Video — Vercel Blob
 
 Foto ve videolar artık **ortak** saklanır (herkes görür), Vercel Blob'da. Kurulumu:

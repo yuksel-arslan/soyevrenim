@@ -55,3 +55,16 @@ create table if not exists oneri (
 );
 create index if not exists oneri_durum_idx on oneri(durum, olusma desc);
 
+-- SOHBET: genel aile sohbeti + kişi yorumları (tek tablo)
+-- kapsam='genel' → aile sohbeti; kapsam='kisi:<id>' → o kişinin panelindeki yorumlar
+create table if not exists sohbet (
+  id          bigserial primary key,
+  kapsam      text not null default 'genel',   -- 'genel' | 'kisi:p123...'
+  yazan_id    text,                             -- yazan kişinin ağaç id'si
+  yazan_ad    text,                             -- adı (gösterim)
+  mesaj       text not null,
+  zaman       timestamptz not null default now()
+);
+create index if not exists sohbet_kapsam_idx on sohbet(kapsam, zaman desc);
+
+
