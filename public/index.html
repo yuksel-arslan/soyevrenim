@@ -667,13 +667,17 @@ function draw(){
     ctx.beginPath(); ctx.ellipse(center.x,center.y,rr,rr*TILT,0,0,6.283);
     ctx.strokeStyle=getVar("--line2"); ctx.globalAlpha=ringAlpha; ctx.lineWidth=1+zoomOut; ctx.stroke();
     ctx.globalAlpha=1;
-    // nesil etiketi — elipsin ÜST yayında (her halka farklı y'de, çakışmaz)
-    if(scale>0.18){
+    // nesil etiketi — elipsin sol-üst çapraz yayında, her halka farklı noktada
+    if(scale>0.22){
       ctx.font=`600 ${10+2*zoomOut}px 'IBM Plex Mono', monospace`;
-      ctx.fillStyle=getVar("--text-soft"); ctx.globalAlpha=labelAlpha;
-      ctx.textAlign="center"; ctx.textBaseline="middle";
-      const ly=center.y - rr*TILT;   // elipsin tepe noktası
-      ctx.fillText(`${d}. nesil`, center.x, ly-2);
+      ctx.fillStyle=getVar("--muted");
+      ctx.globalAlpha=(0.3 + 0.5*zoomOut);
+      ctx.textAlign="right"; ctx.textBaseline="middle";
+      // 210° açıda (sol-üst) — her halkanın yarıçapı farklı olduğu için ayrışırlar
+      const ang=Math.PI*1.18;
+      const ex=center.x + Math.cos(ang)*rr;
+      const ey=center.y + Math.sin(ang)*rr*TILT;
+      ctx.fillText(`${d}. nesil`, ex-4, ey);
       ctx.globalAlpha=1;
     }
   }
@@ -722,6 +726,7 @@ function draw(){
   }
 
   // düğümler
+  const drawnLabels=[];   // çizilmiş isim kutuları (çakışma önleme)
   nodes.forEach(n=>{
     const p=w2s(n.x,n.y); const r=radius(n)*Math.max(0.7,Math.min(1.4,scale));
     const sel=n===selNode, hov=n===hoverNode, hl=highlightSet.has(n.id);
@@ -766,25 +771,39 @@ function draw(){
     }
     // etiket
     const isFounder=!!FOUNDERS[n.id];
-    if(scale>0.55 || onSpine || isViewer || sel || hov || isFounder){
+    const important = isFounder||isViewer||sel||hov||onSpine;
+    // isim gösterme eşiği: yakınlaşınca göster; kalabalıkta önemli olanlar öncelikli
+    const showLabel = important || scale>0.62;
+    if(showLabel){
       const fs = isFounder?16:isViewer?14:onSpine?13:12;
       ctx.font=`${onSpine||isViewer||isFounder?700:500} ${fs}px Inter`;
       ctx.textAlign="center"; ctx.textBaseline="top";
       const t=dispName(n.name);
-      const dimmed=(highlightSet.size&&!hl&&!isFounder);
-      const isDead=n.alive===false;
-      // arka gölge (vefat edenlerde daha hafif)
-      ctx.lineWidth=3; ctx.strokeStyle=`rgba(11,18,32,${isDead&&!isFounder?0.55:0.9})`;
-      ctx.strokeText(t,p.x,p.y+r+4);
-      // isim rengi: kurucu → altın; vurgu dışı → muted; vefat → soluk; yaşayan → parlak
-      let col;
-      if(isFounder) col=getVar("--spine");
-      else if(dimmed) col=getVar("--muted");
-      else if(isDead) col="#7c8798";
-      else col=getVar("--text");
-      ctx.globalAlpha=isDead&&!isViewer&&!sel&&!hov&&!isFounder?0.72:1;
-      ctx.fillStyle=col; ctx.fillText(t,p.x,p.y+r+4);
-      ctx.globalAlpha=1;
+      // çakışma önleme: bu ismin ekran kutusu daha önce çizilenlerle çakışıyor mu?
+      const tw=ctx.measureText(t).width, th=fs;
+      const lx=p.x, ly=p.y+r+4;
+      const box={x:lx-tw/2, y:ly, w:tw, h:th};
+      let clash=false;
+      if(!important){ // önemli düğümler her zaman çizilir; diğerleri çakışırsa atlanır
+        for(const b of drawnLabels){
+          if(box.x < b.x+b.w && box.x+box.w > b.x && box.y < b.y+b.h && box.y+box.h > b.y){ clash=true; break; }
+        }
+      }
+      if(!clash){
+        drawnLabels.push(box);
+        const dimmed=(highlightSet.size&&!hl&&!isFounder);
+        const isDead=n.alive===false;
+        ctx.lineWidth=3.5; ctx.strokeStyle=`rgba(11,18,32,${isDead&&!isFounder?0.6:0.92})`;
+        ctx.strokeText(t,lx,ly);
+        let col;
+        if(isFounder) col=getVar("--spine");
+        else if(dimmed) col=getVar("--muted");
+        else if(isDead) col="#7c8798";
+        else col=getVar("--text");
+        ctx.globalAlpha=isDead&&!isViewer&&!sel&&!hov&&!isFounder?0.72:1;
+        ctx.fillStyle=col; ctx.fillText(t,lx,ly);
+        ctx.globalAlpha=1;
+      }
     }
   });
 
@@ -823,29 +842,32 @@ function draw(){
       chips.push({ic:"",tx:n.alive===false?"Vefat":"Yaşıyor", col:n.alive===false?getVar("--dead"):getVar("--ok")});
       if(spouseTxt) chips.push({ic:"⚭",tx:spouseTxt});
       if(kidCount>0) chips.push({ic:"",tx:`${kidCount} çocuk`});
-      // isim üstte büyük
+      const chipBg=getVar("--panel"), chipLine=getVar("--line2"), chipTx=getVar("--text");
+      // isim üstte büyük — güçlü gölge
       ctx.globalAlpha=g;
-      ctx.font="700 "+(16)+"px Inter"; ctx.textAlign="center"; ctx.textBaseline="bottom";
-      ctx.lineWidth=4; ctx.strokeStyle="rgba(11,18,32,.92)";
-      ctx.strokeText(dispName(n.name),p.x,p.y-r-12);
-      ctx.fillStyle=getVar("--text"); ctx.fillText(dispName(n.name),p.x,p.y-r-12);
-      // çipleri düğümün altına yay
-      let cy=p.y+r+14;
-      ctx.font="500 12px Inter"; ctx.textBaseline="middle";
-      chips.forEach((c,i)=>{
+      ctx.font="700 17px Inter"; ctx.textAlign="center"; ctx.textBaseline="bottom";
+      ctx.lineWidth=5; ctx.strokeStyle=getVar("--bg");
+      ctx.strokeText(dispName(n.name),p.x,p.y-r-14);
+      ctx.fillStyle=chipTx; ctx.fillText(dispName(n.name),p.x,p.y-r-14);
+      // çipleri düğümün altına yay (düğümden biraz uzak)
+      let cy=p.y+r+18;
+      ctx.font="600 12px Inter"; ctx.textBaseline="middle";
+      chips.forEach((c)=>{
         const label=(c.ic?c.ic+" ":"")+c.tx;
-        const w=ctx.measureText(label).width+18;
+        const w=ctx.measureText(label).width+20;
         const cx=p.x;
-        // kutucuk
-        ctx.fillStyle="rgba(24,34,56,.92)"; roundRect(ctx,cx-w/2,cy-11,w,22,11); ctx.fill();
-        ctx.strokeStyle="var(--line2)"; ctx.strokeStyle=getVar("--line2"); ctx.lineWidth=1; roundRect(ctx,cx-w/2,cy-11,w,22,11); ctx.stroke();
-        ctx.fillStyle=c.col||getVar("--text-soft"); ctx.textAlign="center";
+        // tam opak kutucuk (arkadaki karmaşayı örtsün)
+        ctx.globalAlpha=g;
+        ctx.fillStyle=chipBg; roundRect(ctx,cx-w/2,cy-12,w,24,12); ctx.fill();
+        ctx.strokeStyle=chipLine; ctx.lineWidth=1.2; roundRect(ctx,cx-w/2,cy-12,w,24,12); ctx.stroke();
+        ctx.fillStyle=c.col||chipTx; ctx.textAlign="center";
         ctx.fillText(label,cx,cy);
-        cy+=27;
+        cy+=29;
       });
-      // ipucu: çift tık = düzenle
-      ctx.font="400 10px 'IBM Plex Mono', monospace"; ctx.fillStyle=getVar("--muted");
-      ctx.fillText("tekrar dokun: düzenle",p.x,cy+2);
+      // ipucu: tekrar dokun = düzenle
+      ctx.font="400 10px 'IBM Plex Mono', monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.lineWidth=3; ctx.strokeStyle=getVar("--bg"); ctx.strokeText("düzenlemek için tekrar dokun",p.x,cy+4);
+      ctx.fillStyle=getVar("--muted"); ctx.fillText("düzenlemek için tekrar dokun",p.x,cy+4);
       ctx.globalAlpha=1;
     }
   }
