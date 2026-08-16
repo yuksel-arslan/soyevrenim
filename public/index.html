@@ -13,7 +13,7 @@
   --line:#26324a; --line2:#334259;
   --text:#e6edf6; --text-soft:#8c9cb4; --muted:#5f6f88;
   --male:#4aa3ff; --female:#ff6fae; --spine:#ffc94a; --you:#ffd642;
-  --dead:#6b7689; --edge:#42597a; --edge-lit:#ffc94a; --marriage:#e08aef;
+  --dead:#8b97ab; --edge:#42597a; --edge-lit:#ffc94a; --marriage:#e08aef;
   --accent:#3dd6ec; --danger:#ff6a5e; --ok:#4ade80;
   --shadow:rgba(0,0,0,.45);
 }
@@ -341,9 +341,11 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   box-shadow:0 16px 50px var(--shadow);display:none">
   <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 6px 8px">Renklendirme katmanı</div>
   <button class="lensOpt" data-lens="default" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Varsayılan (cinsiyet · soy hattı)</button>
-  <button class="lensOpt" data-lens="branch" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Kol / soy</button>
   <button class="lensOpt" data-lens="work" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">İş durumu</button>
   <button class="lensOpt" data-lens="alive" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer">Yaşam durumu</button>
+  <div style="height:1px;background:var(--line);margin:8px 4px"></div>
+  <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 6px 6px">Kolu göster</div>
+  <div id="branchFilterList"></div>
 </div>
 <!-- lens göstergesi (legend) -->
 <div id="lensLegend" style="position:fixed;left:16px;bottom:56px;z-index:9;min-width:170px;
@@ -458,9 +460,8 @@ function loadGraph(g){
   marriages=(g.marriages||[]).map(m=>({...m}));
   motherEdges=(g.motherEdges||[]).map(m=>({...m}));
   reindex();
-  // RADYAL NESİL HALKALARI: merkez Molla Memiş (nesil 0),
-  // her nesil dışa doğru bir halka. Açı = soy dalına göre kama paylaşımı.
-  layoutRadial();
+  // ÜÇ HELEZON: Molla Memiş dipte, üç oğuldan üç spiral yükselir
+  layoutSpiral();
 }
 function reindex(){
   byId={}; nodes.forEach(n=>byId[n.id]=n);
@@ -542,6 +543,139 @@ function layoutRadial(){
   }
 }
 
+// ========================= ÜÇ HELEZON (SPİRAL) DÜZENİ =========================
+let SPIRAL_OF={};
+let SPIRAL_COLORS={};
+let SPIRAL_NAME={};   // kol başı id → halk-dili "işi" adı
+let SPIRAL_ANCESTORS={};  // düğüm id → o düğümün soy hattındaki tüm kol başı id'leri (küme)
+// bir kişinin hangi kola ait olduğu (en yakın kol — renk/görüntü için)
+function spiralBranchOf(id){ return SPIRAL_OF[id]!=null ? SPIRAL_OF[id] : null; }
+// kol filtresi aktifken bu düğüm vurgulu mu? (hiyerarşik: seçili kol, düğümün kol atalarından biriyse)
+function inBranchFilter(n){
+  if(typeof branchFilter==="undefined" || branchFilter==null) return true;
+  const anc=SPIRAL_ANCESTORS[n.id];
+  if(anc && anc.has(branchFilter)) return true;
+  // kök (Molla Memiş) her zaman görünür (bağlantı için)
+  return n.id===(nodes.find(x=>!x._parent)||{}).id;
+}
+function layoutSpiral(){
+  const root=nodes.find(n=>!n._parent); if(!root) return;
+  MAXDEPTH=Math.max(...nodes.map(n=>n._depth||0),1);
+  const kids=(root._kids||[]);
+  // TEK HELEZON YÜZEY: tüm soy tek bir yukarı-genişleyen sarmala dizilir.
+  // Kollar yüzeyde ANGÜLER DİLİMLER halinde bitişik akar (damar yatakları).
+  const TURN=Math.PI*2.0;          // nesil başına ~1 tur (yüzeyin sarmal eğimi)
+  const R0=130, R_GROW=64;         // yüzey yarıçapı: yukarı çıktıkça genişler (huni) — daha ayrık
+  SPIRAL_OF={};
+  // her düğümü koluna ata (Molla Memiş'in hangi oğlundan geldiği)
+  // ===== HALK DİLİNDEKİ KOLLAR ("işi" adları) =====
+  // Kol başları: her kol, ağaçtaki bir atadan başlar (nesil fark etmez).
+  // ID bazlı kesin eşleşme (aynı isimli kişiler karışmasın).
+  // Derin başlar önce işlenir → alt-kol üst-kolu ezer (ör. Tayişi, Noktaşi içinden ayrılır).
+  const KOL_BASLARI_ID = {
+    "p13":  "Aslanişi",     // Aslan (Molla Memiş'in oğlu)
+    "p11":  "Memişişi",     // Memiş (Molla Memiş'in oğlu)
+    "p12":  "Noktaşi",      // Abdurrahman
+    "p123": "Tayişi",       // Mustafa Tahsin (Abdurrahman'ın oğlu)
+    "p112": "Karyağdışi",   // Karyağdı Mehmet (Memiş'in oğlu)
+    "p111": "Baratişi"      // Barat Ali (Memiş'in oğlu)
+    // Musaşi, Şabanişi sonra eklenecek
+  };
+  // isim bazlı ek tanımlar (varsa) — KOL_TANIMLARI global ile
+  const KOL_BASLARI = (typeof KOL_TANIMLARI!=="undefined" && KOL_TANIMLARI) ? KOL_TANIMLARI : {};
+  // ad → düğüm eşlemesi (isim bazlı tanımlar için)
+  const byName={}; nodes.forEach(n=>{ if(!byName[n.name]) byName[n.name]=n; });
+  // kol başı düğümleri: önce ID bazlı, sonra isim bazlı
+  const headNodes=[];   // {node, isim}
+  Object.keys(KOL_BASLARI_ID).forEach(id=>{
+    const nd=byId[id]; if(nd) headNodes.push({node:nd, isim:KOL_BASLARI_ID[id]});
+  });
+  Object.keys(KOL_BASLARI).forEach(ad=>{
+    const nd=byName[ad]; if(nd && !headNodes.some(h=>h.node.id===nd.id)) headNodes.push({node:nd, isim:KOL_BASLARI[ad]});
+  });
+  SPIRAL_OF={}; SPIRAL_NAME={}; SPIRAL_ANCESTORS={};
+  if(headNodes.length){
+    const headIds=new Set(headNodes.map(h=>h.node.id));
+    headNodes.forEach(h=>{ SPIRAL_NAME[h.node.id]=h.isim; });
+    // derin başlar önce → SPIRAL_OF en yakın (en derin) kolu tutar (renk/görüntü)
+    headNodes.sort((a,b)=>(a.node._depth||0)-(b.node._depth||0));
+    headNodes.forEach(h=>{
+      (function mark(n){ SPIRAL_OF[n.id]=h.node.id; (n._kids||[]).forEach(mark); })(h.node);
+    });
+    // HİYERARŞİ: her düğüm için soy hattındaki TÜM kol başlarını topla (filtre için)
+    // (ör. Barat Ali'nin torunu → {Baratişi, Memişişi})
+    nodes.forEach(n=>{
+      const anc=new Set();
+      let cur=n;
+      while(cur){ if(headIds.has(cur.id)) anc.add(cur.id); cur=cur._parent||null; }
+      SPIRAL_ANCESTORS[n.id]=anc;
+    });
+  } else {
+    kids.forEach((k)=>{ (function mark(n){ SPIRAL_OF[n.id]=k.id; SPIRAL_NAME[k.id]=dispName(k.name);
+      SPIRAL_ANCESTORS[n.id]=new Set([k.id]); (n._kids||[]).forEach(mark); })(k); });
+  }
+  // kol renkleri
+  SPIRAL_COLORS={};
+  const palette=["#ff6fae","#4aa3ff","#4ade80","#ffc94a","#c88ad0","#3dd6ec","#ff8a5e","#8ad94a"];
+  const uniqHeads=[...new Set(Object.values(SPIRAL_OF))];
+  uniqHeads.forEach((hid,i)=>{ SPIRAL_COLORS[hid]=palette[i%palette.length]; });
+
+  // alt-ağaç yaprak ağırlığı → açı payı (içeride)
+  (function weigh(n){ const k=n._kids||[];
+    n._w = k.length ? k.reduce((s,c)=>s+weigh(c),0) : 1; return n._w; })(root);
+
+  // AÇISAL DAĞITIM: KÖK seviyesinde üç kola EŞİT dilim (küçük kollar ezilmesin),
+  // içeride kardeşler yaprak ağırlığına göre böler → aynı damar bitişik akar.
+  const payAng={};
+  const K3=kids.length||1;
+  const GAP=0.18;   // kollar arası boşluk (radyan)
+  (function assignRoot(){
+    payAng[root.id]=0;
+    kids.forEach((k,i)=>{
+      // her kola eşit dilim
+      const slice=(Math.PI*2)/K3;
+      const a0=i*slice+GAP/2, a1=(i+1)*slice-GAP/2;
+      (function assign(n,x0,x1){
+        payAng[n.id]=(x0+x1)/2;
+        const kk=n._kids||[]; if(!kk.length) return;
+        const tot=kk.reduce((s,c)=>s+c._w,0)||1;
+        let acc=x0;
+        kk.forEach(c=>{ const f=c._w/tot; assign(c,acc,acc+(x1-x0)*f); acc+=(x1-x0)*f; });
+      })(k,a0,a1);
+    });
+  })();
+
+  // konum: sarmal yüzey — açı = temel açı + nesil başına belirgin dönüş
+  // aynı nesil/dilimdeki kişileri yarıçapta da hafif kaydır → üst üste binmesinler
+  const rjSeq={};  // aynı yaklaşık açıdaki kişileri saymak için
+  root.x=0; root.y=0; root._ang=-Math.PI/2;
+  nodes.forEach(n=>{
+    if(n===root) return;
+    const d=n._depth||1;
+    let base = payAng[n.id];
+    if(base==null){ n.x=n.x||0; n.y=n.y||0; return; }
+    const ang = base + d*0.42;         // belirgin sarmal dönüş
+    // radyal serpiştirme: yakın açıdaki kişileri farklı yarıçaplara yay
+    const key = d+"|"+Math.round(base*20);   // nesil + kaba açı kovası
+    const idx = (rjSeq[key]=(rjSeq[key]||0)+1) - 1;
+    const jitter = (idx%3 - 1) * 16;   // -16, 0, +16 → üç kademe yarıçap
+    const rr  = R0 + d*R_GROW + jitter;
+    n.x = Math.cos(ang)*rr;
+    n.y = Math.sin(ang)*rr;
+    n._ang=ang; n._surfR=rr;
+  });
+  // dış eşler: eşinin yanına, aynı damara
+  for(let pass=0; pass<8; pass++){
+    nodes.forEach(n=>{
+      if(payAng[n.id]!=null || n===root) return;
+      let ref=null;
+      (marriages||[]).forEach(m=>{ if(m.from===n.id&&payAng[m.to]!=null)ref=byId[m.to];
+        if(m.to===n.id&&payAng[m.from]!=null)ref=byId[m.from]; });
+      if(ref){ n.x=ref.x+16; n.y=ref.y+10; SPIRAL_OF[n.id]=SPIRAL_OF[ref.id]; payAng[n.id]=payAng[ref.id]+0.02; }
+    });
+  }
+}
+
 // veriyi şimdi yükle (tüm radyal fonksiyonlar tanımlı)
 loadGraph(GRAPH);
 
@@ -563,7 +697,7 @@ const DEPTH_K=0.9;             // derinlik→ölçek etkisi
 // KONİ/TOPAÇ modu: her nesil farklı yükseklikte. Molla Memiş (nesil 0) altta,
 // üst nesiller yukarıda ve daha geniş halkada → yukarı açılan koni.
 let coneMode=true;
-const CONE_H=115;              // nesiller arası dikey mesafe (yükseklik)
+const CONE_H=155;              // nesiller arası dikey mesafe (yükseklik) — spiral için dik
 
 // dünya (x,y) + yükseklik(h) → ekran + derinlik. h yukarı taşır (koni).
 function project(wx, wy, h){
@@ -618,7 +752,7 @@ function fit(){
 }
 
 // ---- fizik (force-directed) ----
-let physics=true, alpha=1;
+let physics=false, alpha=1;
 const REPULSE=9000, SPRING=0.02, SPRING_LEN=95, CENTER=0.008, DAMP=0.86;
 function tick(){
   if(!physics){ return; }
@@ -850,7 +984,7 @@ function draw(){
   const zoomOut=Math.max(0, Math.min(1, (0.75-scale)/0.6));  // 0..1
   const ringAlpha=0.18 + 0.55*zoomOut;    // uzakta belirgin
   const labelAlpha=0.35 + 0.6*zoomOut;
-  for(let d=1; d<=MAXDEPTH; d++){
+  for(let d=1; d<=MAXDEPTH && false; d++){
     const rr=ringRadius(d);   // dünya yarıçapı
     const rh=coneMode? d*CONE_H : 0;   // bu neslin koni yüksekliği
     // halkayı world uzayında bir daire olarak, project'ten geçirerek çiz (yaw ile döner)
@@ -876,26 +1010,29 @@ function draw(){
     }
   }
 
-  // kenarlar
+  // kenarlar — network: tek renk (nötr); seçili/highlight vurgulu;
+  // kol filtresi aktifken filtre İÇİ kenarlar altın (kolun ağı öne çıksın)
   ctx.lineWidth=1.2;
+  const filterActive = (typeof branchFilter!=="undefined" && branchFilter!=null);
   edges.forEach(e=>{ const a=byId[e.from],b=byId[e.to]; if(!a||!b)return;
     const pa=w2sn(a), pb=w2sn(b);
     const lit=highlightSet.has(a.id)&&highlightSet.has(b.id);
-    // KOL LENSİ: kenar iki ucu aynı koldaysa o kolun renginde (açık ton)
-    if(activeLens==="branch" && !lit){
-      const ba=BRANCH_OF[a.id], bb=BRANCH_OF[b.id];
-      if(ba && ba===bb && BRANCH_COLORS[ba]){
-        ctx.strokeStyle=BRANCH_COLORS[ba]; ctx.globalAlpha=0.42; ctx.lineWidth=1.5;
-        ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
-        ctx.lineWidth=1.2;
-        return;
+    const inF = inBranchFilter(a) && inBranchFilter(b);
+    if(filterActive){
+      if(inF){
+        // seçili kolun kenarı: altın, belirgin
+        ctx.strokeStyle=getVar("--edge-lit"); ctx.globalAlpha=0.9; ctx.lineWidth=1.8;
+      } else {
+        // filtre dışı: çok sönük
+        ctx.strokeStyle=getVar("--edge"); ctx.globalAlpha=0.10; ctx.lineWidth=1.2;
       }
+    } else {
+      ctx.strokeStyle=lit?getVar("--edge-lit"):getVar("--edge");
+      ctx.globalAlpha=lit?0.95:0.45; ctx.lineWidth=lit?1.6:1.2;
     }
-    ctx.strokeStyle=lit?getVar("--edge-lit"):getVar("--edge");
-    ctx.globalAlpha=lit?0.95:0.5;
     ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
   });
-  ctx.globalAlpha=1;
+  ctx.lineWidth=1.2; ctx.globalAlpha=1;
 
   // anne bağları (baba hattından ayrı). Sadece seçiliyle ilgili olan belirgin.
   motherEdges.forEach(m=>{ const a=byId[m.from],b=byId[m.to]; if(!a||!b)return;
@@ -936,7 +1073,7 @@ function draw(){
   ordered.forEach(({n,pr})=>{
     const p={x:pr.x, y:pr.y};
     const depthK=pr.k;   // 1=yakın (büyük), <1=uzak (küçük)
-    const r=radius(n)*Math.max(0.7,Math.min(1.4,scale))*depthK;
+    const r=radius(n)*Math.max(0.35,Math.min(1.4,scale))*depthK;
     const sel=n===selNode, hov=n===hoverNode, hl=highlightSet.has(n.id);
     const isViewer=n.id===viewerId, onSpine=viewerSpine.has(n.id);
     // derinlik soluklaştırması: arkadakiler biraz saydam
@@ -948,7 +1085,9 @@ function draw(){
     // (aktif/merkeze alınan düğüm hariç — o, aşağıdaki aktif blokta büyük çizilir)
     const prof=PROFILES[n.id];
     const hasPhoto=prof&&prof.photo;
-    const dimAlpha=((highlightSet.size&&!hl)?0.35:1) * depthAlpha;
+    const inFilter = inBranchFilter(n);
+    const filterDim = inFilter ? 1 : 0.12;   // filtre dışı çok sönük
+    const dimAlpha=((highlightSet.size&&!hl)?0.35:1) * depthAlpha * filterDim;
     if(n===activeNode && (n._grow||0)>0.05){
       // aktif düğüm: sadece taban daire (foto/detay aktif blokta) — çakışmayı önle
       ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
@@ -984,11 +1123,11 @@ function draw(){
       ctx.restore();
       ctx.globalAlpha=1;
       // ince açık kenar (koyu yerine — daha canlı)
-      ctx.lineWidth=sel?2.5:1; ctx.strokeStyle=sel?getVar("--accent"):"rgba(255,255,255,.22)"; 
+      ctx.lineWidth=sel?2.5:1; ctx.strokeStyle=sel?getVar("--accent"):"rgba(255,255,255,.28)"; 
       ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283); ctx.stroke();
-      // vefat halkası (sadece fotosuz düğümlerde)
-      if(n.alive===false){ ctx.beginPath(); ctx.arc(p.x,p.y,r*0.5,0,6.283);
-        ctx.fillStyle=getVar("--bg"); ctx.globalAlpha=.5; ctx.fill(); ctx.globalAlpha=1; }
+      // vefat: ince iç halka (içi boşaltma yok — dolu kalsın, net görünsün)
+      if(n.alive===false){ ctx.beginPath(); ctx.arc(p.x,p.y,r*0.45,0,6.283);
+        ctx.lineWidth=1; ctx.strokeStyle="rgba(255,255,255,.35)"; ctx.stroke(); }
     }
     // etiket
     const isFounder=!!FOUNDERS[n.id];
@@ -1107,6 +1246,91 @@ function pick(sx,sy){
     if(d<r && d<bd){bd=d;best=n;} }
   return best;
 }
+// bir noktaya en yakın kenarı bul (tıklama toleransı içinde)
+function pickEdge(sx,sy){
+  const TOL=10;   // piksel toleransı
+  let best=null, bd=TOL;
+  const check=(a,b,type)=>{
+    if(!a||!b) return;
+    const pa=w2sn(a), pb=w2sn(b);
+    const dx=pb.x-pa.x, dy=pb.y-pa.y;
+    const L2=dx*dx+dy*dy; if(L2<1) return;
+    let t=((sx-pa.x)*dx+(sy-pa.y)*dy)/L2;
+    t=Math.max(0,Math.min(1,t));
+    const px=pa.x+t*dx, py=pa.y+t*dy;
+    const dist=Math.hypot(sx-px, sy-py);
+    // uçlara çok yakınsa (düğüm tıklaması) atla — ama kısa kenarlarda daha toleranslı
+    const L=Math.sqrt(L2);
+    const endSkip = Math.min(0.2, 14/Math.max(L,1));  // uzun kenarda %20, kısa kenarda daha az
+    if(t<endSkip || t>1-endSkip) return;
+    if(dist<bd){ bd=dist; best={a,b,type}; }
+  };
+  edges.forEach(e=>check(byId[e.from],byId[e.to],"parent"));
+  (marriages||[]).forEach(m=>check(byId[m.from],byId[m.to],"marriage"));
+  (motherEdges||[]).forEach(m=>check(byId[m.from],byId[m.to],"mother"));
+  return best;
+}
+// iki kişi arasındaki ilişkiyi açıkla
+function relationInfo(edge){
+  const {a,b,type}=edge;
+  // a,b sırasını normalize et (ebeveyn üstte)
+  let parent=a, child=b;
+  if(type==="parent" || type==="mother"){
+    // edge.from genelde ebeveyn (baba/anne)
+    parent=a; child=b;
+  }
+  const genA=chainOf(a).length-1, genB=chainOf(b).length-1;
+  let baslik, aciklama;
+  if(type==="marriage"){
+    baslik="Evlilik";
+    aciklama=`${dispName(a.name)} ile ${dispName(b.name)} evli.`;
+  } else if(type==="mother"){
+    // anne → çocuk
+    const anne = genA<genB ? a : b;
+    const cocuk = genA<genB ? b : a;
+    baslik="Anne – çocuk";
+    aciklama=`${dispName(anne.name)}, ${dispName(cocuk.name)} adlı kişinin annesi.`;
+  } else {
+    // baba → çocuk
+    const ust = genA<genB ? a : b;
+    const alt = genA<genB ? b : a;
+    const rol = ust.sex==="K" ? "annesi" : "babası";
+    baslik="Ebeveyn – çocuk";
+    aciklama=`${dispName(ust.name)}, ${dispName(alt.name)} adlı kişinin ${rol}.`;
+  }
+  return {baslik, aciklama, a, b};
+}
+// İLİŞKİ KARTI — bir kenara tıklanınca iki kişi arası ilişkiyi gösterir
+function showRelationCard(edge, mx, my){
+  const info=relationInfo(edge);
+  let card=document.getElementById("relCard");
+  if(!card){
+    card=document.createElement("div"); card.id="relCard";
+    card.style.cssText="position:fixed;z-index:18;max-width:280px;background:var(--panel);"+
+      "border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 16px 50px var(--shadow);font-size:13px";
+    document.body.appendChild(card);
+  }
+  const gA=chainOf(info.a).length-1, gB=chainOf(info.b).length-1;
+  card.innerHTML=
+    `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--spine);font-weight:700">${info.baslik}</span>
+      <span id="relClose" style="cursor:pointer;color:var(--muted);font-size:16px;line-height:1">×</span></div>
+     <div style="color:var(--text);line-height:1.6">${escapeHtml(info.aciklama)}</div>
+     <div style="display:flex;gap:8px;margin-top:12px">
+       <button id="relA" style="flex:1;background:var(--bg2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px;font-size:12px;cursor:pointer;text-align:center">${escapeHtml(dispName(info.a.name))}<br><span style="color:var(--muted);font-size:10px">${gA}. nesil</span></button>
+       <button id="relB" style="flex:1;background:var(--bg2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px;font-size:12px;cursor:pointer;text-align:center">${escapeHtml(dispName(info.b.name))}<br><span style="color:var(--muted);font-size:10px">${gB}. nesil</span></button>
+     </div>`;
+  const cw=280, ch=card.offsetHeight||140;
+  let x=mx+16, y=my-ch/2;
+  if(x+cw>innerWidth) x=mx-cw-16;
+  if(y<8) y=8; if(y+ch>innerHeight-8) y=innerHeight-ch-8;
+  card.style.left=x+"px"; card.style.top=y+"px"; card.style.display="block";
+  card.querySelector("#relClose").onclick=hideRelationCard;
+  card.querySelector("#relA").onclick=()=>{ hideRelationCard(); focusCenter(info.a); };
+  card.querySelector("#relB").onclick=()=>{ hideRelationCard(); focusCenter(info.b); };
+  highlightSet.clear(); highlightSet.add(info.a.id); highlightSet.add(info.b.id);
+}
+function hideRelationCard(){ const c=document.getElementById("relCard"); if(c) c.style.display="none"; }
 canvas.addEventListener("pointerdown",e=>{ down={x:e.clientX,y:e.clientY}; moved=0;
   mouse={x:e.clientX,y:e.clientY};
   const hit=pick(e.clientX,e.clientY);
@@ -1187,8 +1411,16 @@ canvas.addEventListener("pointerup",e=>{
       }
     }
     dragNode=null;
-  } else if(panning){ panning=false; if(moved<5){ // boşluğa tık → seçimi bırak
-    activeNode=null; highlightSet.clear(); document.getElementById("hoverCard").style.display="none"; showActiveCard(null); } }
+  } else if(panning){ panning=false; if(moved<5){ // boşluğa tık
+    // önce bir kenara mı tıklandı? (iki kişi arası ilişki)
+    const edge=pickEdge(e.clientX,e.clientY);
+    if(edge){ showRelationCard(edge, e.clientX, e.clientY); }
+    else { // gerçekten boşluk → seçimi bırak
+      activeNode=null; highlightSet.clear();
+      document.getElementById("hoverCard").style.display="none";
+      showActiveCard(null); hideRelationCard();
+    }
+  } }
   down=null;
 });
 canvas.addEventListener("wheel",e=>{ e.preventDefault();
@@ -2258,25 +2490,59 @@ function renderAnalysis(){
 })();
 
 // ============================ LENS SEÇİCİ ============================
+let branchFilter=null;   // null=tümü, ya da kol kök id → sadece o kol vurgulu
 (function bindLens(){
   const btn=document.getElementById("lensBtn");
   const panel=document.getElementById("lensPanel");
   const legend=document.getElementById("lensLegend");
   if(!btn) return;
-  btn.onclick=()=>{ panel.style.display = panel.style.display==="none"?"block":"none"; };
+  btn.onclick=()=>{
+    if(panel.style.display==="none"){ buildBranchFilter(); panel.style.display="block"; }
+    else panel.style.display="none";
+  };
   panel.querySelectorAll(".lensOpt").forEach(opt=>{
     opt.onclick=()=>{
       activeLens=opt.dataset.lens;
-      if(activeLens==="branch") computeBranches();
       panel.style.display="none";
       updateLensUI();
     };
   });
+  // KOL FİLTRESİ listesini doldur (halk-dili "işi" adları + "Tümü")
+  function buildBranchFilter(){
+    const list=document.getElementById("branchFilterList"); if(!list) return;
+    // benzersiz kol başları (SPIRAL_OF'tan)
+    const heads=[...new Set(Object.values(SPIRAL_OF))];
+    const rowStyle="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer";
+    let html=`<button class="brOpt" data-branch="" style="${rowStyle}"><span>Tümü</span></button>`;
+    // her kolu kişi sayısına göre sırala (kalabalık üstte)
+    heads.map(hid=>({hid, cnt:nodes.filter(n=>SPIRAL_ANCESTORS[n.id] && SPIRAL_ANCESTORS[n.id].has(hid)).length,
+                     isim:SPIRAL_NAME[hid]||(byId[hid]?dispName(byId[hid].name):"Kol")}))
+      .sort((a,b)=>b.cnt-a.cnt)
+      .forEach(k=>{
+        html+=`<button class="brOpt" data-branch="${k.hid}" style="${rowStyle}">
+          <span>${escapeHtml(k.isim)}</span>
+          <span style="color:var(--muted);font-weight:600">${k.cnt}</span></button>`;
+      });
+    list.innerHTML=html;
+    list.querySelectorAll(".brOpt").forEach(opt=>{
+      opt.onclick=()=>{
+        branchFilter = opt.dataset.branch || null;
+        panel.style.display="none";
+        updateLensUI();
+      };
+    });
+  }
   function updateLensUI(){
-    // seçili vurgusu
+    // renklendirme lensi seçili vurgusu
     panel.querySelectorAll(".lensOpt").forEach(o=>{
       o.style.background = o.dataset.lens===activeLens ? "var(--bg2)" : "none";
       o.style.fontWeight = o.dataset.lens===activeLens ? "600" : "400";
+    });
+    // kol filtresi seçili vurgusu
+    panel.querySelectorAll(".brOpt").forEach(o=>{
+      const on=(o.dataset.branch||null)===branchFilter;
+      o.style.background = on ? "var(--bg2)" : "none";
+      o.style.fontWeight = on ? "600" : "400";
     });
     // gösterge
     if(activeLens==="default"){ legend.style.display="none"; return; }
