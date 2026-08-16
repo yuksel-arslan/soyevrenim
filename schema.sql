@@ -11,7 +11,7 @@ create table if not exists agac (
 
 -- Tek satırı garanti et (yoksa boş ağaçla oluştur)
 insert into agac (id, veri)
-values (1, '{"nodes":[],"edges":[],"marriages":[],"motherEdges":[]}'::jsonb)
+values (1, '{"evren":{"ad":"Abdurrahman Oğulları","slogan":"1615''ten beri"},"nodes":[],"edges":[],"marriages":[],"motherEdges":[]}'::jsonb)
 on conflict (id) do nothing;
 
 -- Basit bir "değişiklik günlüğü" (kim ne zaman kaydetti — geri almak istersen işine yarar)
