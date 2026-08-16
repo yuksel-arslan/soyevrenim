@@ -281,15 +281,24 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 </div>
 
 <!-- istatistik paneli -->
-<div id="statsPanel" style="position:fixed;left:64px;top:64px;z-index:12;width:260px;
-  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;
-  box-shadow:0 16px 50px var(--shadow);display:none">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <div style="font-weight:700;font-size:14px">Ağaç istatistikleri</div>
-    <button id="statsClose" style="background:none;border:none;color:var(--text-soft);font-size:16px;cursor:pointer">×</button>
+<!-- TAM SAYFA ANALİZ EKRANI -->
+<div id="analysisScreen" style="position:fixed;inset:0;z-index:40;background:var(--bg);
+  display:none;flex-direction:column;overflow:hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center;
+    padding:18px 24px;border-bottom:1px solid var(--line);flex:none">
+    <div>
+      <div style="font-weight:700;font-size:20px" id="analysisTitle">Soy Analizi</div>
+      <div style="font-size:12px;color:var(--text-soft);font-family:'IBM Plex Mono',monospace" id="analysisSub"></div>
+    </div>
+    <button id="analysisClose" style="background:var(--panel);border:1px solid var(--line);
+      color:var(--text);font-size:14px;cursor:pointer;padding:9px 16px;border-radius:9px">← Ağaca dön</button>
   </div>
-  <div id="statsBody"></div>
+  <div id="analysisBody" style="flex:1;overflow-y:auto;padding:24px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-content:start"></div>
 </div>
+
+<!-- (eski küçük panel — analiz ekranına yönlendiriliyor) -->
+<div id="statsPanel" style="display:none"><div id="statsBody"></div></div>
 
 <div class="inspector" id="inspector">
   <div class="head">
@@ -1850,31 +1859,138 @@ function statRow(label,val,extra){
     <span style="font-weight:600">${val}${extra?` <small style="color:var(--muted);font-weight:400">${extra}</small>`:""}</span></div>`;
 }
 function renderStats(){
+  // welcome ekranı özeti için hafif özet (küçük)
   const s=computeStats();
-  const bar=(a,b,ca,cb)=>{ const t=a+b||1; return `<div style="display:flex;height:7px;border-radius:4px;overflow:hidden;margin:6px 0 2px">
-    <div style="width:${a/t*100}%;background:${ca}"></div><div style="width:${b/t*100}%;background:${cb}"></div></div>`; };
-  const body=document.getElementById("statsBody"); if(!body) return;
-  body.innerHTML=
-    statRow("Toplam kişi",s.total)+
-    statRow("Yaşayan",s.alive)+statRow("Vefat",s.dead)+
-    bar(s.alive,s.dead,getVar("--male"),getVar("--dead"))+
-    statRow("Erkek",s.male)+statRow("Kadın",s.female)+
-    bar(s.male,s.female,getVar("--male"),getVar("--female"))+
-    statRow("Nesil",s.gens)+
-    statRow("Akraba evlilik",s.marriages)+
-    statRow("Dışarıdan eş",s.spouses)+
-    `<div style="margin-top:12px;margin-bottom:2px;font-size:11px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase">Ana kollar</div>`+
-    s.branches.map(b=>statRow(b.name,b.count,"kişi")).join("");
   const ws=document.getElementById("welcomeStats");
   if(ws) ws.innerHTML=`<span>${s.total} kişi</span><span>${s.gens} nesil</span><span>${s.alive} yaşayan</span>`;
 }
+
+// ---- TAM SAYFA ANALİZ ----
+function analysisCard(title, inner){
+  return `<div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.3px;margin-bottom:14px;color:var(--text)">${title}</div>
+    ${inner}</div>`;
+}
+function hbar(label, val, max, color, sub){
+  const w = max>0 ? (val/max*100) : 0;
+  return `<div style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+      <span style="color:var(--text-soft)">${escapeHtml(label)}</span>
+      <span style="color:var(--text);font-weight:600">${val}${sub?`<span style="color:var(--muted);font-weight:400"> ${sub}</span>`:""}</span></div>
+    <div style="height:8px;background:var(--bg2);border-radius:5px;overflow:hidden">
+      <div style="width:${w}%;height:100%;background:${color};border-radius:5px"></div></div></div>`;
+}
+function bigStat(num, label, color){
+  return `<div style="text-align:center;padding:8px">
+    <div style="font-size:30px;font-weight:800;color:${color||'var(--text)'};line-height:1">${num}</div>
+    <div style="font-size:11px;color:var(--text-soft);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">${label}</div></div>`;
+}
+
+function renderAnalysis(){
+  const body=document.getElementById("analysisBody"); if(!body) return;
+  const sub=document.getElementById("analysisSub");
+  if(sub) sub.textContent = `${EVREN.ad} · ${nodes.length} kişi · ${new Date().toLocaleDateString("tr-TR")}`;
+
+  // — verileri hesapla —
+  const total=nodes.length;
+  const alive=nodes.filter(n=>n.alive!==false).length;
+  const dead=total-alive;
+  const male=nodes.filter(n=>n.sex==="E").length;
+  const female=nodes.filter(n=>n.sex==="K").length;
+  // nesil dağılımı
+  const genCount={}; let maxGen=0;
+  nodes.forEach(n=>{ const d=n._depth||0; genCount[d]=(genCount[d]||0)+1; if(d>maxGen)maxGen=d; });
+  const genMax=Math.max(...Object.values(genCount),1);
+  // en kalabalık dallar (kurucunun çocukları = ana kollar, alt-ağaç boyutu)
+  const subtreeSize=(n)=>{ let c=1; (n._kids||[]).forEach(k=>c+=subtreeSize(k)); return c; };
+  const root=nodes.find(n=>!n._parent);
+  let branches=[];
+  if(root){ (root._kids||[]).forEach(k=>branches.push({name:dispName(k.name),count:subtreeSize(k)})); }
+  branches.sort((a,b)=>b.count-a.count);
+  const branchMax=Math.max(...branches.map(b=>b.count),1);
+  // meslek dağılımı (profil verisinden)
+  const jobs={}; let jobTotal=0;
+  nodes.forEach(n=>{ const j=(PROFILES[n.id]?.info?.job||"").trim(); if(j){ jobs[j]=(jobs[j]||0)+1; jobTotal++; } });
+  const jobList=Object.entries(jobs).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  // iş durumu dağılımı
+  const works={}; nodes.forEach(n=>{ const w=(PROFILES[n.id]?.info?.work||"").trim(); if(w) works[w]=(works[w]||0)+1; });
+  const workList=Object.entries(works).sort((a,b)=>b[1]-a[1]);
+  // en çok çocuğu olanlar
+  const kidCounts=nodes.map(n=>({name:dispName(n.name), k:(n._kids?n._kids.length:0)}))
+    .filter(x=>x.k>0).sort((a,b)=>b.k-a.k).slice(0,6);
+  const kidMax=Math.max(...kidCounts.map(x=>x.k),1);
+
+  const cards=[];
+
+  // 1) Özet sayılar
+  cards.push(analysisCard("Genel bakış",
+    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      ${bigStat(total,"kişi","var(--accent)")}
+      ${bigStat(maxGen+1,"nesil","var(--spine)")}
+      ${bigStat(alive,"yaşayan","var(--ok)")}
+      ${bigStat(dead,"vefat","var(--dead)")}
+      ${bigStat(male,"erkek","var(--male)")}
+      ${bigStat(female,"kadın","var(--female)")}
+    </div>`));
+
+  // 2) Nesillere göre dağılım (soyun büyümesi)
+  let genRows="";
+  for(let d=0; d<=maxGen; d++){
+    genRows += hbar(`${d}. nesil`, genCount[d]||0, genMax, "var(--accent)", "kişi");
+  }
+  cards.push(analysisCard("Nesillere göre dağılım", genRows +
+    `<div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">Soyun her kuşakta nasıl büyüdüğünü gösterir. Molla Memiş'ten (0. nesil) bugüne.</div>`));
+
+  // 3) Cinsiyet & yaşam durumu
+  cards.push(analysisCard("Cinsiyet ve yaşam durumu",
+    hbar("Erkek", male, total, "var(--male)", `%${Math.round(male/total*100)}`) +
+    hbar("Kadın", female, total, "var(--female)", `%${Math.round(female/total*100)}`) +
+    `<div style="height:1px;background:var(--line);margin:12px 0"></div>` +
+    hbar("Yaşayan", alive, total, "var(--ok)", `%${Math.round(alive/total*100)}`) +
+    hbar("Vefat", dead, total, "var(--dead)", `%${Math.round(dead/total*100)}`)));
+
+  // 4) En kalabalık kollar
+  cards.push(analysisCard("En kalabalık kollar",
+    branches.slice(0,8).map(b=>hbar(b.name, b.count, branchMax, "var(--spine)", "kişi")).join("") +
+    `<div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">Molla Memiş'in her oğlundan bugüne kaç kişilik soy geldiğini gösterir.</div>`));
+
+  // 5) En çok çocuğu olanlar
+  if(kidCounts.length) cards.push(analysisCard("En çok çocuğu olanlar",
+    kidCounts.map(x=>hbar(x.name, x.k, kidMax, "var(--female)", "çocuk")).join("")));
+
+  // 6) Meslekler (veri varsa)
+  if(jobList.length){
+    const jm=Math.max(...jobList.map(j=>j[1]),1);
+    cards.push(analysisCard("Meslekler",
+      jobList.map(([j,c])=>hbar(j, c, jm, "var(--accent)", "kişi")).join("")));
+  }
+  // 7) İş durumu (veri varsa)
+  if(workList.length){
+    const wm=Math.max(...workList.map(w=>w[1]),1);
+    cards.push(analysisCard("İş durumu",
+      workList.map(([w,c])=>hbar(w, c, wm, "var(--ok)", "kişi")).join("")));
+  }
+
+  // veri az ise ipucu kartı
+  if(!jobList.length && !workList.length){
+    cards.push(analysisCard("Daha fazla analiz için",
+      `<div style="font-size:13px;color:var(--text-soft);line-height:1.6">
+      Kişilerin <b>meslek</b>, <b>eğitim</b> ve <b>iş durumu</b> bilgilerini girdikçe,
+      burada meslek dağılımı, kuşaklara göre eğitim gibi analizler de belirir.
+      Doğum yılı eklendiğinde ise dönemsel dağılımlar eklenecek.</div>`));
+  }
+
+  body.innerHTML=cards.join("");
+}
+
 (function bindStats(){
-  const sp=document.getElementById("statsPanel");
+  const screen=document.getElementById("analysisScreen");
   document.getElementById("statsBtn").onclick=()=>{
-    if(sp.style.display!=="none"){ sp.style.display="none"; }
-    else { renderStats(); sp.style.display="block"; } };
-  document.getElementById("statsClose").onclick=()=>sp.style.display="none";
-  renderStats(); // açılış özetini doldur
+    renderAnalysis();
+    screen.style.display="flex";
+  };
+  document.getElementById("analysisClose").onclick=()=>{ screen.style.display="none"; };
+  renderStats(); // welcome özeti
 })();
 
 let hintT=null;
@@ -1885,7 +2001,8 @@ function showHint(msg){ const h=document.getElementById("hint");
 function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
   clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),2400); }
 
-addEventListener("keydown",e=>{ if(e.key==="Escape"){ setReparent(false); closeInspector(); res.classList.remove("show"); }
+addEventListener("keydown",e=>{ if(e.key==="Escape"){ setReparent(false); closeInspector(); res.classList.remove("show");
+  const as=document.getElementById("analysisScreen"); if(as&&as.style.display!=="none") as.style.display="none"; }
   if(e.key==="Delete"&&selNode) deleteNode(selNode); });
 
 // ============================ AÇILIŞ: KİM BAKIYOR? ============================
