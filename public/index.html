@@ -558,17 +558,54 @@ function relativesOf(id){
   (marriages||[]).forEach(m=>{ if(m.from===id) set.add(m.to); if(m.to===id) set.add(m.from); });
   return set;
 }
+
+// DAL ADMİNİ: dışarıdan evlilikle gelen bir eşin, kendi kan-bağı tarafı.
+// O eşten yukarı (ata) ve yana (kardeş) uzanan, kişinin kendi soyu olan dal.
+// Ana gövdeye (kök soyuna) ait düğümler bu dala DAHİL DEĞİL.
+function branchOf(id){
+  const me=byId[id]; const set=new Set();
+  if(!me) return set;
+  // kök soyu (ana gövde) — bunlara dokunulmaz
+  const trunk=new Set();
+  // ana gövde: kökten inen tüm ağaç (baba-hattı DFS)
+  const root=nodes.find(n=>!n._parent);
+  if(root){ (function mark(n){ trunk.add(n.id); (n._kids||[]).forEach(mark); })(root); }
+  // bu eşin kendi dalı: eşin kendisi hariç, ondan çıkan kan-bağı ağı (ana gövde dışı)
+  // yayılım: ebeveyn, kardeş, onların ataları/çocukları — ana gövdeye girmeden
+  const q=[id]; const seen=new Set([id]);
+  while(q.length){
+    const cur=q.shift(); const c=byId[cur]; if(!c) continue;
+    const komsu=[];
+    if(c._parent) komsu.push(c._parent.id);
+    if(c.mother) komsu.push(c.mother);
+    (c._kids||[]).forEach(k=>komsu.push(k.id));
+    (motherEdges||[]).forEach(m=>{ if(m.from===cur) komsu.push(m.to); if(m.to===cur) komsu.push(m.from); });
+    komsu.forEach(nid=>{
+      if(seen.has(nid)) return;
+      // ana gövdeye ait VE bu eş değilse → dala katma (o kök soyuna ait)
+      if(trunk.has(nid) && nid!==id) return;
+      seen.add(nid); set.add(nid); q.push(nid);
+    });
+  }
+  set.add(id);   // eşin kendisi de dalına dahil
+  return set;
+}
+// bu kişi bir "dal admini" mi? (dışarıdan gelen, kin işaretli eş)
+function isBranchAdmin(id){
+  const me=byId[id]; if(!me) return false;
+  return !!me.kin;   // bir aileden-eşi varsa, yani ana gövdeye evlilikle bağlıysa
+}
+
 function canEdit(n){
   if(isAdmin) return true;
   if(!n) return false;
-  // bulut (canlı) modda: sadece SMS ile doğrulanmış kişi düzenler, o da yalnız yakınlarını
-  if(CLOUD.on){
-    if(!sessionKisiId) return false;           // giriş yapmamış → sadece görüntüleme
-    return relativesOf(sessionKisiId).has(n.id);
-  }
-  // offline (tek dosya) modda: eski davranış — viewer'ın yakınları
-  if(!viewerId) return false;
-  return relativesOf(viewerId).has(n.id);
+  const editorId = CLOUD.on ? sessionKisiId : viewerId;
+  if(!editorId) return false;
+  // 1) doğrudan yakınları
+  if(relativesOf(editorId).has(n.id)) return true;
+  // 2) dal admini: kendi kan-bağı tarafındaki herkesi yönetebilir
+  if(isBranchAdmin(editorId) && branchOf(editorId).has(n.id)) return true;
+  return false;
 }
 // admin girişi (basit şifre — ortam değişkeniyle değişebilir; varsayılan aşağıda)
 const ADMIN_CODE = "kok-admin";   // ← kendi kodunla değiştir
@@ -1149,15 +1186,21 @@ function applyEditPermission(n){
     banner.style.cssText="font-size:12px;padding:8px 11px;border-radius:8px;margin-bottom:12px;text-align:center";
     iBody.insertBefore(banner, iBody.firstChild);
   }
+  const editorId = CLOUD.on ? sessionKisiId : viewerId;
+  const viaBranch = !isAdmin && editable && editorId && isBranchAdmin(editorId)
+    && branchOf(editorId).has(n.id) && !relativesOf(editorId).has(n.id);
   if(isAdmin){
     banner.style.background="rgba(224,182,74,.14)"; banner.style.color=getVar("--spine");
     banner.textContent="🔓 Yönetici modu — tüm kişileri düzenleyebilirsin";
+  } else if(viaBranch){
+    banner.style.background="rgba(92,200,216,.12)"; banner.style.color=getVar("--accent");
+    banner.textContent="🌿 Senin soy dalın — kendi tarafını yönetebilirsin";
   } else if(editable){
     banner.style.background="rgba(90,200,122,.12)"; banner.style.color=getVar("--ok");
     banner.textContent="✎ Bu kişiyi düzenleyebilirsin (yakının)";
   } else {
     banner.style.background="rgba(140,156,180,.12)"; banner.style.color=getVar("--text-soft");
-    banner.textContent=viewerId ? "👁 Sadece görüntüleme — bu kişi senin yakının değil" : "👁 Sadece görüntüleme";
+    banner.textContent=editorId ? "👁 Sadece görüntüleme — bu kişi senin dalında değil" : "👁 Sadece görüntüleme";
   }
 }
 
