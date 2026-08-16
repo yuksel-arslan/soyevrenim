@@ -156,7 +156,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 
   /* istatistik/hover kartları taşmasın */
   #statsPanel{left:12px !important;right:12px;top:64px !important;width:auto !important;max-width:none}
-  #hoverCard{display:none !important} /* mobilde hover yok, kart gereksiz */
+  /* mobilde hover kartı dokununca çıkar (aşağıda JS ile) */
 
   /* dokunulabilir alanları büyüt */
   .kidlist .k{padding:10px 11px;font-size:14px}
@@ -313,11 +313,13 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 
 <!-- hover foto önizleme -->
 <div id="hoverCard" style="position:fixed;z-index:15;pointer-events:none;display:none;
-  background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:8px;
-  box-shadow:0 12px 40px var(--shadow);width:150px">
-  <div id="hoverPhoto" style="width:134px;height:134px;border-radius:7px;background-size:cover;
-    background-position:center;margin-bottom:6px"></div>
-  <div id="hoverName" style="font-size:13px;font-weight:600;text-align:center;padding:0 2px 2px"></div>
+  background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:12px;
+  box-shadow:0 16px 50px var(--shadow);width:180px;text-align:center">
+  <div id="hoverPhoto" style="width:96px;height:96px;border-radius:50%;background-size:cover;
+    background-position:center;margin:2px auto 8px;display:flex;align-items:center;justify-content:center;
+    font-size:34px;color:#fff;border:2px solid var(--line2)"></div>
+  <div id="hoverName" style="font-size:15px;font-weight:700;margin-bottom:2px"></div>
+  <div id="hoverMeta" style="font-size:11px;color:var(--text-soft);line-height:1.5"></div>
 </div>
 
 <script>
@@ -897,7 +899,10 @@ canvas.addEventListener("pointerdown",e=>{ down={x:e.clientX,y:e.clientY}; moved
     if(hit && hit!==selNode){ doReparent(selNode,hit); }
     setReparent(false); return;
   }
-  if(hit){ dragNode=hit; hit.fixed=true; canvas.setPointerCapture(e.pointerId); }
+  if(hit){ dragNode=hit; hit.fixed=true; canvas.setPointerCapture(e.pointerId);
+    // dokunmatik/mobil: düğüme dokununca detay kartını göster
+    if(e.pointerType==="touch"){ hoverNode=hit; updateHoverCard(hit, e.clientX, e.clientY); }
+  }
   else { panning=true; }
 });
 canvas.addEventListener("pointermove",e=>{
@@ -911,16 +916,36 @@ canvas.addEventListener("pointermove",e=>{
 // hover foto önizleme kartı
 function updateHoverCard(n,mx,my){
   const card=document.getElementById("hoverCard");
-  const prof = n ? (PROFILES[n.id]||null) : null;
-  if(!n || !prof || !prof.photo){ card.style.display="none"; return; }
-  document.getElementById("hoverPhoto").style.backgroundImage=`url(${prof.photo})`;
+  if(!n){ card.style.display="none"; return; }
+  const prof = PROFILES[n.id]||null;
+  const photo = document.getElementById("hoverPhoto");
+  if(prof && prof.photo){
+    photo.style.backgroundImage=`url(${prof.photo})`; photo.textContent="";
+    photo.style.borderColor=nodeColor(n);
+  } else {
+    photo.style.backgroundImage="none"; photo.style.background=nodeColor(n);
+    photo.textContent = n.sex==="K" ? "♀" : "♂";
+    photo.style.borderColor=nodeColor(n);
+  }
   document.getElementById("hoverName").textContent=dispName(n.name);
+  // meta: nesil · durum · eş · çocuk
+  const gen=chainOf(n).length-1;
+  const kidCount=(n._kids?n._kids.length:0)+motherEdges.filter(m=>m.from===n.id&&!(n._kids||[]).some(k=>k.id===m.to)).length;
+  const spouseTxt=(n.spouse&&n.spouse.length)?n.spouse.map(s=>s.replace(" (aileden)","")).join(", "):null;
+  const parts=[];
+  parts.push(`${gen}. nesil`);
+  parts.push(n.alive===false ? "Vefat" : "Yaşıyor");
+  let html=parts.join(" · ");
+  if(spouseTxt) html+=`<br>⚭ ${escapeHtml(spouseTxt)}`;
+  if(kidCount>0) html+=`<br>${kidCount} çocuk`;
+  document.getElementById("hoverMeta").innerHTML=html;
   card.style.display="block";
-  // imlecin sağ-üstünde, ekran kenarına taşmasın
-  const cw=166, ch=190;
-  let x=mx+16, y=my-ch-8;
-  if(x+cw>innerWidth) x=mx-cw-16;
-  if(y<8) y=my+16;
+  // imlecin/dokunuşun yanında, ekran kenarına taşmasın
+  const cw=180, ch=card.offsetHeight||200;
+  let x=mx+18, y=my-ch/2;
+  if(x+cw>innerWidth) x=mx-cw-18;
+  if(y<8) y=8;
+  if(y+ch>innerHeight-8) y=innerHeight-ch-8;
   card.style.left=x+"px"; card.style.top=y+"px";
 }
 canvas.addEventListener("pointerleave",()=>{ hoverNode=null; document.getElementById("hoverCard").style.display="none"; });
