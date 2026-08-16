@@ -960,6 +960,7 @@ async function tryAdminLogin(){
       if(typeof refreshApprovals==="function") refreshApprovals();
       if(typeof chatShowBtn==="function") chatShowBtn();
       toast("Yönetici modu açık — her şeyi düzenleyebilirsin");
+      tohumla();
       if(selNode) openInspector(selNode);
     } else toast("Şifre yanlış");
   }catch(e){ toast("Bağlantı hatası"); }
@@ -2652,7 +2653,17 @@ applyEvren();
 // ============================ BULUT SENKRONU (Vercel + Neon) ============================
 // Aynı sunucuda /api/agac varsa ortak buluttan çalışır; yoksa (dosya olarak açılınca)
 // sessizce yerel/offline devam eder. Fotoğraflar yine cihazda (localStorage) kalır.
-const CLOUD = { url:"/api/agac", on:false, saving:false, timer:null, lastServer:null };
+const CLOUD = { url:"/api/agac", on:false, saving:false, timer:null, lastServer:null, bosSunucu:false };
+
+// Sunucudaki ağaç boşsa, admin girer girmez ekrandaki ağacı buluta ilk kez yazar.
+// (cloudSave admin olmayanı reddettiği için açılışta tohumlama yapılamaz.)
+function tohumla(){
+  if(CLOUD.on && CLOUD.bosSunucu && isAdmin){
+    CLOUD.bosSunucu = false;
+    cloudSave(true);
+    showHint("Ağaç ortak veritabanına kaydedildi");
+  }
+}
 
 // mevcut ağacı graf JSON'a çevir (buluta göndermek için)
 function currentGraphJSON(){
@@ -2685,9 +2696,14 @@ async function cloudLoad(){
       smsShowIfCloud(); chatShowBtn();
       showHint("Ortak ağaca bağlandın · düzenlemek için telefonla giriş yap");
     } else if(j && j.ok){
-      // bulut boş → mevcut yerel ağacı buluta ilk kez yaz
-      CLOUD.on = true; cloudSave(true); smsShowIfCloud(); chatShowBtn();
-      showHint("Ortak ağaç oluşturuldu");
+      // bulut boş → yerel ağaç ekranda kalsın; buluta yazmak admin girişi ister.
+      // lastServer'ı şimdi işaretle, yoksa 30 sn'lik yoklama boş veriyi "yeni" sanıp ağacı siler.
+      CLOUD.on = true;
+      CLOUD.bosSunucu = true;
+      CLOUD.lastServer = j.guncelleme || null;
+      smsShowIfCloud(); chatShowBtn();
+      tohumla();   // zaten admin olarak girilmişse (localStorage oturumu) hemen yaz
+      showHint("Ortak ağaç henüz boş — yönetici olarak girip kaydet");
     }
   }catch(e){
     CLOUD.on = false;   // offline / dosya modu — sessizce yerel devam
@@ -2771,8 +2787,15 @@ setInterval(async ()=>{
   try{
     const r = await fetch(CLOUD.url, {method:"GET"}); if(!r.ok) return;
     const j = await r.json();
+    // Boş sunucu verisi ekrandaki dolu ağacın üstüne YAZILMAZ — yoksa ağaç kaybolur.
+    if(j && j.ok && j.veri && Array.isArray(j.veri.nodes) && !j.veri.nodes.length){
+      CLOUD.lastServer = j.guncelleme || CLOUD.lastServer;
+      CLOUD.bosSunucu = true;
+      return;
+    }
     if(j && j.ok && j.guncelleme && j.guncelleme !== CLOUD.lastServer){
       CLOUD.lastServer = j.guncelleme;
+      CLOUD.bosSunucu = false;
       const keepViewer = viewerId;
       loadGraph(j.veri); layoutRadial();
       if(keepViewer && byId[keepViewer]) setViewer(keepViewer);
@@ -2805,6 +2828,7 @@ function smsShowIfCloud(){
         if(j.rol==="admin"){ isAdmin=true; window.__adminRol="admin";
           const ab=document.getElementById("approvalBtn"); if(ab) ab.style.display="";
           if(typeof refreshApprovals==="function") refreshApprovals();
+          tohumla();
         }
         try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:j.rol})); }catch(e){}
         const w=document.getElementById("welcome"); if(w) w.style.display="none";
