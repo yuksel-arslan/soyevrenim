@@ -1,9 +1,9 @@
 // Vercel Serverless Function — SOHBET (genel + kişi yorumları)
 // /api/sohbet?adim=oku&kapsam=genel        (POST) → mesajları getir (herkes okur)
-// /api/sohbet?adim=yaz                       (POST) → mesaj yaz (SMS ile giren)
+// /api/sohbet?adim=yaz                       (POST) → mesaj yaz (aile şifresiyle giren)
 // /api/sohbet?adim=sil                       (POST) → mesaj sil (admin ya da yazan kişi)
 //
-// Ortam değişkenleri: DATABASE_URL, ADMIN_CODE
+// Ortam değişkenleri: DATABASE_URL, OTURUM_GIZLI (jeton doğrulaması giris.js üzerinden)
 
 import { neon } from '@neondatabase/serverless';
 import { jetonDogrula } from './giris.js';

@@ -1,6 +1,6 @@
 # KÖK · Abdurrahman Oğulları Soy Ağacı
 
-Ortak, canlı bir aile soy ağacı. Herkes girip görebilir; SMS ile doğrulanan
+Ortak, canlı bir aile soy ağacı. Herkes girip görebilir; aile şifresiyle giren
 kişiler kendi yakınlarında değişiklik önerebilir; tüm değişiklikler yöneticinin
 onayından geçer.
 
@@ -8,7 +8,7 @@ onayından geçer.
 
 - **Bloom tarzı görsel ağaç** — nesil halkaları, eğik disk perspektifi, dinamik merkez
 - **Herkes kendi bakışının merkezinde** — kim bakıyorsa onun soyu aydınlanır
-- **SMS ile giriş** — kişi telefonuyla doğrulanır (Twilio)
+- **Aile şifresiyle giriş** — ortak şifre girilir, imzalı oturum jetonu verilir (SMS/telefon yok)
 - **Onay sistemi** — kimse ana ağacı doğrudan değiştiremez; değişiklikler admin onayından geçer
 - **Foto & video** — Vercel Blob'da ortak saklanır, herkes görür
 - **Fotoğraflı avatarlar, iletişim, sosyal medya, anılar**
@@ -20,7 +20,7 @@ onayından geçer.
 - Backend: Vercel Serverless Functions (`api/`)
 - Veritabanı: Neon (PostgreSQL)
 - Medya: Vercel Blob
-- SMS: Twilio
+- Giriş: aile/admin şifresi + HMAC imzalı oturum jetonu (harici servis yok)
 
 ## Kurulum
 
@@ -38,9 +38,10 @@ Kısaca:
 ```
 public/index.html   → ağacın kendisi (frontend)
 api/agac.js         → ağacı oku/kaydet
-api/giris.js        → SMS ile giriş
+api/giris.js        → aile/admin şifresiyle giriş, oturum jetonu üretir
 api/oneri.js        → onay kuyruğu (öneri gönder/listele/karar)
 api/medya.js        → foto/video yükleme (Blob)
+api/sohbet.js       → aile sohbeti / kişi yorumları
 schema.sql          → Neon tabloları
 ```
 

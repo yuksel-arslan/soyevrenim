@@ -16,7 +16,11 @@ kok-canli/
 ├── public/
 │   └── index.html        ← ağacın kendisi (senin tasarımın)
 ├── api/
-│   └── agac.js           ← veritabanına oku/yaz (Vercel fonksiyonu)
+│   ├── agac.js           ← veritabanına oku/yaz (Vercel fonksiyonu)
+│   ├── giris.js          ← aile/admin şifresiyle giriş, oturum jetonu
+│   ├── oneri.js          ← onay kuyruğu (öneri gönder/listele/karar)
+│   ├── medya.js          ← foto/video yükleme (Vercel Blob)
+│   └── sohbet.js         ← aile sohbeti / kişi yorumları
 ├── schema.sql            ← Neon'da bir kez çalıştırılacak tablo kurulumu
 ├── package.json          ← bağımlılık (@neondatabase/serverless)
 ├── vercel.json           ← Vercel ayarı
@@ -29,45 +33,43 @@ kok-canli/
 
 Bu sürümde herkes **sadece kendi yakınlarını** düzenleyebilir:
 kendisi + ebeveyni + kardeşleri + çocukları + eşi. Düzenlemek için kişi
-**telefonuyla SMS doğrulaması** yaparak giriş yapar (gerçek kimlik kanıtı).
-Giriş yapmayan herkes ağacı görür ama düzenleyemez.
+**aile şifresiyle** giriş yapar. Giriş yapmayan herkes ağacı görür ama düzenleyemez.
 
-**Sen (admin) her şeyi düzenleyebilirsin** — sol alttaki 🔑 ile admin koduyla girersin.
+**Sen (admin) her şeyi düzenleyebilirsin** — sol alttaki 🔑 ile admin şifreni girersin.
 
 ### Nasıl çalışır (özet)
 
-1. Sen admin olarak her kişinin kaydına **giriş telefonunu** girersin
-   (panelde, admin modundayken "Giriş telefonu" alanı çıkar).
-2. Kişi siteye girer → telefonunu yazar → telefonuna **6 haneli SMS kodu** gelir.
-3. Kodu girer → o kişi olarak giriş yapar, yakınlarını düzenleyebilir.
-4. Numara ağaçta kayıtlı değilse giriş yapamaz (senden eklemeni ister).
+1. İki şifre vardır: **aile şifresi** (tüm aileye verdiğin ortak şifre) ve
+   **admin şifresi** (yalnızca sende).
+2. Kişi siteye girer → şifre alanına aile şifresini yazar.
+3. Sunucu (`/api/giris`) şifreyi kontrol eder, imzalı bir **oturum jetonu** verir.
+   Jeton tarayıcıda saklanır, **30 gün** geçerlidir.
+4. Aile jetonu → öneri gönderme + sohbet. Admin jetonu → onaylama + doğrudan düzenleme.
+
+> Şifreler sunucuda, ortam değişkenlerinde durur — sayfanın kaynağında **görünmez**.
+> Jeton `OTURUM_GIZLI` ile HMAC-SHA256 imzalanır, taklit edilemez.
+
+**Şifreleri değiştirmek:** Vercel → Settings → Environment Variables → `AILE_SIFRESI`
+veya `ADMIN_SIFRESI` değerini güncelle → Redeploy. Kodda hiçbir değişiklik gerekmez.
 
 ---
 
-## SMS için Twilio kurulumu (giriş sistemi bunu kullanır)
+## Giriş sistemi — harici servis gerekmez
 
-SMS göndermek için bir servis gerekir. Twilio en yaygını:
+Giriş tamamen kendi sunucunda çalışır: SMS servisi, telefon numarası, üçüncü taraf
+hesap yok. Sadece üç ortam değişkeni gerekir (3. adımdaki tabloda):
 
-1. twilio.com'da hesap aç (deneme kredisi verir; kalıcı kullanım için kart eklersin).
-2. Bir telefon numarası al (SMS gönderebilen) — panelde "Phone Numbers → Buy a number".
-   - Alternatif: "Messaging Service" oluşturup onun SID'ini kullanabilirsin.
-3. Console'dan şunları al: **Account SID**, **Auth Token**, ve aldığın **numara**.
-4. Bunları Vercel'e ortam değişkeni olarak gir (aşağıda 3. adımda hepsi birlikte).
+| Değişken | Ne işe yarar |
+|----------|--------------|
+| `AILE_SIFRESI` | Ailenin ortak şifresi — öneri gönderme + sohbet yetkisi |
+| `ADMIN_SIFRESI` | Senin yönetici şifren — onay + doğrudan düzenleme |
+| `OTURUM_GIZLI` | Jetonları imzalamak için en az 40 karakterlik rastgele metin |
 
-**Maliyet:** Türkiye'ye SMS ~$0.02–0.04/adet. Ayda birkaç yüz giriş olsa birkaç dolar.
-Twilio deneme kredisi başlangıç için yeter.
+**Maliyet: sıfır.** (Önceki sürümde SMS için Twilio kullanılıyordu; bu sürümde
+tamamen kaldırıldı — `TWILIO_*` değişkenlerine artık gerek yok, varsa silebilirsin.)
 
-> SMS istemiyorsan / maliyet istemiyorsan: giriş sistemini kapatıp herkesin açık
-> düzenlediği moda dönebiliriz, ya da e-posta ile kod (ücretsiz) kurabiliriz. Söyle yeter.
-
----
-
-## Admin kodunu değiştir (ÖNEMLİ)
-
-Varsayılan `kok-admin`. Değiştir:
-1. `public/index.html`'i aç, `ADMIN_CODE` ara.
-2. `const ADMIN_CODE = "kok-admin";` → tırnak içini kendi kodunla değiştir.
-3. Ayrıca sunucu tarafı için Vercel'e `ADMIN_CODE` ortam değişkenini de ekle (3. adımda).
+> Aile şifresini değiştirmek istediğinde tek yapman gereken Vercel'de değeri
+> güncelleyip yeniden dağıtmak; eski jetonlar 30 gün içinde kendiliğinden düşer.
 
 ---
 
@@ -75,7 +77,7 @@ Varsayılan `kok-admin`. Değiştir:
 
 Bu sürümde **kimse ana ağacı doğrudan değiştiremez.** Akış şöyle:
 
-1. SMS ile giren bir kişi kendi yakınlarında değişiklik yapar (ekler/düzenler).
+1. Aile şifresiyle giren bir kişi kendi yakınlarında değişiklik yapar (ekler/düzenler).
 2. Ekranın altında **"Kaydedilmemiş değişikliklerin var → Onaya gönder"** çubuğu çıkar.
 3. Kişi "Onaya gönder"e basar → değişiklik sana **öneri** olarak iletilir.
 4. Sen (admin) sol alttaki **📋 Onay kutusu**'nda bekleyen önerileri görürsün:
@@ -109,7 +111,7 @@ select id, durum, gonderen_ad, ozet, olusma from oneri order by olusma desc limi
 2. **Kişi yorumları** — her kişinin panelinde "Yorumlar" bölümü. O kişi
    hakkında yazılır (anı, not, "seni özledik" gibi).
 
-**Kim yazar:** SMS ile giren herkes yazabilir (onaya gerek yok — sohbet akıcı olsun).
+**Kim yazar:** Aile şifresiyle giren herkes yazabilir (onaya gerek yok — sohbet akıcı olsun).
 Giriş yapmayanlar okur ama yazamaz. Herkes kendi mesajını silebilir; admin hepsini silebilir.
 
 > Sohbet mesajları ağaç düzenlemesinden farklı — onaydan geçmez, anında görünür.
@@ -209,16 +211,16 @@ Vercel'de projene gir → **Settings → Environment Variables** → şunları e
 | Key | Value |
 |-----|-------|
 | `DATABASE_URL` | Neon bağlantı dizesi (1. adımdan) |
-| `ADMIN_CODE` | Kendi gizli admin kodun (index.html'dekiyle aynı olsun) |
-| `TWILIO_SID` | Twilio Account SID |
-| `TWILIO_TOKEN` | Twilio Auth Token |
-| `TWILIO_FROM` | Twilio numaran (`+1...`) veya Messaging Service SID (`MG...`) |
+| `AILE_SIFRESI` | Ailenin ortak şifresi — bunu aile üyelerine verirsin |
+| `ADMIN_SIFRESI` | Senin yönetici şifren — kimseyle paylaşma |
+| `OTURUM_GIZLI` | En az 40 karakter rastgele metin (jeton imzası için) |
 | `BLOB_READ_WRITE_TOKEN` | **Otomatik** — Blob deposu oluşturunca Vercel kendi ekler |
 
 Kaydet, sonra **Deployments → en üstteki → ⋯ → Redeploy** (değişkenlerin geçerli olması için).
 
-> SMS kullanmayacaksan `TWILIO_*` değişkenlerini boş bırakabilirsin — ama o zaman
-> telefonla giriş çalışmaz (sadece admin kodu ve görüntüleme olur).
+> `AILE_SIFRESI`, `ADMIN_SIFRESI` ve `OTURUM_GIZLI` girilmezse giriş çalışmaz —
+> ağaç görüntülenir ama kimse düzenleme öneremez ve sohbete yazamaz.
+> `OTURUM_GIZLI` için örnek üretme yolu: `openssl rand -hex 32`
 
 ---
 
@@ -248,9 +250,9 @@ Artık linki ailene / Facebook'a koyabilirsin. Herkes girer, görür, ekler.
 Fazlasıyla. Neon 0.5 GB (metin ağacı bunun binde birini bile doldurmaz), Vercel Hobby
 aylık 100 GB trafik. Bir aile için yıllarca sorun çıkmaz.
 
-**Fotoğraflar neden ortak değil?**
-Bu sürümde fotoğraflar cihazda kalıyor (basit tutmak için). İstersen sonraki adımda
-Vercel Blob ekleyip fotoğrafları da ortak yaparız — `api/foto.js` eklemek yeterli.
+**Fotoğraflar ortak mı?**
+Evet. Vercel Blob'da saklanır, ekleyen kim olursa olsun herkes görür
+(yukarıdaki "Fotoğraf & Video" bölümüne bak).
 
 **Biri yanlışlıkla bozarsa?**
 Her kayıt `gunluk` tablosuna da yazılıyor. Neon SQL Editor'da eski bir kaydı bulup
@@ -263,8 +265,8 @@ update agac set veri = (select veri from gunluk where id = 42) where id = 1;
 ```
 
 **Sadece belirli kişiler düzenlesin istersem?**
-Şimdilik herkes açık düzenliyor (senin tercihin). İleride basit bir "düzenleme şifresi"
-ya da giriş ekleyebiliriz.
+Zaten öyle: düzenleme önerisi göndermek için aile şifresi gerekir, ve hiçbir öneri
+senin onayın olmadan ağaca işlenmez. Şifreyi kimlere verdiğin tamamen sende.
 
 ---
 

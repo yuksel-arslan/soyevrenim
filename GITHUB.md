@@ -47,7 +47,7 @@ Private işaretle → bitti.
 
 ## ÖNEMLİ — güvenlik
 
-- Gerçek şifreler (Neon bağlantısı, admin kodu, Twilio) **GitHub'a GİTMEZ**;
+- Gerçek şifreler (Neon bağlantısı, aile/admin şifresi, oturum gizli anahtarı) **GitHub'a GİTMEZ**;
   `.gitignore` bunu engeller. Onları sadece Vercel panelinde girersin.
 - `.env.example` sadece hangi değişkenlerin gerektiğini gösterir (boş şablon).
 - Depoyu **Private** yap — aile bilgileri herkese açık olmasın.

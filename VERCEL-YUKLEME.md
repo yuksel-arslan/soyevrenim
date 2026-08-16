@@ -59,16 +59,16 @@ Vercel'de proje → **Settings** → **Environment Variables**.
 | Name | Value (ne yazacaksın) |
 |------|------------------------|
 | `DATABASE_URL` | ADIM 1'de kopyaladığın Neon bağlantı dizesi |
-| `ADMIN_CODE` | Kendi belirlediğin yönetici şifresi (ör. güçlü bir parola) |
-| `TWILIO_SID` | Twilio hesabından (SMS girişi için) |
-| `TWILIO_TOKEN` | Twilio hesabından |
-| `TWILIO_FROM` | Twilio telefon numaran (+1...) |
+| `AILE_SIFRESI` | Aileye vereceğin ortak şifre |
+| `ADMIN_SIFRESI` | Kendi yönetici şifren (kimseyle paylaşma) |
+| `OTURUM_GIZLI` | En az 40 karakter rastgele metin — jeton imzası için |
 | `BLOB_READ_WRITE_TOKEN` | Vercel → Storage → Blob → Create, verilen token |
 
-**Not — Twilio ve Blob şart mı?**
-- **Twilio yoksa:** SMS girişi çalışmaz ama ağaç görüntülenir. Admin (sen) 🔑 ile ADMIN_CODE girip düzenlersin. İstersen Twilio'yu sonra eklersin.
-- **Blob yoksa:** Fotoğraf yükleme çalışmaz, ama fotoğraflar zaten cihazda da tutulur. Sonra eklenebilir.
-- **DATABASE_URL ve ADMIN_CODE zorunlu** — bunlar olmadan ağaç kaydedilemez.
+**Not — hangisi şart?**
+- **Zorunlu:** `DATABASE_URL` (ağaç kaydedilemez), `AILE_SIFRESI` + `ADMIN_SIFRESI` +
+  `OTURUM_GIZLI` (bunlar olmadan hiç kimse giriş yapamaz).
+- **Blob yoksa:** Fotoğraf/video yükleme çalışmaz, ağacın kalanı çalışır. Sonra eklenebilir.
+- **SMS/Twilio gerekmez:** Giriş artık aile şifresiyle yapılıyor, harici servis yok.
 
 Değişkenleri girdikten sonra **Deploy**'a bas (Yöntem A) ya da `vercel --prod` (Yöntem B).
 
@@ -89,8 +89,8 @@ Değişkenleri girdikten sonra **Deploy**'a bas (Yöntem A) ya da `vercel --prod
 ## Bittiğinde
 
 - **soyevrenim.com** → ağaç herkese açık görünür
-- **Sen:** sol alttaki 🔑 → ADMIN_CODE ile girersin, her şeyi düzenlersin
-- **Aile:** (Twilio kurduysan) telefonuyla SMS girişi yapıp yakınlarını düzenler,
+- **Sen:** sol alttaki 🔑 → `ADMIN_SIFRESI` ile girersin, her şeyi düzenlersin
+- **Aile:** kendilerine verdiğin `AILE_SIFRESI` ile girip yakınlarını düzenler,
   önerileri sen onaylarsın
 
 Takıldığın adımı söyle, birlikte çözelim.
