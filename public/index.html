@@ -931,14 +931,17 @@ function updateHoverCard(n,mx,my){
     photo.style.borderColor=nodeColor(n);
   }
   document.getElementById("hoverName").textContent=dispName(n.name);
-  // meta: nesil · durum · eş · çocuk
+  // meta: nesil · durum · [meslek] · eş · çocuk
   const gen=chainOf(n).length-1;
   const kidCount=(n._kids?n._kids.length:0)+motherEdges.filter(m=>m.from===n.id&&!(n._kids||[]).some(k=>k.id===m.to)).length;
   const spouseTxt=(n.spouse&&n.spouse.length)?n.spouse.map(s=>s.replace(" (aileden)","")).join(", "):null;
+  const inf = (prof && prof.info) || {};
   const parts=[];
   parts.push(`${gen}. nesil`);
-  parts.push(n.alive===false ? "Vefat" : "Yaşıyor");
+  // iş durumu varsa onu, yoksa yaşam durumunu göster
+  parts.push(inf.work || (n.alive===false ? "Vefat" : "Yaşıyor"));
   let html=parts.join(" · ");
+  if(inf.job) html+=`<br>${escapeHtml(inf.job)}`;
   if(spouseTxt) html+=`<br>⚭ ${escapeHtml(spouseTxt)}`;
   if(kidCount>0) html+=`<br>${kidCount} çocuk`;
   document.getElementById("hoverMeta").innerHTML=html;
@@ -1023,7 +1026,7 @@ function selectNode(n){
 const PROFILE_KEY="kok_profiles_v1";
 let PROFILES={};
 try{ PROFILES=JSON.parse(localStorage.getItem(PROFILE_KEY)||"{}"); }catch(e){ PROFILES={}; }
-function getProfile(id){ return PROFILES[id] || {contact:{},social:{},photo:"",gallery:[],memories:[]}; }
+function getProfile(id){ return PROFILES[id] || {contact:{},info:{},social:{},photo:"",gallery:[],memories:[]}; }
 function saveProfile(id,p){ PROFILES[id]=p;
   // bulut modunda profiller ağaç verisinin parçası → buluta kaydet
   if(CLOUD.on){ try{ (byId[id]||{}).profile = p; }catch(e){} cloudSave(false); }
@@ -1317,6 +1320,22 @@ function renderProfileSections(n){
   pv.appendChild(big); pv.appendChild(btn); photoSec.appendChild(pv);
   wrap.appendChild(photoSec);
 
+  // — Kişisel bilgiler —
+  const info = prof.info || {};
+  const medeniOpts = ["", "Bekâr", "Evli", "Nişanlı", "Boşanmış", "Dul"];
+  const isOpts = ["", "Çalışıyor", "Emekli", "Öğrenci", "Ev hanımı", "Çalışmıyor"];
+  const infoSec = document.createElement("div");
+  infoSec.innerHTML = `<div class="section-title">Kişisel bilgiler</div>
+    <div class="field"><label>Meslek</label><input id="piJob" value="${escapeHtml(info.job||"")}" placeholder="örn. öğretmen, mühendis…"></div>
+    <div class="field"><label>Eğitim</label><input id="piEdu" value="${escapeHtml(info.education||"")}" placeholder="örn. Lise, İstanbul Üniv. İşletme"></div>
+    <div class="row2">
+      <div class="field"><label>Medeni durum</label>
+        <select id="piMarital">${medeniOpts.map(o=>`<option value="${o}"${(info.marital||"")===o?" selected":""}>${o||"—"}</option>`).join("")}</select></div>
+      <div class="field"><label>İş durumu</label>
+        <select id="piWork">${isOpts.map(o=>`<option value="${o}"${(info.work||"")===o?" selected":""}>${o||"—"}</option>`).join("")}</select></div>
+    </div>`;
+  wrap.appendChild(infoSec);
+
   // — İletişim —
   const contactSec=document.createElement("div");
   contactSec.innerHTML=`<div class="section-title">İletişim</div>
@@ -1433,14 +1452,17 @@ function renderProfileSections(n){
   // olaylar — kaydetme
   const save=(showToast)=>{ const p=getProfile(n.id);
     p.contact={phone:val("pcPhone"),email:val("pcEmail"),address:val("pcAddr")};
+    p.info={ job:val("piJob"), education:val("piEdu"),
+      marital:valSel("piMarital"), work:valSel("piWork") };
     p.social=p.social||{};
     wrap.querySelectorAll("input[data-soc]").forEach(inp=>{ p.social[inp.dataset.soc]=inp.value.trim(); });
     saveProfile(n.id,p);
     if(showToast) toast("Bilgiler kaydedildi"); };
   saveBtn.onclick=()=>save(true);
-  // otomatik da kaydet (input'tan çıkınca — yedek)
-  wrap.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",()=>save(false)));
+  // otomatik da kaydet (input/select'ten çıkınca — yedek)
+  wrap.querySelectorAll("input, select").forEach(inp=>{ if(inp.dataset.chat) return; inp.addEventListener("change",()=>save(false)); });
   function val(id){ const e=document.getElementById(id); return e?e.value.trim():""; }
+  function valSel(id){ const e=document.getElementById(id); return e?e.value:""; }
 }
 renderProfileSections._rerun=(n)=>{ // profil bölümünü tazele (galeri/anı değişince)
   // en basit: kartı yeniden aç
