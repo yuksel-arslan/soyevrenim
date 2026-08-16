@@ -180,9 +180,9 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   justify-content:center;background:radial-gradient(120% 90% at 50% 40%,#101a30,#0b1220)">
   <div style="text-align:center;max-width:420px;padding:0 24px">
     <div id="welcomeLabel" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:3px;
-      text-transform:uppercase;color:#5f6f88;margin-bottom:6px">Abdurrahman Oğulları · Soy Ağacı</div>
+      text-transform:uppercase;color:#5f6f88;margin-bottom:6px">Abdurrahman Oğulları</div>
     <div id="welcomeSlogan" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;
-      color:#4a5568;margin-bottom:14px">1615'ten beri</div>
+      color:#4a5568;margin-bottom:14px">Soy Evreni · 1615'ten beri</div>
     <h1 style="font-family:'Inter';font-weight:700;font-size:28px;margin:0 0 8px;color:#e6edf6">Bu ağaca kim bakıyor?</h1>
     <p style="font-size:14px;color:#8c9cb4;line-height:1.5;margin:0 0 22px">
       Adını seç — ağaç seni merkezine alsın, soyunu köke kadar aydınlatsın.
@@ -228,7 +228,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 </div>
 
 <div class="topbar">
-  <div class="brand"><span id="brandName">Abdurrahman Oğulları</span><div class="sub" id="brandSub">Soy Ağacı</div></div>
+  <div class="brand"><span id="brandName">Abdurrahman Oğulları</span><div class="sub" id="brandSub">Soy Evreni · 1615'ten beri</div></div>
   <div class="spacer"></div>
   <div class="search"><input id="q" placeholder="kişi ara…" autocomplete="off"><div class="results" id="res"></div></div>
   <button class="tbtn" id="addBtn">＋<span class="lbl"> Kişi</span></button>
@@ -357,19 +357,21 @@ function editEvren(){
   toast("Soy evreni adı güncellendi");
 }
 function applyEvren(){
+  // "Soy Evreni · <slogan>" biçimi (slogan yoksa sadece "Soy Evreni")
+  const sub = EVREN.slogan ? `Soy Evreni · ${EVREN.slogan}` : "Soy Evreni";
   // açılış ekranı üst etiketi
   const wl=document.getElementById("welcomeLabel");
-  if(wl) wl.textContent = EVREN.ad + " · Soy Ağacı";
-  // açılış açıklaması varsa slogan
+  if(wl) wl.textContent = EVREN.ad;
+  // açılış açıklaması
   const ws=document.getElementById("welcomeSlogan");
-  if(ws) ws.textContent = EVREN.slogan||"";
-  // marka (sol üst): ana başlık = evren adı, alt = slogan (yoksa "Soy Ağacı")
+  if(ws) ws.textContent = sub;
+  // marka (sol üst): ana başlık = evren adı, alt = "Soy Evreni · slogan"
   const bs=document.getElementById("brandName");
   if(bs) bs.textContent = EVREN.ad;
   const bsub=document.getElementById("brandSub");
-  if(bsub) bsub.textContent = EVREN.slogan || "Soy Ağacı";
+  if(bsub) bsub.textContent = sub;
   // sekme başlığı
-  try{ document.title = EVREN.ad + " · Soy Ağacı"; }catch(e){}
+  try{ document.title = EVREN.ad + " · Soy Evreni"; }catch(e){}
 }
 function loadGraph(g){
   if(g.evren && g.evren.ad){ EVREN = {ad:g.evren.ad, slogan:g.evren.slogan||""}; applyEvren(); }
