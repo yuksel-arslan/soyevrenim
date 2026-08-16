@@ -781,17 +781,29 @@ function draw(){
     // etiket
     const isFounder=!!FOUNDERS[n.id];
     const important = isFounder||isViewer||sel||hov||onSpine;
+    // aktif düğüm (merkeze alınan) — ismi aktif blokta büyük yazılıyor, burada atla
+    const isActive = (n===activeNode && (n._grow||0)>0.3);
     // isim gösterme eşiği: yakınlaşınca göster; kalabalıkta önemli olanlar öncelikli
-    const showLabel = important || scale>0.62;
+    const showLabel = (important || scale>0.62) && !isActive;
     if(showLabel){
       const fs = isFounder?16:isViewer?14:onSpine?13:12;
       ctx.font=`${onSpine||isViewer||isFounder?700:500} ${fs}px Inter`;
-      ctx.textAlign="center"; ctx.textBaseline="top";
       const t=dispName(n.name);
-      // çakışma önleme: bu ismin ekran kutusu daha önce çizilenlerle çakışıyor mu?
-      const tw=ctx.measureText(t).width, th=fs;
-      const lx=p.x, ly=p.y+r+4;
-      const box={x:lx-tw/2, y:ly, w:tw, h:th};
+      // OMURGA (soy hattı) düğümleri dikey hizada — isimleri SAĞA yaz ki çakışmasın.
+      // Diğerleri düğümün altına, ortalı.
+      const onBackbone = onSpine || isViewer || isFounder;
+      let lx, ly, box;
+      if(onBackbone){
+        ctx.textAlign="left"; ctx.textBaseline="middle";
+        lx=p.x+r+6; ly=p.y;
+        const tw=ctx.measureText(t).width;
+        box={x:lx, y:ly-fs/2, w:tw, h:fs};
+      } else {
+        ctx.textAlign="center"; ctx.textBaseline="top";
+        lx=p.x; ly=p.y+r+4;
+        const tw=ctx.measureText(t).width;
+        box={x:lx-tw/2, y:ly, w:tw, h:fs};
+      }
       let clash=false;
       if(!important){ // önemli düğümler her zaman çizilir; diğerleri çakışırsa atlanır
         for(const b of drawnLabels){
@@ -802,7 +814,9 @@ function draw(){
         drawnLabels.push(box);
         const dimmed=(highlightSet.size&&!hl&&!isFounder);
         const isDead=n.alive===false;
-        ctx.lineWidth=3.5; ctx.strokeStyle=`rgba(11,18,32,${isDead&&!isFounder?0.6:0.92})`;
+        // gölge tema-duyarlı (gündüz/gece)
+        const shadow=getVar("--bg");
+        ctx.lineWidth=4; ctx.strokeStyle=shadow;
         ctx.strokeText(t,lx,ly);
         let col;
         if(isFounder) col=getVar("--spine");
