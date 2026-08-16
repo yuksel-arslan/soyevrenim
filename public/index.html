@@ -17,6 +17,17 @@
   --accent:#5cc8d8; --danger:#e0645a; --ok:#5ac87a;
   --shadow:rgba(0,0,0,.45);
 }
+/* GÜNDÜZ (light) modu */
+:root[data-theme="light"]{
+  --bg:#f4f6fb; --bg2:#ffffff; --panel:#ffffff; --panel2:#eef2f8;
+  --line:#dde3ec; --line2:#c6d0dd;
+  --text:#1a2438; --text-soft:#556076; --muted:#8794a8;
+  --male:#2f6fb8; --female:#c04d7d; --spine:#b8891f; --you:#c99a1e;
+  --dead:#9aa4b4; --edge:#c4cddb; --edge-lit:#c99a1e; --marriage:#a765b0;
+  --accent:#2596a8; --danger:#c8483e; --ok:#3a9a5a;
+  --shadow:rgba(30,50,90,.15);
+}
+html,body{background:var(--bg);transition:background .3s}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);
   font-family:"Inter",system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
@@ -24,7 +35,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 
 /* üst bar */
 .topbar{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;gap:12px;
-  padding:12px 16px;background:linear-gradient(180deg,rgba(11,18,32,.95),rgba(11,18,32,0));pointer-events:none}
+  padding:12px 16px;background:linear-gradient(180deg,var(--bg),transparent);pointer-events:none}
 .brand{pointer-events:auto;font-weight:700;font-size:16px;letter-spacing:.3px}
 .brand span{color:var(--spine)}
 .brand .sub{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--text-soft);
@@ -95,8 +106,8 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 
 /* alt durum çubuğu */
 .statusbar{position:fixed;left:16px;bottom:14px;z-index:9;font-family:"IBM Plex Mono",monospace;
-  font-size:11px;color:var(--muted);background:rgba(11,18,32,.7);padding:6px 12px;border-radius:6px;
-  border:1px solid var(--line);backdrop-filter:blur(6px)}
+  font-size:11px;color:var(--muted);background:var(--panel);padding:6px 12px;border-radius:6px;
+  border:1px solid var(--line);backdrop-filter:blur(6px);opacity:.92}
 .statusbar b{color:var(--text-soft)}
 
 /* mod ipucu */
@@ -123,7 +134,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   /* sol dock: alt-orta yatay şeride taşı, parmakla rahat */
   .dock{left:50%;top:auto;bottom:calc(env(safe-area-inset-bottom,0) + 12px);
     transform:translateX(-50%);flex-direction:row;gap:8px;
-    background:rgba(11,18,32,.82);padding:6px;border-radius:14px;
+    background:var(--panel);padding:6px;border-radius:14px;
     border:1px solid var(--line);backdrop-filter:blur(8px);max-width:calc(100vw - 24px);overflow-x:auto}
   .dock button{width:46px;height:46px;font-size:18px;flex:none}
   .dock .sep{width:1px;height:auto;margin:4px 2px}
@@ -231,6 +242,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   <button id="reparentBtn" title="Ebeveyn bağı değiştir">⇄</button>
   <div class="sep"></div>
   <button id="statsBtn" title="İstatistikler">📊</button>
+  <button id="themeBtn" title="Gece / Gündüz modu">🌙</button>
   <button id="chatBtn" title="Aile sohbeti" style="display:none">💬</button>
   <button id="adminBtn" title="Yönetici girişi">🔑</button>
   <button id="approvalBtn" title="Onay kutusu" style="display:none;position:relative">📋<span id="approvalCount" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
@@ -1728,6 +1740,26 @@ document.getElementById("skipWho").onclick=()=>startAs(null);
 whoInput.addEventListener("keydown",e=>{ if(e.key==="Enter"){
   const first=whoResults.querySelector(".whoR[data-id]"); if(first)startAs(first.dataset.id); }});
 setTimeout(()=>whoInput.focus(),300);
+
+// ============================ GECE / GÜNDÜZ MODU ============================
+(function initTheme(){
+  const KEY="kok_theme";
+  const btn=document.getElementById("themeBtn");
+  function apply(mode){
+    if(mode==="light"){ document.documentElement.setAttribute("data-theme","light");
+      if(btn) btn.textContent="☀️"; }
+    else { document.documentElement.removeAttribute("data-theme");
+      if(btn) btn.textContent="🌙"; }
+  }
+  let saved="dark";
+  try{ saved=localStorage.getItem(KEY)||"dark"; }catch(e){}
+  apply(saved);
+  if(btn) btn.onclick=()=>{
+    const now=document.documentElement.getAttribute("data-theme")==="light"?"dark":"light";
+    apply(now);
+    try{ localStorage.setItem(KEY, now); }catch(e){}
+  };
+})();
 
 // ============================ BULUT SENKRONU (Vercel + Neon) ============================
 // Aynı sunucuda /api/agac varsa ortak buluttan çalışır; yoksa (dosya olarak açılınca)
