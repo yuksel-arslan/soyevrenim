@@ -340,6 +340,9 @@ let DPR=Math.min(devicePixelRatio||1,2);
 let nodes=[], edges=[], marriages=[], motherEdges=[], byId={};
 // SOY EVRENİ kimliği (ad + slogan) — bulutta ortak, admin düzenler
 let EVREN = { ad:"Abdurrahman Oğulları", slogan:"1615'ten beri" };
+// Anı limitleri
+const MEMORY_MAX_CHARS = 1000;   // anı metni sınırı (karakter)
+const MEMORY_MAX_COUNT = 50;     // kişi başına anı sınırı
 // admin evren adını/sloganını düzenler
 function editEvren(){
   if(!isAdmin){ toast("Bunu sadece yönetici değiştirebilir"); return; }
@@ -1317,7 +1320,7 @@ function renderProfileSections(n){
 
   // — Anılar —
   const mem=document.createElement("div");
-  mem.innerHTML=`<div class="section-title">Anılar (${(prof.memories||[]).length})</div>`;
+  mem.innerHTML=`<div class="section-title">Anılar (${(prof.memories||[]).length} / ${MEMORY_MAX_COUNT})</div>`;
   (prof.memories||[]).forEach((m,i)=>{
     const card=document.createElement("div");
     card.style.cssText="background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px";
@@ -1423,16 +1426,24 @@ function pickGallery(n){
   inp.click();
 }
 function addMemory(n){
+  // kişi başına anı limiti dolduysa engelle
+  const cur=getProfile(n.id); const count=(cur.memories||[]).length;
+  if(count>=MEMORY_MAX_COUNT){
+    toast(`Bu kişi için anı sınırına ulaşıldı (${MEMORY_MAX_COUNT}). Yer açmak için eski bir anıyı sil.`);
+    return;
+  }
   const overlay=document.createElement("div");
   overlay.style.cssText=`position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);
     display:flex;align-items:center;justify-content:center;padding:20px`;
   overlay.innerHTML=`<div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;
     padding:20px;width:min(420px,92vw);box-shadow:0 20px 60px var(--shadow)">
-    <h3 style="margin:0 0 14px;font-size:17px">Anı ekle</h3>
+    <h3 style="margin:0 0 4px;font-size:17px">Anı ekle</h3>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px">${count+1}. / ${MEMORY_MAX_COUNT} anı</div>
     <div class="field"><label>Tarih</label><input id="mDate" placeholder="örn. 1985 yazı, ya da 12.06.1985"></div>
-    <div class="field"><label>Anı</label><textarea id="mText" rows="4" style="width:100%;font-family:'Inter';
+    <div class="field"><label>Anı</label><textarea id="mText" rows="4" maxlength="${MEMORY_MAX_CHARS}" style="width:100%;font-family:'Inter';
       font-size:14px;color:var(--text);background:var(--bg2);border:1px solid var(--line);border-radius:6px;
-      padding:9px 11px;outline:none;resize:vertical" placeholder="Bu anıyı anlat…"></textarea></div>
+      padding:9px 11px;outline:none;resize:vertical" placeholder="Bu anıyı anlat…"></textarea>
+      <div id="mCount" style="font-size:11px;color:var(--muted);text-align:right;margin-top:3px">0 / ${MEMORY_MAX_CHARS}</div></div>
     <div class="field"><label>Fotoğraf (opsiyonel)</label>
       <button id="mPhotoBtn" class="tbtn" style="width:100%;justify-content:center">＋ Fotoğraf seç</button>
       <div id="mPhotoPrev" style="margin-top:8px"></div></div>
@@ -1442,6 +1453,10 @@ function addMemory(n){
     </div>
   </div>`;
   document.body.appendChild(overlay);
+  // canlı karakter sayacı
+  const ta=overlay.querySelector("#mText"), cnt=overlay.querySelector("#mCount");
+  ta.addEventListener("input",()=>{ const l=ta.value.length; cnt.textContent=`${l} / ${MEMORY_MAX_CHARS}`;
+    cnt.style.color = l>MEMORY_MAX_CHARS*0.9 ? "var(--danger)" : "var(--muted)"; });
   let photoData="";
   overlay.querySelector("#mPhotoBtn").onclick=()=>{ const inp=document.createElement("input");
     inp.type="file"; inp.accept="image/*"; inp.onchange=()=>{ if(inp.files[0])fileToDataURL(inp.files[0],1000,(url)=>{
@@ -1449,9 +1464,12 @@ function addMemory(n){
     inp.click(); };
   overlay.querySelector("#mCancel").onclick=()=>overlay.remove();
   overlay.querySelector("#mSave").onclick=()=>{
+    const text=overlay.querySelector("#mText").value.trim().slice(0, MEMORY_MAX_CHARS);
+    const date=overlay.querySelector("#mDate").value.trim();
+    if(!text && !date && !photoData){ toast("Boş anı kaydedilmez"); return; }
     const p=getProfile(n.id); p.memories=p.memories||[];
-    p.memories.unshift({date:overlay.querySelector("#mDate").value.trim(),
-      text:overlay.querySelector("#mText").value.trim(), photo:photoData});
+    if(p.memories.length>=MEMORY_MAX_COUNT){ toast("Anı sınırına ulaşıldı"); overlay.remove(); return; }
+    p.memories.unshift({date, text, photo:photoData});
     saveProfile(n.id,p); overlay.remove(); renderProfileSections._rerun(n); toast("Anı eklendi");
   };
 }
