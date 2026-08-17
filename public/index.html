@@ -403,13 +403,27 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
     <button id="kokenClose" style="background:var(--panel);border:1px solid var(--line);
       color:var(--text);font-size:14px;cursor:pointer;padding:9px 16px;border-radius:9px;flex:none">✕ Kapat</button>
   </div>
-  <div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:0 24px 24px;-webkit-overflow-scrolling:touch">
-    <img id="kokenImg" alt="Fahri Arslan'ın 1956 el çizimi soy ağacı"
+  <!-- Görsel görüntüleyici: yakınlaştırılabilir + kaydırılabilir.
+       overflow:hidden + touch-action:none — tarayıcının kendi kaydırma/zoom'unu
+       devre dışı bırakıp hareketi biz yönetiyoruz (canvas ile aynı yaklaşım). -->
+  <div id="kokenWrap" style="flex:1;overflow:hidden;position:relative;
+    display:flex;align-items:center;justify-content:center;padding:0 24px 24px;touch-action:none">
+    <img id="kokenImg" alt="Fahri Arslan'ın 1956 el çizimi soy ağacı" draggable="false"
       style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;
-      box-shadow:0 20px 80px rgba(0,0,0,.6);cursor:zoom-in;transition:transform .2s"/>
+      box-shadow:0 20px 80px rgba(0,0,0,.45);cursor:grab;transform-origin:center center;
+      will-change:transform;user-select:none;-webkit-user-drag:none"/>
+    <!-- kontroller: mobilde parmakla da erişilebilir olsun -->
+    <div style="position:absolute;right:18px;bottom:34px;display:flex;flex-direction:column;gap:6px">
+      <button id="kokenZin"  title="Yakınlaştır" style="width:38px;height:38px;font-size:18px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;cursor:pointer">＋</button>
+      <button id="kokenZout" title="Uzaklaştır"  style="width:38px;height:38px;font-size:18px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;cursor:pointer">−</button>
+      <button id="kokenFit"  title="Ekrana sığdır" style="width:38px;height:38px;font-size:15px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;cursor:pointer">⟲</button>
+    </div>
+    <div id="kokenZoomLbl" style="position:absolute;left:26px;bottom:34px;font-family:'IBM Plex Mono',monospace;
+      font-size:11px;color:var(--muted);background:var(--panel);border:1px solid var(--line);
+      border-radius:6px;padding:4px 8px">%100</div>
   </div>
   <div style="flex:none;text-align:center;padding:0 0 18px;font-family:'IBM Plex Mono',monospace;
-    font-size:11px;color:#6b7689;letter-spacing:1px">1956 — Fahri Arslan · Arhavi, Aşağı Potocur · Uzunaloğulları</div>
+    font-size:11px;color:var(--muted);letter-spacing:1px">1956 — Fahri Arslan · Fındıklı, Derbent köyü · Uzunaloğulları soyundan</div>
 </div>
 
 <!-- KATMAN / LENS seçici -->
@@ -1292,7 +1306,10 @@ function genEtiketGuncelle(){
 }
 
 // görünürlük her değiştiğinde kadrajı tazele (yerleşim korunur — spiral bozulmasın)
-function gorunurlukDegisti(){ fit(); genEtiketGuncelle(); }
+function gorunurlukDegisti(){
+  fit(); genEtiketGuncelle();
+  if(typeof updateStatus==="function") updateStatus();   // sayaç filtreye duyarlı
+}
 
 // ---- yol kartı ----
 function yolKarti(bilgi){
@@ -2441,7 +2458,7 @@ function openInspector(n){
   // giriş telefonu (yalnız admin görür/düzenler — SMS girişi için)
   if(isAdmin){
     const tw=document.createElement("div");
-    tw.innerHTML=`<div class="field"><label>Giriş telefonu (SMS ile giriş için)</label>
+    tw.innerHTML=`<div class="field"><label>Telefon (kayıt için — giriş artık aile şifresiyle)</label>
       <input id="fTel" value="${escapeHtml(n.tel||"")}" placeholder="05xx… — bu kişi bu numarayla giriş yapar"></div>`;
     iBody.appendChild(tw);
     tw.querySelector("#fTel").onchange=e=>{ n.tel=e.target.value.trim()||null; touch(); };
@@ -2751,7 +2768,7 @@ function renderProfileSections(n){
     const inputRow=document.createElement("div"); inputRow.style.cssText="display:flex;gap:6px";
     const inp=document.createElement("input");
     const canWrite = !!sessionToken || isAdmin;
-    inp.placeholder = canWrite ? `${dispName(n.name)} hakkında yaz…` : "Yazmak için telefonla giriş yap";
+    inp.placeholder = canWrite ? `${dispName(n.name)} hakkında yaz…` : "Yazmak için aile şifresiyle giriş yap";
     inp.disabled=!canWrite; inp.maxLength=2000;
     inp.style.cssText="flex:1;font-size:14px;color:var(--text);background:var(--bg2);border:1px solid var(--line2);border-radius:8px;padding:9px 11px;outline:none";
     const snd=document.createElement("button"); snd.textContent="Gönder"; snd.disabled=!canWrite;
@@ -3173,9 +3190,25 @@ function download(name,text){ const b=new Blob([text],{type:"text/plain;charset=
   setTimeout(()=>URL.revokeObjectURL(u),1000); }
 
 // ---- durum / ipucu / toast ----
-function updateStatus(){ document.getElementById("status").innerHTML=
-  `<b>${nodes.length}</b> kişi · <b>${edges.length}</b> bağ`+(dirty?` · <span style="color:var(--ok)">düzenlendi</span>`:"");
-  if(document.getElementById("statsPanel")?.style.display==="block") renderStats(); }
+// Durum çubuğu FİLTREYE DUYARLI: nesil aralığı, kol filtresi ve kademeli
+// açılım neyi gösteriyorsa sayı onu yansıtır. Eskiden hep toplam (244) yazıyor,
+// filtre uygulanınca bile değişmiyordu — yanıltıcıydı.
+function updateStatus(){
+  const el=document.getElementById("status"); if(!el) return;
+  const gorunur = nodes.filter(n=>
+    (typeof nodeVisible!=="function" || nodeVisible(n)) &&
+    (typeof inBranchFilter!=="function" || inBranchFilter(n)));
+  const gid = new Set(gorunur.map(n=>n.id));
+  const bag = edges.filter(e=>gid.has(e.from) && gid.has(e.to)).length;
+  const filtreli = gorunur.length !== nodes.length;
+  const kisi = filtreli
+    ? `<b>${gorunur.length}</b> / ${nodes.length} kişi`
+    : `<b>${nodes.length}</b> kişi`;
+  el.innerHTML = `${kisi} · <b>${bag}</b> bağ`
+    + (filtreli?` · <span style="color:var(--accent)">filtreli</span>`:"")
+    + (dirty?` · <span style="color:var(--ok)">düzenlendi</span>`:"");
+  if(document.getElementById("statsPanel")?.style.display==="block") renderStats();
+}
 updateStatus();
 
 // ---- istatistikler ----
@@ -3338,21 +3371,105 @@ function renderAnalysis(){
   const img=document.getElementById("kokenImg");
   const closeBtn=document.getElementById("kokenClose");
   if(!btn||!screen) return;
-  let zoomed=false;
   function ensureImg(){
     if(img.src) return;
     if(typeof KOKEN_IMG!=="undefined" && KOKEN_IMG){ img.src=KOKEN_IMG; }
   }
   btn.onclick=()=>{ ensureImg(); screen.style.display="flex"; };
   closeBtn.onclick=()=>{ screen.style.display="none"; };
-  img.onclick=()=>{
-    zoomed=!zoomed;
-    img.style.transform = zoomed ? "scale(2.2)" : "scale(1)";
-    img.style.cursor = zoomed ? "zoom-out" : "zoom-in";
-    img.parentElement.style.alignItems = zoomed ? "flex-start" : "center";
-    img.parentElement.style.justifyContent = zoomed ? "flex-start" : "center";
-  };
-  addEventListener("keydown",e=>{ if(e.key==="Escape" && screen.style.display!=="none"){ screen.style.display="none"; } });
+
+  // ---- Görsel görüntüleyici: yakınlaştır / kaydır ----
+  // Eskiden tek tık scale(2.2) yapıyor, kaydırma için ebeveynin scroll'una
+  // bel bağlıyordu — çiziminin ayrıntısını (yaprak isimlerini) incelemek
+  // mümkün değildi. Artık tekerlek, sürükleme, pinch ve düğmeler var.
+  const wrap=document.getElementById("kokenWrap");
+  const zlbl=document.getElementById("kokenZoomLbl");
+  const K_MIN=1, K_MAX=8;
+  let k=1, tx=0, ty=0;                 // ölçek + kaydırma (merkez orijinli, px)
+  function uygula(animasyon){
+    img.style.transition = animasyon ? "transform .22s ease-out" : "none";
+    img.style.transform = `translate(${tx}px,${ty}px) scale(${k})`;
+    img.style.cursor = k>1 ? "grab" : "zoom-in";
+    if(zlbl) zlbl.textContent = "%"+Math.round(k*100);
+  }
+  // Kaydırmayı sınırla: görsel tamamen ekran dışına kaçmasın.
+  function sinirla(){
+    const w=wrap.clientWidth, h=wrap.clientHeight;
+    const iw=img.clientWidth*k, ih=img.clientHeight*k;
+    const maxX=Math.max(0,(iw-w)/2), maxY=Math.max(0,(ih-h)/2);
+    tx=Math.max(-maxX,Math.min(maxX,tx));
+    ty=Math.max(-maxY,Math.min(maxY,ty));
+  }
+  // Bir ekran noktasını sabit tutarak ölçekle (imleç/parmak altındaki yer kaymaz)
+  function olcekle(yeniK, mx, my, animasyon){
+    yeniK=Math.max(K_MIN,Math.min(K_MAX,yeniK));
+    const r=wrap.getBoundingClientRect();
+    const cx=(mx==null? r.width/2 : mx-r.left)-r.width/2;    // merkeze göre
+    const cy=(my==null? r.height/2: my-r.top )-r.height/2;
+    const oran=yeniK/k;
+    tx = cx - (cx - tx)*oran;
+    ty = cy - (cy - ty)*oran;
+    k = yeniK;
+    sinirla(); uygula(animasyon);
+  }
+  function sifirla(){ k=1; tx=0; ty=0; uygula(true); }
+
+  wrap.addEventListener("wheel",e=>{ e.preventDefault();
+    olcekle(k*(e.deltaY>0?0.88:1.14), e.clientX, e.clientY, false);
+  },{passive:false});
+
+  // sürükleme = kaydırma (yalnızca yakınlaştırılmışken anlamlı)
+  let bas=null;
+  wrap.addEventListener("pointerdown",e=>{
+    if(e.target.closest("button")) return;      // kontrol düğmelerine karışma
+    bas={x:e.clientX,y:e.clientY,tx,ty,hareket:0};
+    wrap.setPointerCapture(e.pointerId); img.style.cursor="grabbing";
+  });
+  wrap.addEventListener("pointermove",e=>{
+    if(!bas) return;
+    bas.hareket += Math.abs(e.movementX)+Math.abs(e.movementY);
+    if(k<=1) return;                            // sığdırılmışken kaydırma yok
+    tx=bas.tx+(e.clientX-bas.x); ty=bas.ty+(e.clientY-bas.y);
+    sinirla(); uygula(false);
+  });
+  wrap.addEventListener("pointerup",e=>{
+    const kisaTik = bas && bas.hareket<8;
+    bas=null; img.style.cursor = k>1?"grab":"zoom-in";
+    // kısa dokunuş: sığdırılmışsa o noktadan yakınlaştır, yakınsa sığdır
+    if(kisaTik && !e.target.closest("button")){
+      if(k<=1) olcekle(2.6, e.clientX, e.clientY, true); else sifirla();
+    }
+  });
+
+  // pinch (iki parmak)
+  let pin=null;
+  const uzaklik=t=>Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
+  wrap.addEventListener("touchstart",e=>{ if(e.touches.length===2){ bas=null; pin=uzaklik(e.touches); } },{passive:true});
+  wrap.addEventListener("touchmove",e=>{
+    if(e.touches.length===2 && pin){ e.preventDefault();
+      const d=uzaklik(e.touches);
+      const ortaX=(e.touches[0].clientX+e.touches[1].clientX)/2;
+      const ortaY=(e.touches[0].clientY+e.touches[1].clientY)/2;
+      olcekle(k*(d/pin), ortaX, ortaY, false); pin=d;
+    }
+  },{passive:false});
+  wrap.addEventListener("touchend",()=>{ pin=null; });
+
+  document.getElementById("kokenZin").onclick =()=>olcekle(k*1.4,null,null,true);
+  document.getElementById("kokenZout").onclick=()=>olcekle(k/1.4,null,null,true);
+  document.getElementById("kokenFit").onclick =sifirla;
+
+  // ekran her açıldığında sığdırılmış başla
+  const eskiAc=btn.onclick;
+  btn.onclick=()=>{ eskiAc(); sifirla(); };
+
+  addEventListener("keydown",e=>{
+    if(screen.style.display==="none") return;
+    if(e.key==="Escape"){ screen.style.display="none"; }
+    else if(e.key==="+"||e.key==="=") olcekle(k*1.4,null,null,true);
+    else if(e.key==="-") olcekle(k/1.4,null,null,true);
+    else if(e.key==="0") sifirla();
+  });
 })();
 
 // ============================ LENS SEÇİCİ ============================
@@ -3924,7 +4041,7 @@ async function chatDelete(id, kapsam, container){
     // giriş yoksa yazmayı kilitle
     const canWrite = !!sessionToken || isAdmin;
     input.disabled=!canWrite; send.disabled=!canWrite;
-    input.placeholder = canWrite ? "Mesaj yaz…" : "Yazmak için telefonla giriş yap";
+    input.placeholder = canWrite ? "Mesaj yaz…" : "Yazmak için aile şifresiyle giriş yap";
     poll=setInterval(()=>{ if(pnl.style.display!=="none" && !document.hidden) chatLoad("genel", msgs); }, 15000);
   };
   const close=()=>{ pnl.style.display="none"; if(poll)clearInterval(poll); };
