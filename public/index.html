@@ -789,14 +789,15 @@ function layoutSpiral(){
     "p11":    "Memişişi",     // Memiş (Molla Memiş'in oğlu) — 49 kişi
     "p112":   "Karyağdışi",   // Karyağdı Mehmet (Memiş'in oğlu) — 18 kişi
     "p111":   "Baratişi",     // Barat Ali (Memiş'in oğlu) — 29 kişi
+    // Abdurrahman oğulları Abdurrahman'dan başlar: p12 kolun başıdır.
+    // Alt kollar (Musaşi/Tayişi/Noktaşi) daha derin olduğu için kendi
+    // alt ağaçlarını ondan geri alır; kalan hat (Mehmet Yazıcı, Hamit, Fahri…)
+    // Abdurrahman kolunda kalır.
+    "p12":    "Abdurrahman",  // Abdurrahman (Molla Memiş'in oğlu) — 142 kişi
     "p121":   "Musaşi",       // Musa (Abdurrahman'ın oğlu) — 17 kişi
     "p123":   "Tayişi",       // Mustafa Tahsin (Abdurrahman'ın oğlu) — 12 kişi
     "p12222": "Noktaşi"       // Ömer (Hamit'in oğlu) — 68 kişi
     // Şabanişi sonra eklenecek.
-    // NOT: Abdurrahman (p12) artık kol başı DEĞİL — Noktaşi ondan alınıp
-    // torunu Ömer'e verildi. Bu yüzden Mehmet Yazıcı/Hamit hattında Ömer'in
-    // altına düşmeyen ~45 kişi şu an hiçbir halk-dili kola ait değil.
-    // Onlara ad verilecekse buraya bir baş eklenmeli (ör. "p122": "...").
   };
   // isim bazlı ek tanımlar (varsa) — KOL_TANIMLARI global ile
   const KOL_BASLARI = (typeof KOL_TANIMLARI!=="undefined" && KOL_TANIMLARI) ? KOL_TANIMLARI : {};
