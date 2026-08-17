@@ -565,10 +565,10 @@ function reindex(){
 // ---- radyal nesil-halkası yerleşimi ----
 const RING_GAP=130;              // halkalar arası mesafe (nesil aralığı)
 let MAXDEPTH=1;
-// Nesil halkası yarıçapı. Kalabalık nesiller için layoutRadial içinde
-// büyütülmüş değer kullanılır (RING_R_OVR); yoksa sabit aralık.
-let RING_R_OVR={};
-function ringRadius(d){ return (RING_R_OVR[d]!=null) ? RING_R_OVR[d] : d*RING_GAP; }
+// Nesil halkası yarıçapı — nesiller arası mesafe AYRI bir hesap ve sabit.
+// Açısal sıkışma bunu büyütmekle DEĞİL, halka üzerinde açı kaydırmakla çözülür
+// (layoutRadial içindeki açısal itekleme). Halka mesafesini burada bozmuyoruz.
+function ringRadius(d){ return d*RING_GAP; }
 function layoutRadial(){
   const root=nodes.find(n=>!n._parent); if(!root) return;
   nodes.forEach(n=>{ n._ang=null; });   // her düzende yeniden hesapla
@@ -626,34 +626,42 @@ function layoutRadial(){
       assign(c,ca0,ca1,kk); acc=ca1; });
   })(root,A0,A1,null);
 
-  // ===== HALKA YARIÇAPI: EN DAR KAMADAN HESAPLA =====
-  // Neslin tamamını eşit yaymak yerine (bu ebeveyn-çocuk yakınlığını bozuyordu:
-  // çocuk, ebeveyninin altında değil neslin sırasında rastgele bir yere düşüyordu)
-  // herkes ATASININ kaması içinde kalıyor. Sıkışmayı yarıçapla çözüyoruz:
-  // o nesildeki en dar kama w ise, iki komşu arası yay = w*R. Bu MIN_SEP'in
-  // altına düşerse halkayı büyüt → R >= MIN_SEP/w.
-  // En dar kamayı doğrudan kullanmıyoruz: tek bir patolojik dar kama (çok geniş
-  // kardeşlerin yanındaki tek çocuk) halkayı gereksiz yere şişirirdi. 15. yüzdelik
-  // alınıyor; ondan daha dar kalan birkaç düğümü çakışma çözücü hallediyor.
-  RING_R_OVR={};
-  Object.keys(kamaGen).forEach(dk=>{
-    const d=+dk, liste=kamaGen[d].slice().sort((a,b)=>a-b);
-    const idx=Math.floor(liste.length*0.15);
-    const w=Math.max(0.0005, liste[Math.min(idx, liste.length-1)]);
-    RING_R_OVR[d]=Math.max(d*RING_GAP, MIN_SEP/w);
-  });
-  // halkalar iç içe geçmesin ve dışa doğru monoton büyüsün
-  const dler=Object.keys(RING_R_OVR).map(Number).sort((a,b)=>a-b);
-  for(let i=1;i<dler.length;i++){
-    const onc=RING_R_OVR[dler[i-1]], sim=RING_R_OVR[dler[i]];
-    if(sim < onc + RING_GAP*0.6) RING_R_OVR[dler[i]] = onc + RING_GAP*0.6;
-  }
-  // Yarıçaplar değişti; konumları yeni yarıçapla bir kez daha yaz
-  // (açılar aynı kalır — ebeveyn-çocuk hizası korunur).
-  nodes.forEach(n=>{
-    if(n===root || n._ang==null) return;
-    const r=ringRadius(n._depth||1);
-    n.x=Math.cos(n._ang)*r; n.y=Math.sin(n._ang)*r;
+  // ===== HALKA ÜZERİNDE AÇISAL İTEKLEME =====
+  // Halka yarıçapları DEĞİŞTİRİLMEZ (nesiller arası mesafe ayrı bir hesap).
+  // Sıkışma, aynı nesil içinde açı kaydırarak çözülür.
+  //
+  // Neden yarıçapı büyütmüyoruz: gerek yok. 8. nesilde yarıçap 1040, çevre
+  // ~6530 birim; 42 birimlik aralıkla 155 kişi sığar, orada ~60 kişi var.
+  // Yer bol; sorun kamaların adaletsiz bölüşülmesiydi.
+  //
+  // Algoritma: her halkada düğümleri açıya göre sırala, ardından soldan sağa ve
+  // sağdan sola geçişlerle minimum açısal boşluğu zorla. Bu, SIRAYI bozmadan
+  // en az kaydırmayla çakışmayı giderir — herkes ebeveyninin altına yakın kalır.
+  const halka={};
+  nodes.forEach(n=>{ if(n!==root && n._ang!=null){ const d=n._depth||1;
+    (halka[d]=halka[d]||[]).push(n); } });
+  Object.keys(halka).forEach(dk=>{
+    const d=+dk, liste=halka[d];
+    const R=ringRadius(d); if(!(R>0)) return;
+    const dMin=MIN_SEP/R;                       // gereken minimum AÇI farkı
+    if(liste.length*dMin >= Math.PI*2){
+      // Bu halkaya sabit yarıçapta sığmıyor: eşit yaymaktan başka seçenek yok.
+      // (Bu ağaçta oluşmuyor; güvenlik dalı.)
+      liste.sort((a,b)=>a._ang-b._ang);
+      liste.forEach((nd,i)=>{ nd._ang = (i/liste.length)*Math.PI*2; });
+    } else {
+      liste.sort((a,b)=>a._ang-b._ang);
+      const a=liste.map(n=>n._ang);
+      for(let tur=0; tur<4; tur++){
+        for(let i=1;i<a.length;i++) if(a[i]-a[i-1]<dMin) a[i]=a[i-1]+dMin;
+        for(let i=a.length-2;i>=0;i--) if(a[i+1]-a[i]<dMin) a[i]=a[i+1]-dMin;
+      }
+      // toplam kaydırmayı ortala (halka bir yöne kaymasın)
+      let kay=0; for(let i=0;i<a.length;i++) kay += a[i]-liste[i]._ang;
+      kay /= (a.length||1);
+      liste.forEach((nd,i)=>{ nd._ang = a[i]-kay; });
+    }
+    liste.forEach(nd=>{ nd.x=Math.cos(nd._ang)*R; nd.y=Math.sin(nd._ang)*R; });
   });
   // kök merkeze
   root.x=0; root.y=0; root._ang=-Math.PI/2;
