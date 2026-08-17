@@ -3611,27 +3611,47 @@ const KOMUTLAR=[
   { ad:"kisi",   desen:/.*/,   // en genel: isim araması
     calistir:(m,metin)=>{
       const temiz=metin.replace(/['’]?[ıiu]?\s*(göster|getir|bul|aç|nerede|kim)\b/gi,"").trim();
-      const k=rehberKisiBul(temiz||metin);
-      if(!k) return `“${(temiz||metin).trim()}” için kimseyi bulamadım.`;
+      const liste=rehberKisiAra(temiz||metin);
+      if(!liste.length) return `“${(temiz||metin).trim()}” için kimseyi bulamadım.`;
+      const k=liste[0];
       selectNode(k); if(typeof merkezeAl==="function") merkezeAl(k);
+      const kim=(typeof kimlikSatiri==="function") ? kimlikSatiri(k) : "";
       const ek=(typeof esCocukCumlesi==="function") ? esCocukCumlesi(k) : "";
-      return `${dispName(k.name)} getirildi — ${chainOf(k).length-1}. nesil${ek?" · "+ek:""}.`;
+      let c=`${kim?kim+" ":""}${dispName(k.name)} getirildi — ${chainOf(k).length-1}. nesil${ek?" · "+ek:""}.`;
+      // Adaş varsa sessizce seçme; hangilerinin olduğunu söyle (37 tekrarlı ad var)
+      if(liste.length>1){
+        const digerleri=liste.slice(1,4).map(n=>{
+          const s=(typeof kimlikSatiri==="function")?kimlikSatiri(n):"";
+          return `${s?s+" ":""}${dispName(n.name)} (${chainOf(n).length-1}. nesil)`;
+        }).join(", ");
+        c+=` Bu adda ${liste.length} kişi var; diğerleri: ${digerleri}${liste.length>4?"…":""}.`;
+      }
+      return c;
     } },
 ];
 
-// İsimden kişi bul: tam eşleşme > baştan eşleşme > içinde geçen. Adaş varsa
-// nesli en küçük olanı (en eski) seçilir; kullanıcı arama kutusundan daraltabilir.
-function rehberKisiBul(ad){
+// İsimden kişi(ler) bul: tam eşleşme > baştan eşleşme > içinde geçen.
+// TÜM eşleşmeleri döndürür; adaş seçimini çağıran yapar (bu ağaçta 37 tekrarlı
+// ad var, sessizce birini seçmek yanlış kişiyi getiriyordu).
+function rehberKisiAra(ad){
   const q=String(ad||"").toLocaleLowerCase("tr").replace(/[’']/g,"").trim();
-  if(q.length<2 || !nodes.length) return null;
+  if(q.length<2 || !nodes.length) return [];
   const norm=n=>dispName(n.name).toLocaleLowerCase("tr");
   const tam=nodes.filter(n=>norm(n)===q);
   const bas=nodes.filter(n=>norm(n).startsWith(q));
   const ic =nodes.filter(n=>norm(n).includes(q));
   const liste=(tam.length?tam:(bas.length?bas:ic));
-  if(!liste.length) return null;
-  return liste.sort((a,b)=>(a._depth||0)-(b._depth||0))[0];
+  // Sıralama: bakan kişinin kendisi > yaşayan > soyu kalabalık olan.
+  // "En eski nesil" kuralı kullanılmıyordu: "Yüksel" aramasında 6. nesildeki
+  // adaşı getiriyor, kullanıcının kendisini (7. nesil) atlıyordu.
+  const soySayi=n=>{ let t=0; (function w(x){ (x._kids||[]).forEach(c=>{t++;w(c);}); })(n); return t; };
+  return liste.slice().sort((a,b)=>
+       (b.id===viewerId)-(a.id===viewerId)
+    || (a.alive===false)-(b.alive===false)
+    || soySayi(b)-soySayi(a));
 }
+// Tek kişi gerekiyorsa ilk sıradakini ver (geriye uyum).
+function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
 
 (function bindRehber(){
   const el=id=>document.getElementById(id);
