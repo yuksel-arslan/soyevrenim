@@ -158,8 +158,27 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 
   /* istatistik/hover kartları taşmasın */
   #statsPanel{left:12px !important;right:12px;top:64px !important;width:auto !important;max-width:none}
-  /* sağ üst seçili kişi kartı: üstte tam genişlik */
-  #activeCard{right:12px !important;left:12px;top:calc(env(safe-area-inset-top,0) + 60px) !important;width:auto !important}
+  /* Seçili kişi kartı — mobilde KOMPAKT.
+     Eskiden left:12px+right:12px ile üstte tam genişlik bir bant kaplıyordu
+     (~110px). Koni yukarı doğru açıldığı için tam o bant ağacın üst nesillerini
+     kapatıyordu. Artık sağa yapışık tek satır (~46px): solda durum çubuğuna,
+     altta dock'a değmiyor. Ok (⌄) ile detay açılır. */
+  #activeCard{right:10px !important;left:auto !important;
+    top:calc(env(safe-area-inset-top,0) + 52px) !important;
+    width:auto !important;max-width:62vw;padding:8px 26px 8px 10px !important;
+    border-radius:12px;position:fixed}
+  #activeCard #acPhoto{width:34px !important;height:34px !important;border-width:1.5px !important}
+  #activeCard #acPhoto span{font-size:15px !important}
+  #activeCard #acName{font-size:13px !important}
+  #activeCard #acMeta{font-size:10px !important;margin-top:1px !important}
+  /* kapalıyken: sadece foto + isim + nesil. açıkken detay ve ipucu görünür */
+  #activeCard #acInfo{display:none !important}
+  #activeCard #acFoot{display:none !important}
+  #activeCard.acOpen{max-width:78vw;padding-bottom:12px !important}
+  #activeCard.acOpen #acInfo{display:block !important;font-size:11px;margin-top:8px !important}
+  #activeCard.acOpen #acFoot{display:block !important;margin-top:8px !important}
+  #activeCard #acToggle{display:block !important}
+  #activeCard.acOpen #acToggle{transform:rotate(180deg)}
   /* lens paneli ve göstergesi mobilde */
   #lensPanel{left:12px !important;right:12px;top:auto !important;bottom:calc(env(safe-area-inset-bottom,0) + 74px);width:auto !important}
   #lensLegend{left:12px !important;right:auto;bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;font-size:11px;max-width:60vw}
@@ -299,7 +318,10 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
     </div>
   </div>
   <div id="acInfo" style="font-size:12px;color:var(--text-soft);margin-top:11px;line-height:1.6;display:none"></div>
-  <div style="font-size:10px;color:var(--muted);margin-top:11px;font-family:'IBM Plex Mono',monospace">düzenlemek için tekrar dokun</div>
+  <div id="acFoot" style="font-size:10px;color:var(--muted);margin-top:11px;font-family:'IBM Plex Mono',monospace">düzenlemek için tekrar dokun</div>
+  <!-- mobilde kart kompakt duruyor; bu ok detayları açar/kapatır -->
+  <div id="acToggle" style="display:none;position:absolute;right:8px;bottom:4px;
+    font-size:11px;color:var(--muted);cursor:pointer;padding:2px 6px;line-height:1">⌄</div>
 </div>
 
 <!-- KÖKEN / MİRAS — babanın 1956 çizimi -->
@@ -1869,7 +1891,18 @@ function showActiveCard(n){
   if(lines.length){ acInfo.innerHTML=lines.map(escapeHtml).join(" · "); acInfo.style.display="block"; }
   else acInfo.style.display="none";
   card.style.display="block";
+  // Mobilde kart her yeni seçimde kapalı başlar (ağacı kapatmasın).
+  card.classList.remove("acOpen");
 }
+// mobil kompakt kartın aç/kapa oku
+(function acToggleKur(){
+  const t=document.getElementById("acToggle"), card=document.getElementById("activeCard");
+  if(!t||!card) return;
+  t.addEventListener("click",e=>{
+    e.stopPropagation();          // kartın kendi tıklamasına karışmasın
+    card.classList.toggle("acOpen");
+  });
+})();
 // çift tık: düzenleme panelini aç
 function openPanel(n){
   activeNode=n; highlightFor(n); selNode=n; openInspector(n);
