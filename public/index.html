@@ -1401,6 +1401,21 @@ const WORK_COLORS = {
 };
 function getVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 function dispName(s){return String(s).replace("★","").replace(/\s*\d+$/,"").trim();}
+// Adaşları ayırt etmek için kimlik satırı. Bu ağaçta 37 tam ad tekrarlıyor
+// (Fatma x11, Osman x9, Ayşe x8…), iki Yüksel var; aramada nesil numarası tek
+// başına ayırt etmeye yetmiyordu.
+// Biçim: soy kayıtlarının klasik dili — "Fahri oğlu", "Bedriye kızı".
+// Tamlama eki (Fahri'nin/Hasan'ın) yerine bu seçildi: Türkçe ek uyumu hatasına
+// yer bırakmıyor ve ebeveyn erkek de kadın da olsa doğru okunuyor.
+function kimlikSatiri(n){
+  if(!n) return "";
+  const eb=n._parent;
+  if(eb) return `${dispName(eb.name)} ${n.sex==="K"?"kızı":"oğlu"}`;
+  const es=(n.spouse&&n.spouse.length)
+    ? dispName(String(n.spouse[0]).replace(" (aileden)","")) : null;
+  if(es) return `${es} eşi`;
+  return "kök";
+}
 // ağacın adını taşıyan kurucu atalar — her zaman iri
 const FOUNDERS={ "p1":20, "p12":16 };  // Molla Memiş (kök), Abdurrahman
 // Zoom'a göre düğüm ölçeği — yakınlaştıkça büyür, uzaklaştıkça küçülür.
@@ -2917,7 +2932,7 @@ const norm=s=>s.toLocaleLowerCase("tr").replace(/\d+$/,"").trim();
 q.addEventListener("input",()=>{ const v=norm(q.value); if(v.length<2){res.classList.remove("show");return;}
   const hits=nodes.filter(n=>norm(n.name).includes(v)).slice(0,40);
   res.innerHTML=hits.length?hits.map(n=>`<div class="r" data-id="${n.id}">${dispName(n.name)}
-    <small>${chainOf(n).length-1}. nesil</small></div>`).join("")
+    <small>${kimlikSatiri(n)} · ${chainOf(n).length-1}. nesil</small></div>`).join("")
     :`<div class="r" style="color:var(--muted)">bulunamadı</div>`;
   res.classList.add("show");
   res.querySelectorAll(".r[data-id]").forEach(r=>r.onclick=()=>{const n=byId[r.dataset.id];
@@ -3286,7 +3301,7 @@ whoInput.addEventListener("input",()=>{
     const gen=(function(){let c=[],x=n;while(x){c.push(x);x=x._parent;}return c.length-1;})();
     return `<div class="whoR" data-id="${n.id}" style="padding:10px 14px;cursor:pointer;
       border-bottom:1px solid #26324a;font-size:14px;color:#e6edf6;display:flex;justify-content:space-between">
-      <span>${dispName(n.name)}</span><small style="color:#5f6f88">${gen}. nesil</small></div>`;
+      <span>${dispName(n.name)}</span><small style="color:#5f6f88;text-align:right">${kimlikSatiri(n)}<br>${gen}. nesil</small></div>`;
   }).join(""):`<div style="padding:10px 14px;color:#5f6f88;font-size:13px">yaşayan biri bulunamadı</div>`;
   whoResults.style.display="block";
   whoResults.querySelectorAll(".whoR[data-id]").forEach(r=>{
