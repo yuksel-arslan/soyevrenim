@@ -3615,6 +3615,25 @@ const KOMUTLAR=[
       if(typeof updateStatus==="function") updateStatus();
       return "Bütün filtreleri kaldırdım.";
     } },
+  { ad:"kollar", desen:/^\s*(kollar|kolları|kollarımız|damarlar)\b/i,
+    calistir:()=>{
+      const adlar=kolListesi().map(k=>`${k.isim} (${k.sayi})`);
+      return adlar.length ? `Kollar: ${adlar.join(" · ")}. Birini söyle, o kolu öne çıkarayım.`
+                          : "Kol tanımı bulunamadı.";
+    } },
+  // KOL FİLTRESİ — "Aslanişi", "Musaşi kolunu göster" gibi. Kişi aramasından
+  // ÖNCE denenir; metin kol adı değilse null döndürüp sıradaki komuta bırakır.
+  // (Eksikti: "Aslanişi" doğrudan kişi aramasına düşüyor ve bulunamıyordu.)
+  { ad:"kol",    desen:/.*/,
+    calistir:(m,metin)=>{
+      const k=kolBul(metin);
+      if(!k) return null;                       // kol değil → sıradaki komut
+      if(typeof branchFilter!=="undefined") branchFilter=k.hid;
+      if(typeof updateStatus==="function") updateStatus();
+      // lens panelindeki seçim vurgusu da güncellensin (panel açıksa)
+      document.querySelector(`.brOpt[data-branch="${k.hid}"]`)?.click();
+      return `${k.isim} kolu öne çıkarıldı — ${k.sayi} kişi. Hepsini geri getirmek için “tümünü göster”.`;
+    } },
   { ad:"kisi",   desen:/.*/,   // en genel: isim araması
     calistir:(m,metin)=>{
       const temiz=metin.replace(/['’]?[ıiu]?\s*(göster|getir|bul|aç|nerede|kim)\b/gi,"").trim();
@@ -3637,6 +3656,59 @@ const KOMUTLAR=[
     } },
 ];
 
+// Levenshtein uzaklığı — ses kaynaklı yazım hatalarına tolerans için.
+// (Tek yerde tanımlı; hem kişi hem kol aramasında kullanılıyor.)
+function harfMesafe(a,b){
+  const m=a.length,n=b.length;
+  if(!m||!n) return Math.max(m,n);
+  let onc=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){
+    const cur=[i];
+    for(let j=1;j<=n;j++) cur[j]=Math.min(onc[j]+1, cur[j-1]+1, onc[j-1]+(a[i-1]===b[j-1]?0:1));
+    onc=cur;
+  }
+  return onc[n];
+}
+
+// Tanımlı kollar: {hid, isim, sayi}. SPIRAL_NAME'den okunur, yani KOL_BASLARI_ID'ye
+// yeni kol eklenince rehber komutu kendiliğinden çalışır.
+function kolListesi(){
+  return Object.keys(SPIRAL_NAME||{}).map(hid=>({
+    hid, isim:SPIRAL_NAME[hid],
+    sayi:nodes.filter(n=>SPIRAL_ANCESTORS[n.id] && SPIRAL_ANCESTORS[n.id].has(hid)).length
+  })).filter(k=>k.isim).sort((a,b)=>b.sayi-a.sayi);
+}
+
+// Metin bir kol adı mı? "Aslanişi", "musaşi kolunu göster", "Memiş Oğulları"…
+// Ses bozulmalarına tolerans: "aslan işi", "musa şi", "karyağdışi" gibi.
+function kolBul(metin){
+  const kollar=kolListesi(); if(!kollar.length) return null;
+  const q=String(metin||"").toLocaleLowerCase("tr")
+    .replace(/[’']/g,"")
+    .replace(/\b(kol|kolu|kolunu|kolunda|göster|getir|aç|bul|filtrele)\b/g,"")
+    .replace(/\s+/g," ").trim();
+  if(q.length<3) return null;
+  const sad=s=>s.toLocaleLowerCase("tr").replace(/\s+/g,"");   // "Memiş Oğulları"→"memişoğulları"
+  const qs=sad(q);
+  // 1) tam / içinde geçen
+  for(const k of kollar){ const ks=sad(k.isim);
+    if(qs===ks || qs.includes(ks) || ks.includes(qs)) return k; }
+  // 2) parantezli halk adı da ayrıca denenir: "Memiş Oğulları (Memişişi)" → "memişişi"
+  for(const k of kollar){
+    const par=(k.isim.match(/\(([^)]+)\)/)||[])[1];
+    if(par){ const ps=sad(par); if(qs===ps || qs.includes(ps) || ps.includes(qs)) return k; }
+  }
+  // 3) ses toleransı: yakın yazım (eşik ~ %30, kol adları uzun olduğu için)
+  const esik=Math.max(2, Math.floor(qs.length*0.3));
+  let en=null, enD=Infinity;
+  for(const k of kollar){
+    const adaylar=[sad(k.isim)];
+    const par=(k.isim.match(/\(([^)]+)\)/)||[])[1]; if(par) adaylar.push(sad(par));
+    for(const c of adaylar){ const d=harfMesafe(qs,c); if(d<enD){ enD=d; en=k; } }
+  }
+  return (enD<=esik) ? en : null;
+}
+
 // İsimden kişi(ler) bul: tam eşleşme > baştan eşleşme > içinde geçen.
 // TÜM eşleşmeleri döndürür; adaş seçimini çağıran yapar (bu ağaçta 37 tekrarlı
 // ad var, sessizce birini seçmek yanlış kişiyi getiriyordu).
@@ -3653,23 +3725,10 @@ function rehberKisiAra(ad){
   // bırakıyordu; LLM yok, o yüzden yerel düzenleme-uzaklığı ile çözülüyor.
   // Yalnızca son çare: tam/baştan/içinde eşleşme varsa buraya hiç girilmiyor.
   if(!liste.length){
-    const mesafe=(a,b)=>{               // Levenshtein (küçük dizgiler, ucuz)
-      const m=a.length,n=b.length;
-      if(!m||!n) return Math.max(m,n);
-      let onc=Array.from({length:n+1},(_,j)=>j);
-      for(let i=1;i<=m;i++){
-        const cur=[i];
-        for(let j=1;j<=n;j++){
-          cur[j]=Math.min(onc[j]+1, cur[j-1]+1, onc[j-1]+(a[i-1]===b[j-1]?0:1));
-        }
-        onc=cur;
-      }
-      return onc[n];
-    };
     // eşik: kelime uzunluğunun ~%35'i (kısa adlarda 1, uzunlarda 2-3 harf hata)
     const esik=Math.max(1, Math.floor(q.length*0.35));
     const adaylar=nodes
-      .map(n=>({n, d:Math.min(...dispName(n.name).toLocaleLowerCase("tr").split(/\s+/).map(p=>mesafe(q,p)))}))
+      .map(n=>({n, d:Math.min(...dispName(n.name).toLocaleLowerCase("tr").split(/\s+/).map(p=>harfMesafe(q,p)))}))
       .filter(x=>x.d<=esik)
       .sort((a,b)=>a.d-b.d);
     liste=adaylar.map(x=>x.n);
@@ -3695,6 +3754,8 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   const ORNEKLER=[
     "Yüksel'i göster",
     "Emine ile Fahri nasıl akraba?",
+    "Aslanişi kolunu göster",
+    "Kollar neler?",
     "Yaşayanları göster",
     "İstatistikleri aç",
     "Kökenimizi göster",
@@ -3715,11 +3776,17 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   function calistirKomut(metin){
     const t=String(metin||"").trim();
     if(!t) return;
+    // Bir komut null döndürürse "ben bakmadım" demektir → sıradakine geçilir.
+    // (Kol komutu böyle çalışıyor: metin kol adı değilse kişi aramasına düşsün.)
     for(const k of KOMUTLAR){
       const m=t.match(k.desen);
-      if(m){ try{ yaz(k.calistir(m,t)||"Tamam."); }catch(e){ yaz("Bunu yapamadım."); } return; }
+      if(!m) continue;
+      let c=null;
+      try{ c=k.calistir(m,t); }catch(e){ yaz("Bunu yapamadım."); return; }
+      if(c){ yaz(c); return; }
     }
-    yaz("Anlayamadım. Örneklerden birine dokunabilirsin.");
+    yaz("Anlayamadım. Bir isim söyleyebilirsin (“Yüksel”), bir kol (“Aslanişi”), "+
+        "ya da “yaşayanları göster”, “3-6 nesil”, “kökenimizi göster” diyebilirsin.");
   }
 
   function ac(ilkZiyaret){
