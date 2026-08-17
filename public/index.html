@@ -1569,6 +1569,10 @@ function setViewer(id){
 let isAdmin=false;
 // SMS ile doğrulanmış oturum
 let sessionToken=null, sessionKisiId=null, sessionRol=null;
+// Düzenleyenin kimliği. sessionKisiId SMS döneminden kalma (giriş bir kişiyi
+// doğruluyordu) ve aile şifresi sisteminde hiç atanmıyor; o yüzden karşılama
+// ekranında seçilen kişiye (viewerId) düşülür.
+function kimlikId(){ return sessionKisiId || viewerId || null; }
 try{ const s=JSON.parse(localStorage.getItem("kok_session")||"null");
   if(s){ sessionToken=s.jeton||s.token||null; sessionRol=s.rol||null; if(sessionRol==="admin"){ isAdmin=true; window.__adminRol="admin"; } } }catch(e){}
 function relativesOf(id){
@@ -1630,7 +1634,15 @@ function isBranchAdmin(id){
 function canEdit(n){
   if(isAdmin) return true;
   if(!n) return false;
-  const editorId = CLOUD.on ? sessionKisiId : viewerId;
+  // sessionKisiId SMS döneminden kalma: giriş bir kişiyi doğruluyordu. Aile
+  // şifresi sisteminde kişi kimliği yok, bu yüzden hiç atanmıyor ve bulut
+  // açıkken editorId her zaman null kalıyordu → aile üyeleri hiçbir şeyi
+  // düzenleyemiyordu (karşılama ekranının vaadinin tersi).
+  // Kimlik olarak karşılama ekranında seçilen kişiyi (viewerId) kullanıyoruz.
+  // Güvenlik dengesi: aile şifresi zaten paylaşılan bir sır ve aile üyesinin
+  // hiçbir değişikliği doğrudan ağaca yazılmıyor — "Onaya gönder" ile öneriye
+  // dönüşüp yönetici onayından geçiyor.
+  const editorId = kimlikId();
   if(!editorId) return false;
   // 1) doğrudan yakınları
   if(relativesOf(editorId).has(n.id)) return true;
@@ -2578,7 +2590,15 @@ function applyEditPermission(n){
     banner.style.cssText="font-size:12px;padding:8px 11px;border-radius:8px;margin-bottom:12px;text-align:center";
     iBody.insertBefore(banner, iBody.firstChild);
   }
-  const editorId = CLOUD.on ? sessionKisiId : viewerId;
+  // sessionKisiId SMS döneminden kalma: giriş bir kişiyi doğruluyordu. Aile
+  // şifresi sisteminde kişi kimliği yok, bu yüzden hiç atanmıyor ve bulut
+  // açıkken editorId her zaman null kalıyordu → aile üyeleri hiçbir şeyi
+  // düzenleyemiyordu (karşılama ekranının vaadinin tersi).
+  // Kimlik olarak karşılama ekranında seçilen kişiyi (viewerId) kullanıyoruz.
+  // Güvenlik dengesi: aile şifresi zaten paylaşılan bir sır ve aile üyesinin
+  // hiçbir değişikliği doğrudan ağaca yazılmıyor — "Onaya gönder" ile öneriye
+  // dönüşüp yönetici onayından geçiyor.
+  const editorId = kimlikId();
   const viaBranch = !isAdmin && editable && editorId && isBranchAdmin(editorId)
     && branchOf(editorId).has(n.id) && !relativesOf(editorId).has(n.id);
   if(isAdmin){
@@ -3646,7 +3666,8 @@ async function sendForApproval(){
   const btn=document.getElementById("sendApprovalBtn");
   if(btn){ btn.disabled=true; btn.textContent="Gönderiliyor…"; }
   try{
-    const kim = sessionKisiId ? dispName((byId[sessionKisiId]||{}).name||"") : "";
+    const kk = kimlikId();
+  const kim = kk ? dispName((byId[kk]||{}).name||"") : "";
     const r=await fetch("/api/oneri?adim=gonder",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({ veri: currentGraphJSON(), jeton: sessionToken||"", gonderen_ad: kim })});
     const j=await r.json();
@@ -3838,7 +3859,7 @@ function renderChat(msgs, container, kapsam){
     Henüz mesaj yok — ilk yazan sen ol.</div>`; return; }
   container.innerHTML="";
   msgs.forEach(m=>{
-    const mine = m.yazan_id===sessionKisiId;
+    const mine = m.yazan_id===kimlikId();
     const wrap=document.createElement("div");
     wrap.style.cssText=`display:flex;flex-direction:column;gap:2px;max-width:85%;
       ${mine?"align-self:flex-end;align-items:flex-end":"align-self:flex-start"}`;
@@ -3865,10 +3886,18 @@ function renderChat(msgs, container, kapsam){
 }
 async function chatSend(kapsam, input, container){
   const mesaj=input.value.trim(); if(!mesaj) return;
-  if(!sessionKisiId && !isAdmin){ toast("Yazmak için telefonla giriş yap"); return; }
+  // Sohbete yazmak için geçerli bir oturum jetonu yeterli (aile şifresi ya da
+  // yönetici). Eskiden sessionKisiId aranıyordu; o hiç atanmadığı için aile
+  // üyeleri yazamıyordu ve mesaj "telefonla giriş yap" diyordu (SMS kalıntısı).
+  if(!sessionToken && !isAdmin){ toast("Yazmak için aile şifresiyle giriş yap"); return; }
   input.value="";
   try{
-    const ad = sessionKisiId ? dispName((byId[sessionKisiId]||{}).name||"") : "Yönetici";
+    // Yazarın adı: seçilen kişi varsa onun adı. Yoksa role göre —
+  // eskiden herkese "Yönetici" yazıyordu, aile üyesinin mesajı da yönetici
+  // görünüyordu.
+  const kid = kimlikId();
+  const ad = kid ? dispName((byId[kid]||{}).name||"")
+                 : (isAdmin ? "Yönetici" : "Aile üyesi");
     const r=await fetch("/api/sohbet?adim=yaz",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({kapsam, mesaj, jeton:sessionToken||"", yazan_ad:ad})});
     const j=await r.json();
