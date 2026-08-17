@@ -16,6 +16,8 @@
   --dead:#8b97ab; --edge:#42597a; --edge-lit:#ffc94a; --marriage:#e08aef;
   --accent:#3dd6ec; --danger:#ff6a5e; --ok:#4ade80;
   --shadow:rgba(0,0,0,.45);
+  /* düğüm konturu / vefat iç halkası — temaya göre değişir */
+  --node-edge:rgba(255,255,255,.28); --node-inner:rgba(255,255,255,.35);
 }
 /* GÜNDÜZ (light) modu */
 :root[data-theme="light"]{
@@ -26,6 +28,7 @@
   --dead:#9aa4b4; --edge:#c4cddb; --edge-lit:#c99a1e; --marriage:#a765b0;
   --accent:#2596a8; --danger:#c8483e; --ok:#3a9a5a;
   --shadow:rgba(30,50,90,.15);
+  --node-edge:rgba(20,32,54,.42); --node-inner:rgba(20,32,54,.30);
 }
 /* ============ YADİGÂR — 1956 çizimine uygun tema ============
    Fahri Arslan'ın el çiziminin dilini ekrana taşır: yaşlanmış kağıt, elle
@@ -40,10 +43,13 @@
   --text:#2f2c26; --text-soft:#5d5749; --muted:#8a8271;
   /* düğüm renkleri: çizimdeki yıkanmış yaprak dolguları */
   --male:#7f96a8; --female:#b98a92; --spine:#a8863a; --you:#9c5a33;
-  --dead:#a49b88; --edge:#a89a7c; --edge-lit:#a8863a; --marriage:#8f7fa0;
+  --dead:#9a9080; --edge:#8a7c62; --edge-lit:#9a7526; --marriage:#7f6f92;
   /* başlıktaki slate mavi-grisi mürekkep */
-  --accent:#5a6472; --danger:#9c4a3c; --ok:#6b8a52;
+  --accent:#4d5766; --danger:#9c4a3c; --ok:#5f7d48;
   --shadow:rgba(80,62,36,.28);
+  /* Çizimdeki yapraklar gibi: açık dolgu + KOYU mürekkep kontur.
+     Kağıt üzerinde düğümü okunur kılan asıl unsur bu. */
+  --node-edge:rgba(47,44,38,.62); --node-inner:rgba(47,44,38,.42);
 }
 /* Kağıt dokusu: iki katman ince gren + kenarda hafif vinyet.
    Görsel/dosya eklemeden, sadece gradyanlarla — CSP ve boyut dostu. */
@@ -51,11 +57,12 @@
    arayüzün ALTINDA (dock/durum 9, üst bar 10) → "kağıt üzerinde / cam altında" hissi */
 :root[data-theme="yadigar"] body::before{
   content:"";position:fixed;inset:0;z-index:2;pointer-events:none;
+  /* Ağacı boğmayacak kadar hafif: doku hissi versin, kontrastı yemesin. */
   background:
-    radial-gradient(ellipse at 50% 40%, rgba(255,250,235,.35), transparent 60%),
-    radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(96,74,44,.16) 100%),
-    repeating-linear-gradient(37deg, rgba(120,96,58,.030) 0 2px, transparent 2px 5px),
-    repeating-linear-gradient(-51deg, rgba(120,96,58,.022) 0 3px, transparent 3px 7px);
+    radial-gradient(ellipse at 50% 40%, rgba(255,250,235,.18), transparent 62%),
+    radial-gradient(ellipse at 50% 50%, transparent 60%, rgba(96,74,44,.10) 100%),
+    repeating-linear-gradient(37deg, rgba(120,96,58,.020) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(-51deg, rgba(120,96,58,.014) 0 3px, transparent 3px 7px);
 }
 /* Çizimdeki çift çizgili çerçeve */
 :root[data-theme="yadigar"] body::after{
@@ -1809,12 +1816,15 @@ function draw(){
       ctx.fillStyle=col; ctx.globalAlpha=dimAlpha; ctx.fill();
       ctx.restore();
       ctx.globalAlpha=1;
-      // ince açık kenar (koyu yerine — daha canlı)
-      ctx.lineWidth=sel?2.5:1; ctx.strokeStyle=sel?getVar("--accent"):"rgba(255,255,255,.28)"; 
+      // Düğüm konturu tema değişkeninden gelir. Eskiden rgba(255,255,255,.28)
+      // sabit kodluydu: karanlık temada iyi, açık/kağıt temada görünmezdi.
+      // Yadigâr temasında koyu mürekkep kontur — özgün çizimdeki yapraklar da
+      // açık dolgu + koyu konturdan oluşuyor.
+      ctx.lineWidth=sel?2.5:1; ctx.strokeStyle=sel?getVar("--accent"):getVar("--node-edge");
       ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283); ctx.stroke();
       // vefat: ince iç halka (içi boşaltma yok — dolu kalsın, net görünsün)
       if(n.alive===false){ ctx.beginPath(); ctx.arc(p.x,p.y,r*0.45,0,6.283);
-        ctx.lineWidth=1; ctx.strokeStyle="rgba(255,255,255,.35)"; ctx.stroke(); }
+        ctx.lineWidth=1; ctx.strokeStyle=getVar("--node-inner"); ctx.stroke(); }
     }
     // etiket
     const isFounder=!!FOUNDERS[n.id];
