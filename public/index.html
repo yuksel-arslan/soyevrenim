@@ -310,7 +310,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   <button id="physBtn" class="on" title="Fizik aç/kapa"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><ellipse cx="12" cy="12" rx="10" ry="4.4"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(120 12 12)"/></svg></button>
   <button id="reparentBtn" title="Ebeveyn bağı değiştir"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
   <div class="sep"></div>
-  <button id="duzBtn" title="2B / 3B görünüm"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></button>
+  <button id="duzBtn" title="Düzlem / Koni görünümü"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9.5" ry="4"/><ellipse cx="12" cy="12" rx="4.5" ry="1.9"/><circle cx="12" cy="12" r="1"/></svg></button>
   <button id="kafesBtn" class="on" title="Koni yüzeyi (tel örgü) aç/kapa"><svg viewBox="0 0 24 24"><path d="M12 3l8 15H4z"/><path d="M7.4 12h9.2M9.7 7.5h4.6"/><path d="M12 3v15"/></svg></button>
   <button id="pathBtn" title="Yol bul — iki kişi arasındaki akrabalık"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v4a3 3 0 0 0 3 3h3a3 3 0 0 1 3 3"/></svg></button>
   <button id="focusBtn" title="Odak modu — seçilenin yakınları"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
@@ -1037,17 +1037,12 @@ const CONE_H=155;              // nesiller arası dikey mesafe (yükseklik) — 
 // dünya (x,y) + yükseklik(h) → ekran + derinlik. h yukarı taşır (koni).
 function project(wx, wy, h){
   h = h||0;
-  // 2B (düz) mod: perspektif ve eğim yok, yükseklik yok — tepeden bakılan
-  // düz nesil halkaları. Koniyi sevmeyen için sade seçenek.
-  // coneMode=false tek başına yetmiyordu: yükseklik sıfırlanıyor ama disk
-  // hâlâ TILT ile eziliyor ve perspektifle küçülüyordu, yani yine 3B duruyordu.
-  if(duzMod){
-    const c=Math.cos(yaw), s=Math.sin(yaw);
-    const rx = wx*c - wy*s, ry = wx*s + wy*c;
-    return { x: rx*scale + ox + innerWidth/2,
-             y: ry*scale + oy + innerHeight/2,
-             z: 0, k: 1 };
-  }
+  // NOT: 2B modu perspektifi/eğimi KAPATMAZ. Bir denemede tamamen düz
+  // (tepeden dik bakış) yapılmıştı; teknik çizim gibi duruyor ve istenen his
+  // kayboluyordu. İstenen görünüm: nesil yüksekliği olmayan ama eğimli ve
+  // perspektifli disk — "yukarıdan güneş sistemine bakmak" gibi.
+  // Bu yüzden 2B = yalnızca coneMode kapalı (nodeHeight 0 döner); aşağıdaki
+  // eğim ve perspektif her iki modda da uygulanır.
   // world → 3B: diski yaw ile döndür (Y ekseni etrafında). h dikey eksen.
   const c=Math.cos(yaw), s=Math.sin(yaw);
   const rx = wx*c - wy*s;      // döndürülmüş x (yatay)
@@ -1088,11 +1083,7 @@ function fit(){
   kume.forEach(n=>{minX=Math.min(minX,n.x);maxX=Math.max(maxX,n.x);
     minY=Math.min(minY,n.y);maxY=Math.max(maxY,n.y);});
   const w=maxX-minX+200, hFlat=maxY-minY+200;
-  if(duzMod){
-    // 2B: perspektif/eğim yok, sade kadraj
-    scale=Math.min(innerWidth/w, innerHeight/hFlat, 1.4)*0.9;
-    ox=-(minX+maxX)/2*scale; oy=-(minY+maxY)/2*scale;
-  } else if(coneMode){
+  if(coneMode){
     // koni: yatay çap + dikey (nesil yüksekliği toplamı) kadrajı
     const coneHeight = (MAXDEPTH*CONE_H)*TILT + hFlat*TILT + 200;
     scale=Math.min(innerWidth/w, innerHeight/coneHeight, 1.2)*0.85;
@@ -1328,8 +1319,8 @@ function genSliderKur(){
   function duzUygula(){
     coneMode = !duzMod;                 // 2B'de nesil yüksekliği yok
     if(db){ db.classList.toggle("on", duzMod);
-      db.title = duzMod ? "2B görünüm — 3B koniye geç" : "3B koni — 2B görünüme geç"; }
-    if(duzMod){ yaw=0; yawTarget=0; yawRest=0; }   // düz modda döndürme sıfırla
+      db.title = duzMod ? "Düzlem görünümü — koniye geç" : "Koni görünümü — düzleme geç"; }
+    // yaw sıfırlanmıyor: 2B'de de disk eğimli, döndürme anlamlı ve isteniyor
     if(typeof layoutRadial==="function" && nodes.length) layoutRadial();
     fit();
   }
@@ -1337,7 +1328,8 @@ function genSliderKur(){
     duzMod=!duzMod;
     try{ localStorage.setItem("kok_duz", duzMod?"1":"0"); }catch(e){}
     duzUygula();
-    showHint(duzMod ? "2B görünüm — düz nesil halkaları" : "3B koni görünümü");
+    showHint(duzMod ? "Düzlem görünümü — nesiller tek düzlemde, eğik bakış"
+                    : "Koni görünümü — nesiller yükselerek açılır");
   }; duzUygula(); }
   // koni tel örgüsü aç/kapa
   const kb=el("kafesBtn");
@@ -2103,15 +2095,12 @@ canvas.addEventListener("pointermove",e=>{
   // Sürükleme her zaman pan/döndürme — düğüm taşıma YOK.
   // TAP_SLOP eşiği aşılmadan kamerayı oynatmıyoruz ki tık titremesi pan sayılmasın.
   if(down && panning && moved>TAP_SLOP){
-    if(duzMod){
-      // 2B: döndürecek bir disk yok — iki eksende de sade kaydırma
-      ox += e.movementX; oy += e.movementY;
-    } else {
-      // 3B: yatay sürükleme → diski döndür (yaw); dikey sürükleme → kaydır
-      yawRest += e.movementX * 0.005;
-      yawTarget = yawRest; yaw = yawRest;
-      oy += e.movementY;
-    }
+    // Her iki modda da: yatay sürükleme diski döndürür (yaw), dikey kaydırır.
+    // 2B'de de eğimli bir disk var, döndürmek "güneş sistemini çevirmek" gibi
+    // çalışıyor — bu his kasten korunuyor.
+    yawRest += e.movementX * 0.005;
+    yawTarget = yawRest; yaw = yawRest;
+    oy += e.movementY;
     document.getElementById("hoverCard").style.display="none";
   }
   else if(down){ /* eşik altı: henüz tık sayılıyor, hiçbir şey oynatma */ }
