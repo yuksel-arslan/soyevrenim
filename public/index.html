@@ -2879,7 +2879,10 @@ async function cloudLoad(){
       loadGraph(j.veri); layoutRadial(); fit();
       CLOUD.lastServer = j.guncelleme || null;
       smsShowIfCloud(); chatShowBtn();
-      showHint("Ortak ağaca bağlandın · düzenlemek için telefonla giriş yap");
+      // Sayaçlar açılışta (ağaç henüz boşken) hesaplanıyor; veri gelince tazele.
+      // Gömülü GRAPH kaldırılınca bunlar "0 kişi · 0 bağ" olarak takılı kalıyordu.
+      updateStatus(); renderStats();
+      showHint("Ortak ağaca bağlandın · düzenlemek için aile şifresiyle giriş yap");
     } else if(j && j.ok){
       // bulut boş → yerel ağaç ekranda kalsın; buluta yazmak admin girişi ister.
       // lastServer'ı şimdi işaretle, yoksa 30 sn'lik yoklama boş veriyi "yeni" sanıp ağacı siler.
@@ -2992,6 +2995,7 @@ async function bulutYokla(){
       const keepViewer = viewerId;
       loadGraph(j.veri); layoutRadial();
       if(keepViewer && byId[keepViewer]) setViewer(keepViewer);
+      updateStatus(); renderStats();
       showHint("Ağaç güncellendi — biri yeni bilgi ekledi");
     }
   }catch(e){}
