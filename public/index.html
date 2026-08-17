@@ -630,7 +630,13 @@ function layoutSpiral(){
   // TEK HELEZON YÜZEY: tüm soy tek bir yukarı-genişleyen sarmala dizilir.
   // Kollar yüzeyde ANGÜLER DİLİMLER halinde bitişik akar (damar yatakları).
   const TURN=Math.PI*2.0;          // nesil başına ~1 tur (yüzeyin sarmal eğimi)
-  const R0=130, R_GROW=64;         // yüzey yarıçapı: yukarı çıktıkça genişler (huni) — daha ayrık
+  // MOBİL ARALIK: dar ekranda fit() her şeyi küçültüyor, ama düğüm yarıçapının
+  // alt sınırı var (zoomK tabanı 0.5) → düğümler birbirine giriyor. Çözüm dünya
+  // mesafelerini açmak, böylece küçülme sonrası bile ayrık kalıyorlar.
+  // Masaüstü oranlarına DOKUNULMUYOR (beğenilen koni görünümü korunsun).
+  const MOBIL = innerWidth<=760;
+  const ARALIK = MOBIL ? 1.45 : 1;
+  const R0=130*ARALIK, R_GROW=64*ARALIK;   // yüzey yarıçapı: yukarı çıktıkça genişler
   SPIRAL_OF={};
   // her düğümü koluna ata (Molla Memiş'in hangi oğlundan geldiği)
   // ===== HALK DİLİNDEKİ KOLLAR ("işi" adları) =====
@@ -713,7 +719,32 @@ function layoutSpiral(){
   // konum: sarmal yüzey — açı = temel açı + nesil başına belirgin dönüş
   // aynı nesil/dilimdeki kişileri yarıçapta da hafif kaydır → üst üste binmesinler
   const rjSeq={};  // aynı yaklaşık açıdaki kişileri saymak için
+
+  // ===== AÇISAL ARALIK GARANTİSİ (talimat: yay >= MIN_SEP) =====
+  // Bir halkadaki n kişi, yarıçap R ise komşu iki kişi arası yay = 2πR/n.
+  // Bu MIN_SEP'in altına düşerse o nesil için yarıçapı BÜYÜT — böylece
+  // kalabalık nesiller (bu ağaçta 6-8. nesiller) baştan çakışmaz.
+  const NODE_R  = 10.5*ARALIK;      // taban düğüm yarıçapı ile uyumlu
+  const MIN_SEP = NODE_R*3;         // merkez-merkez min mesafe = 1 çap boşluk
+  const neslSayi={};
+  nodes.forEach(n=>{ if(n!==root && payAng[n.id]!=null){ const d=n._depth||1; neslSayi[d]=(neslSayi[d]||0)+1; } });
+  const neslR={};
+  Object.keys(neslSayi).forEach(dk=>{
+    const d=+dk, n=neslSayi[d];
+    const atanan = R0 + d*R_GROW;
+    const gerekli = (n*MIN_SEP)/(Math.PI*2);    // tam çevreye yayıldığı varsayımı
+    neslR[d] = Math.max(atanan, gerekli);
+  });
+  // halkalar iç içe geçmesin: dıştaki halka içtekinden en az R_GROW*0.6 uzak
+  const dler=Object.keys(neslR).map(Number).sort((a,b)=>a-b);
+  for(let i=1;i<dler.length;i++){
+    const onceki=neslR[dler[i-1]], simdi=neslR[dler[i]];
+    if(simdi < onceki + R_GROW*0.6) neslR[dler[i]] = onceki + R_GROW*0.6;
+  }
+
   root.x=0; root.y=0; root._ang=-Math.PI/2;
+  nodes.forEach(n=>{ n._pin=false; });
+  root._pin=true;   // Molla Memiş merkezde kalır (çakışma çözücü onu oynatmaz)
   nodes.forEach(n=>{
     if(n===root) return;
     const d=n._depth||1;
@@ -723,11 +754,11 @@ function layoutSpiral(){
     // radyal serpiştirme: yakın açıdaki kişileri farklı yarıçaplara yay
     const key = d+"|"+Math.round(base*20);   // nesil + kaba açı kovası
     const idx = (rjSeq[key]=(rjSeq[key]||0)+1) - 1;
-    const jitter = (idx%3 - 1) * 16;   // -16, 0, +16 → üç kademe yarıçap
-    const rr  = R0 + d*R_GROW + jitter;
+    const jitter = (idx%3 - 1) * (MIN_SEP*0.5);   // üç kademe yarıçap
+    const rr  = (neslR[d] || (R0 + d*R_GROW)) + jitter;
     n.x = Math.cos(ang)*rr;
     n.y = Math.sin(ang)*rr;
-    n._ang=ang; n._surfR=rr;
+    n._ang=ang; n._surfR=rr; n._ringR=neslR[d] || (R0 + d*R_GROW);
   });
   // dış eşler: eşinin yanına, aynı damara
   for(let pass=0; pass<8; pass++){
@@ -739,6 +770,62 @@ function layoutSpiral(){
       if(ref){ n.x=ref.x+16; n.y=ref.y+10; SPIRAL_OF[n.id]=SPIRAL_OF[ref.id]; payAng[n.id]=payAng[ref.id]+0.02; }
     });
   }
+  // ===== ÇAKIŞMA ÇÖZÜCÜ (güvence katmanı) =====
+  cakismaCoz(nodes, MIN_SEP, R_GROW);
+}
+
+// İki düğüm merkezi arası mesafeyi en az minSep'e itekle.
+// Nesil yapısı bozulmasın diye: itmeden SONRA her düğüm kendi halka bandına
+// geri kırpılır (açı serbest kalır, yarıçap bandda tutulur). Böylece çakışma
+// çoğunlukla açısal olarak çözülür, kişi başka nesle kaymaz.
+function cakismaCoz(list, minSep, ringGap, iterations=60){
+  const nl = list.filter(n=>n && isFinite(n.x) && isFinite(n.y));
+  if(nl.length<2) return;
+  const band = ringGap*0.5;      // halka bandı yarı genişliği
+  const hucre = minSep;          // uzamsal ızgara gözü (O(n²) yerine komşuluk)
+  for(let it=0; it<iterations; it++){
+    // ızgaraya yerleştir
+    const grid=new Map();
+    const key=(gx,gy)=>gx+","+gy;
+    nl.forEach(n=>{
+      const gx=Math.floor(n.x/hucre), gy=Math.floor(n.y/hucre);
+      const k=key(gx,gy); if(!grid.has(k)) grid.set(k,[]); grid.get(k).push(n);
+    });
+    let oynadi=false;
+    nl.forEach(a=>{
+      const gx=Math.floor(a.x/hucre), gy=Math.floor(a.y/hucre);
+      for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){
+        const kom=grid.get(key(gx+dx,gy+dy)); if(!kom) continue;
+        for(const b of kom){
+          if(b===a) continue;
+          const vx=b.x-a.x, vy=b.y-a.y;
+          let dist=Math.hypot(vx,vy);
+          if(dist>=minSep) continue;
+          if(dist<0.001){ // tam üst üste: rastgelelik yok, deterministik ayır
+            if(!b._pin){ b.x+=minSep*0.5; b.y+=minSep*0.25; oynadi=true; }
+            else if(!a._pin){ a.x-=minSep*0.5; a.y-=minSep*0.25; oynadi=true; }
+            continue;
+          }
+          const ux=vx/dist, uy=vy/dist;
+          // sabitlenmiş düğüm (kök) oynamaz; itmenin tamamını karşı taraf alır
+          if(a._pin && b._pin) continue;
+          const pay = (a._pin || b._pin) ? (minSep-dist) : (minSep-dist)/2;
+          if(!a._pin){ a.x-=ux*pay; a.y-=uy*pay; }
+          if(!b._pin){ b.x+=ux*pay; b.y+=uy*pay; }
+          oynadi=true;
+        }
+      }
+    });
+    // halka bandına kırp (nesil düzeni korunsun)
+    nl.forEach(n=>{
+      if(n._pin || n._ringR==null) return;
+      const r=Math.hypot(n.x,n.y); if(r<0.001) return;
+      const alt=Math.max(0, n._ringR-band), ust=n._ringR+band;
+      const hedef=Math.min(ust, Math.max(alt, r));
+      if(hedef!==r){ const s=hedef/r; n.x*=s; n.y*=s; }
+    });
+    if(!oynadi) break;
+  }
 }
 
 // Veri açılışta buluttan gelir (cloudLoad). Gömülü kopya yok, bu yüzden
@@ -746,9 +833,23 @@ function layoutSpiral(){
 
 // ---- görünüm (pan/zoom) ----
 let scale=0.9, ox=0, oy=0;
+let sonEnW=0, sonEnH=0;
 function resize(){DPR=Math.min(devicePixelRatio||1,2);
   canvas.width=innerWidth*DPR;canvas.height=innerHeight*DPR;
-  canvas.style.width=innerWidth+"px";canvas.style.height=innerHeight+"px";}
+  canvas.style.width=innerWidth+"px";canvas.style.height=innerHeight+"px";
+  // Ekran belirgin şekilde değiştiyse (telefon çevirme, pencere yeniden boyutlama)
+  // kadrajı tazele — yoksa ağaç ekran dışında kalıyordu.
+  // HER resize'da fit() çağırmıyoruz: mobilde adres çubuğu kayarken de resize
+  // tetikleniyor ve kullanıcının zoom/pan'ini sıfırlamak sinir bozucu olur.
+  const bW=innerWidth, bH=innerHeight;
+  const belirgin = !sonEnW || Math.abs(bW-sonEnW)/sonEnW > 0.15
+                           || Math.abs(bH-sonEnH)/Math.max(sonEnH,1) > 0.25;
+  if(belirgin && typeof nodes!=="undefined" && nodes.length){
+    if(typeof layoutSpiral==="function") layoutSpiral();   // ölçekler ekrana bağlı
+    fit();
+  }
+  sonEnW=bW; sonEnH=bH;
+}
 resize();
 // ========================= 3D PERSPEKTİF =========================
 // Düğümler yatay bir disk üzerinde (x = sağ-sol, y = derinlik/ileri-geri).
@@ -1612,6 +1713,9 @@ requestAnimationFrame(loop);
 
 // ---- pointer: pan / drag / select ----
 let mouse={x:0,y:0}, down=null, dragNode=null, panning=false, moved=0;
+// Tık ile sürükleme ayrımı: bu kadar hareketten sonra artık tık değil, pan.
+const TAP_SLOP=10;    // px (talimat değeri; eskiden dağınık şekilde 5 kullanılıyordu)
+const TAP_TIME=600;   // ms — bundan uzun basış tık sayılmaz (uzun bas ayrı ele alınır)
 function pick(sx,sy){
   let best=null,bd=1e9;
   for(const n of nodes){
@@ -1718,23 +1822,29 @@ canvas.addEventListener("pointerdown",e=>{ down={x:e.clientX,y:e.clientY}; moved
     if(hit && hit!==selNode){ doReparent(selNode,hit); }
     setReparent(false); return;
   }
-  if(hit){ dragNode=hit; hit.fixed=true; canvas.setPointerCapture(e.pointerId);
+  // Düğüm SÜRÜKLENMEZ. Parmak/fare düğüme bassa da hareket = pan/döndürme.
+  // dragNode artık "basılan düğüm" demek; konumu değiştirilmiyor. Konumlar
+  // zaten hiçbir yere kaydedilmiyor (currentGraphJSON x/y göndermez),
+  // layoutSpiral her yüklemede yeniden hesaplıyor — sürükleme kalıcı değildi.
+  if(hit){ dragNode=hit; canvas.setPointerCapture(e.pointerId);
     // dokunmatik/mobil: düğüme dokununca detay kartını göster
     if(e.pointerType==="touch"){ hoverNode=hit; updateHoverCard(hit, e.clientX, e.clientY); }
   }
-  else { panning=true; }
+  panning=true;   // her durumda pan'e hazır; TAP_SLOP aşılırsa devreye girer
 });
 canvas.addEventListener("pointermove",e=>{
   mouse={x:e.clientX,y:e.clientY};
   if(down) moved+=Math.abs(e.movementX)+Math.abs(e.movementY);
-  if(dragNode){ const w=s2w(e.clientX,e.clientY); dragNode.x=w.x; dragNode.y=w.y; dragNode.vx=dragNode.vy=0; alpha=Math.max(alpha,0.5); document.getElementById("hoverCard").style.display="none"; }
-  else if(panning){
+  // Sürükleme her zaman pan/döndürme — düğüm taşıma YOK.
+  // TAP_SLOP eşiği aşılmadan kamerayı oynatmıyoruz ki tık titremesi pan sayılmasın.
+  if(down && panning && moved>TAP_SLOP){
     // yatay sürükleme → diski döndür (yaw); dikey sürükleme → kaydır
     yawRest += e.movementX * 0.005;
     yawTarget = yawRest; yaw = yawRest;
     oy += e.movementY;
     document.getElementById("hoverCard").style.display="none";
   }
+  else if(down){ /* eşik altı: henüz tık sayılıyor, hiçbir şey oynatma */ }
   else { const h=pick(e.clientX,e.clientY); if(h!==hoverNode){ hoverNode=h; canvas.style.cursor=h?"pointer":"default"; updateHoverCard(h,e.clientX,e.clientY); }
     else if(h){ updateHoverCard(h,e.clientX,e.clientY); } }
 });
@@ -1779,11 +1889,11 @@ function updateHoverCard(n,mx,my){
 canvas.addEventListener("pointerleave",()=>{ hoverNode=null; document.getElementById("hoverCard").style.display="none"; });
 let lastTap=0, lastTapNode=null;
 canvas.addEventListener("pointerup",e=>{
-  if(dragNode){ dragNode.fixed=false;
-    if(moved<5){ // tıklama
+  if(dragNode){
+    if(moved<=TAP_SLOP){ // tıklama (hareket eşiği altında kaldıysa)
       const now=Date.now();
       // BLOOM uzun bas (~450ms): kademeli açılımda alt ağacı aç/kapat.
-      // Tek tık seçim davranışını bozmaz; sürükleme zaten moved>=5 ile ayrılıyor.
+      // Tek tık seçim davranışını bozmaz; sürükleme TAP_SLOP ile ayrılıyor.
       if(BLOOM.visible && basiliSure(now) > 450){
         toggleExpand(dragNode); dragNode=null; down=null; basimT=0; return;
       }
@@ -1800,18 +1910,20 @@ canvas.addEventListener("pointerup",e=>{
         }
         dragNode=null; down=null; return;
       }
-      if(now-lastTap<320 && lastTapNode===dragNode){ // çift tık → panel
-        openPanel(dragNode); lastTap=0; lastTapNode=null;
-      } else if(dragNode===activeNode){ // zaten merkezdeyse tekrar dokunuş → panel (mobil dostu)
-        openPanel(dragNode); lastTap=now; lastTapNode=dragNode;
-      } else { // tek tık → merkeze al + genişlet + detay halkası
-        focusCenter(dragNode); lastTap=now; lastTapNode=dragNode;
-        // Odak modu açıksa seçim onu takip eder (mod kendiliğinden açılmaz).
-        if(BLOOM.focusIds) odakAc(dragNode.id);
+      if(basiliSure(now) <= TAP_TIME){
+        if(now-lastTap<320 && lastTapNode===dragNode){ // çift tık → panel
+          openPanel(dragNode); lastTap=0; lastTapNode=null;
+        } else if(dragNode===activeNode){ // zaten merkezdeyse tekrar dokunuş → panel (mobil dostu)
+          openPanel(dragNode); lastTap=now; lastTapNode=dragNode;
+        } else { // tek tık → merkeze al + genişlet + detay halkası
+          focusCenter(dragNode); lastTap=now; lastTapNode=dragNode;
+          // Odak modu açıksa seçim onu takip eder (mod kendiliğinden açılmaz).
+          if(BLOOM.focusIds) odakAc(dragNode.id);
+        }
       }
     }
-    dragNode=null;
-  } else if(panning){ panning=false; if(moved<5){ // boşluğa tık
+    dragNode=null; panning=false; basimT=0;
+  } else if(panning){ panning=false; if(moved<=TAP_SLOP){ // boşluğa tık
     // önce bir kenara mı tıklandı? (iki kişi arası ilişki)
     const edge=pickEdge(e.clientX,e.clientY);
     if(edge){ showRelationCard(edge, e.clientX, e.clientY); }
