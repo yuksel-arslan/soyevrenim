@@ -253,9 +253,13 @@ canvas{display:block;position:fixed;inset:0;
     bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;width:auto !important}
   /* Rehber mobilde alttan açılan panel; dock'un üstünde durur. Klavye açılınca
      örtülmesin diye alt boşluk safe-area + dock yüksekliği kadar. */
+  /* Mobilde dock alta taşındığı için mikrofon onun ÜSTÜNDE, sağda dursun;
+     rehber paneli de mikrofonun üstünde açılsın — üçü çakışmasın. */
+  #rehberMic{right:12px !important;bottom:calc(env(safe-area-inset-bottom,0) + 70px) !important;
+    width:52px;height:52px;font-size:21px}
   #rehber{left:10px !important;right:10px;width:auto !important;
-    bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;
-    max-height:62vh;overflow-y:auto}
+    bottom:calc(env(safe-area-inset-bottom,0) + 132px) !important;
+    max-height:54vh;overflow-y:auto}
   #rehberCipler button{font-size:13px !important;padding:9px 12px !important}
   #lensLegend{left:12px !important;right:auto;bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;font-size:11px;max-width:60vw}
   /* dock SVG ikonları biraz daha büyük (dokunma) */
@@ -447,7 +451,7 @@ canvas{display:block;position:fixed;inset:0;
 <!-- REHBER — açılış karşılaması ve komut çipleri.
      LLM YOK: komutlar yerel kural tablosuyla (KOMUTLAR) eşleşir ve hepsi zaten
      var olan işlevleri çağırır. Sıfır API çağrısı, sıfır maliyet. -->
-<div id="rehber" style="display:none;position:fixed;right:16px;bottom:16px;z-index:19;
+<div id="rehber" style="display:none;position:fixed;right:16px;bottom:84px;z-index:19;
   width:min(360px,92vw);background:var(--panel);border:1px solid var(--line2);
   border-radius:14px;box-shadow:0 16px 50px var(--shadow);overflow:hidden">
   <div style="display:flex;align-items:center;gap:8px;padding:12px 14px 8px">
@@ -462,14 +466,17 @@ canvas{display:block;position:fixed;inset:0;
     <input id="rehberGiris" placeholder="yaz ya da 🎤 ile söyle" autocomplete="off"
       style="flex:1;min-width:0;background:var(--bg2);border:1px solid var(--line);border-radius:9px;
       color:var(--text);font-size:14px;padding:9px 11px;outline:none">
-    <!-- Sesli komut: tarayıcı yerleşik Web Speech API. Desteklenmiyorsa gizlenir. -->
-    <button id="rehberMic" title="Sesle söyle" style="display:none;background:var(--panel2);
-      border:1px solid var(--line);border-radius:9px;width:40px;padding:0;font-size:15px;
-      cursor:pointer;position:relative;flex:none">🎤</button>
     <button id="rehberGonder" style="background:var(--accent);color:var(--on-accent);border:none;
       border-radius:9px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;flex:none">Git</button>
   </div>
 </div>
+
+<!-- SESLİ KOMUT — sabit, sağ altta. Rehber panelini açmadan da erişilebilir.
+     Tarayıcı Web Speech API'yi desteklemiyorsa hiç gösterilmez. -->
+<button id="rehberMic" title="Sesle söyle" style="display:none;position:fixed;
+  right:18px;bottom:18px;z-index:20;width:54px;height:54px;border-radius:50%;
+  background:var(--panel);border:1px solid var(--line2);color:var(--text);
+  font-size:22px;line-height:1;cursor:pointer;box-shadow:0 8px 26px var(--shadow)">🎤</button>
 
 <!-- KATMAN / LENS seçici -->
 <div id="lensPanel" style="position:fixed;left:64px;top:64px;z-index:16;width:210px;
@@ -869,7 +876,6 @@ function layoutSpiral(){
     "p121":   "Musaşi",       // Musa (Abdurrahman'ın oğlu) — 17 kişi
     "p123":   "Tayişi",       // Mustafa Tahsin (Abdurrahman'ın oğlu) — 12 kişi
     "p12222": "Noktaşi"       // Ömer (Hamit'in oğlu) — 68 kişi
-    // Şabanişi sonra eklenecek.
   };
   // isim bazlı ek tanımlar (varsa) — KOL_TANIMLARI global ile
   const KOL_BASLARI = (typeof KOL_TANIMLARI!=="undefined" && KOL_TANIMLARI) ? KOL_TANIMLARI : {};
@@ -3910,6 +3916,9 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       taniyici.onstart=()=>{ micDurum("dinliyor"); yaz("Dinliyorum…"); };
       taniyici.onresult=(e)=>{
         const metin=Array.from(e.results).map(r=>r[0].transcript).join("").trim();
+        // Mikrofon artık panelden bağımsız (sabit, sağ altta). Konuşulanı ve
+        // yanıtı görebilmek için panel kapalıysa açılıyor.
+        if(panel.style.display!=="block"){ panel.style.display="block"; ciplerKur(); }
         giris.value=metin;                                  // canlı göster
         if(e.results[e.results.length-1].isFinal && metin){
           micDurum("kapali");
@@ -3967,7 +3976,8 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   ["pointerdown","wheel","keydown"].forEach(ev=>{
     addEventListener(ev,e=>{
       if(panel.style.display!=="block") return;
-      if(e.target && e.target.closest && e.target.closest("#rehber")) return;
+      // Mikrofon panelin DIŞINDA (sabit düğme) — ona dokunmak paneli kapatmasın
+      if(e.target && e.target.closest && (e.target.closest("#rehber")||e.target.closest("#rehberMic"))) return;
       kapat();
     },{passive:true, once:false});
   });

@@ -477,7 +477,9 @@ yazılmaz — tanımlar değişirse liste kendiliğinden doğru kalır.
 **tüm** kol başları (filtre hiyerarşik olsun diye: "Abdurrahman" seçilince
 Noktaşi/Musaşi üyeleri de görünür).
 
-Eksik: **Şabanişi** henüz tanımlı değil.
+Kol listesi bu hâliyle tamam. Yeni kol eklenmek istenirse `KOL_BASLARI_ID`'ye bir
+satır yeter: lens listesi halkayı `_depth`'ten türettiği ve rehber komutu kol
+adlarını `SPIRAL_NAME`'den okuduğu için başka hiçbir yeri değiştirmek gerekmez.
 
 ---
 
@@ -539,7 +541,6 @@ Bant genişliği hiçbir zaman darboğaz değildi; asıl birikebilecek şey fonk
 
 ## 13. Bilinen eksikler
 
-- **Şabanişi** kolu tanımlı değil.
 - Kademeli açılımda `+N` sayısı `scale>0.45` eşiğini geçmediği için çıkmıyor
   (kesikli halka görünüyor).
 - Açılan düğümlere geçiş animasyonu yok.
