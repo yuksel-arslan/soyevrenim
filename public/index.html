@@ -241,6 +241,10 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   <button id="physBtn" class="on" title="Fizik aç/kapa"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><ellipse cx="12" cy="12" rx="10" ry="4.4"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(120 12 12)"/></svg></button>
   <button id="reparentBtn" title="Ebeveyn bağı değiştir"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
   <div class="sep"></div>
+  <button id="pathBtn" title="Yol bul — iki kişi arasındaki akrabalık"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v4a3 3 0 0 0 3 3h3a3 3 0 0 1 3 3"/></svg></button>
+  <button id="focusBtn" title="Odak modu — seçilenin yakınları"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+  <button id="genBtn" title="Nesil kaydırıcısı"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="7" cy="17" r="2" fill="currentColor" stroke="none"/></svg></button>
+  <div class="sep"></div>
   <button id="statsBtn" title="İstatistikler"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></button>
   <button id="kokenBtn" title="Köken — 1956, Fahri Arslan'ın eseri"><svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v4h4M8.5 13h7M8.5 16.5h7M8.5 9.5h2"/></svg></button>
   <button id="lensBtn" title="Katman / renklendirme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg></button>
@@ -374,6 +378,39 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 </div>
 
 <div class="statusbar" id="status"><b>—</b></div>
+
+<!-- BLOOM: akrabalık yolu kartı -->
+<div id="pathCard" style="display:none;position:fixed;left:50%;transform:translateX(-50%);
+  top:70px;z-index:22;width:min(420px,92vw);background:var(--panel);border:1px solid var(--line2);
+  border-radius:12px;padding:14px 16px;box-shadow:0 12px 40px var(--shadow)">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <div style="font-size:11px;letter-spacing:2px;color:var(--muted);
+      font-family:'IBM Plex Mono',monospace">AKRABALIK YOLU</div>
+    <button id="pathClose" style="background:none;border:none;color:var(--muted);
+      font-size:16px;cursor:pointer;padding:0 4px">✕</button>
+  </div>
+  <div id="pathBody" style="margin-top:8px;font-size:14px;color:var(--text);line-height:1.5"></div>
+</div>
+
+<!-- BLOOM: nesil kaydırıcısı -->
+<div id="genPanel" style="display:none;position:fixed;left:50%;transform:translateX(-50%);
+  bottom:16px;z-index:20;background:var(--panel);border:1px solid var(--line2);
+  border-radius:12px;padding:12px 16px;box-shadow:0 8px 30px var(--shadow);width:min(340px,92vw)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <span id="genLabel" style="font-size:12px;color:var(--muted);
+      font-family:'IBM Plex Mono',monospace">Nesil</span>
+    <button id="genReset" style="background:var(--panel2);border:1px solid var(--line);
+      color:var(--text);font-size:11px;border-radius:14px;padding:4px 10px;cursor:pointer">sıfırla</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:11px;color:var(--muted);width:12px;text-align:center" id="genLoNum">0</span>
+    <input id="genLo" type="range" min="0" max="9" value="0" step="1" style="flex:1;height:26px">
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+    <span style="font-size:11px;color:var(--muted);width:12px;text-align:center" id="genHiNum">9</span>
+    <input id="genHi" type="range" min="0" max="9" value="9" step="1" style="flex:1;height:26px">
+  </div>
+</div>
 <div class="hint" id="hint"></div>
 <div class="toast" id="toast"></div>
 
@@ -491,6 +528,16 @@ function reindex(){
   }
   // hâlâ derinliksiz kalan olursa 0'a çek
   nodes.forEach(n=>{ if(n._depth==null) n._depth=0; });
+  // Bloom graf katmanı (komşuluk / çocuk / ebeveyn haritaları) her yeniden
+  // indekslemede tazelenir — yol bulma ve açılım bunlara dayanır.
+  if(typeof buildGraphHelpers==="function"){
+    buildGraphHelpers();
+    if(typeof BLOOM!=="undefined"){
+      BLOOM.genHi = Math.max(1, ...nodes.map(n=>n._depth||0));
+      if(BLOOM_KADEMELI_BASLA && !BLOOM.visible) seedVisible();
+      if(typeof genSliderKur==="function") genSliderKur();
+    }
+  }
 }
 // ---- radyal nesil-halkası yerleşimi ----
 const RING_GAP=130;              // halkalar arası mesafe (nesil aralığı)
@@ -730,8 +777,12 @@ function s2w(sx,sy){
 
 function fit(){
   if(!nodes.length)return;
+  // Yalnızca görünür düğümleri kadraja al: nesil aralığı daraltıldığında ya da
+  // kademeli açılımda ekran boş alana zoomlanmasın.
+  const kadraj = (typeof nodeVisible==="function") ? nodes.filter(nodeVisible) : nodes;
+  const kume = kadraj.length ? kadraj : nodes;
   let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
-  nodes.forEach(n=>{minX=Math.min(minX,n.x);maxX=Math.max(maxX,n.x);
+  kume.forEach(n=>{minX=Math.min(minX,n.x);maxX=Math.max(maxX,n.x);
     minY=Math.min(minY,n.y);maxY=Math.max(maxY,n.y);});
   const w=maxX-minX+200, hFlat=maxY-minY+200;
   if(coneMode){
@@ -916,6 +967,89 @@ function genEtiketGuncelle(){
 
 // görünürlük her değiştiğinde kadrajı tazele (yerleşim korunur — spiral bozulmasın)
 function gorunurlukDegisti(){ fit(); genEtiketGuncelle(); }
+
+// ---- yol kartı ----
+function yolKarti(bilgi){
+  const kart=document.getElementById("pathCard"), govde=document.getElementById("pathBody");
+  if(!kart||!govde) return;
+  if(!bilgi){ kart.style.display="none"; return; }
+  const ad=id=>byId[id] ? dispName(byId[id].name) : "?";
+  const adim=bilgi.yol.length-1;
+  const ataSatir = bilgi.ata
+    ? `<div style="margin-top:6px">Ortak ata: <b style="color:var(--spine)">${ad(bilgi.ata.id)}</b>
+         <span style="color:var(--muted);font-size:12px">(${bilgi.ata.da} / ${bilgi.ata.db} kuşak)</span></div>`
+    : `<div style="margin-top:6px;color:var(--muted)">Ortak ata bulunamadı (bağ eş üzerinden olabilir)</div>`;
+  govde.innerHTML =
+    `<div><b>${ad(bilgi.a)}</b> ↔ <b>${ad(bilgi.b)}</b></div>
+     <div style="margin-top:4px;color:var(--accent);font-weight:600">${akrabalikEtiketi(bilgi.ata)}</div>
+     ${ataSatir}
+     <div style="margin-top:6px;color:var(--muted);font-size:12px">${adim} adım</div>
+     <div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6">
+       ${bilgi.yol.map(id=>ad(id)).join(" → ")}</div>`;
+  kart.style.display="block";
+}
+
+// ---- nesil kaydırıcısı kurulumu ----
+function genSliderKur(){
+  const lo=document.getElementById("genLo"), hi=document.getElementById("genHi");
+  if(!lo||!hi) return;
+  const enBuyuk=Math.max(1, ...nodes.map(n=>n._depth||0));
+  lo.max=enBuyuk; hi.max=enBuyuk;
+  if(+hi.value===0 || +hi.value>enBuyuk) hi.value=enBuyuk;
+  document.getElementById("genLoNum").textContent=lo.value;
+  document.getElementById("genHiNum").textContent=hi.value;
+  genEtiketGuncelle();
+}
+(function bloomArayuz(){
+  const el=id=>document.getElementById(id);
+  const lo=el("genLo"), hi=el("genHi");
+  if(lo&&hi){
+    const uygula=()=>{
+      let a=+lo.value, b=+hi.value;
+      if(a>b){ if(document.activeElement===lo) b=a; else a=b; lo.value=a; hi.value=b; }
+      el("genLoNum").textContent=a; el("genHiNum").textContent=b;
+      genUygula(a,b);
+    };
+    lo.addEventListener("input",uygula); hi.addEventListener("input",uygula);
+    el("genReset").onclick=()=>{ lo.value=0; hi.value=hi.max; uygula(); };
+  }
+  // nesil panelini aç/kapa
+  const gb=el("genBtn");
+  if(gb) gb.onclick=()=>{
+    const p=el("genPanel"); if(!p) return;
+    const acik = p.style.display!=="none";
+    p.style.display = acik ? "none" : "block";
+    gb.classList.toggle("on", !acik);
+    if(!acik){ genSliderKur(); }
+  };
+  // yol bulma modu
+  const pb=el("pathBtn");
+  if(pb) pb.onclick=()=>{
+    BLOOM.pathMode=!BLOOM.pathMode; BLOOM.pathA=null;
+    pb.classList.toggle("on", BLOOM.pathMode);
+    if(BLOOM.pathMode) showHint("Yol bul: önce birinci kişiye, sonra ikinciye tıkla");
+    else { yolTemizle(); showHint("Yol bulma kapatıldı"); }
+  };
+  const pc=el("pathClose");
+  if(pc) pc.onclick=()=>{ yolTemizle(); BLOOM.pathMode=false;
+    const b=el("pathBtn"); if(b) b.classList.remove("on"); };
+  // odak modu düğmesi: seçili kişi varsa onu odakla, yoksa kapat
+  const fb=el("focusBtn");
+  if(fb) fb.onclick=()=>{
+    if(BLOOM.focusIds){ odakKapat(); showHint("Odak kapatıldı"); return; }
+    const hedef = selNode || activeNode || (viewerId?byId[viewerId]:null);
+    if(!hedef){ toast("Önce bir kişi seç"); return; }
+    odakAc(hedef.id); showHint(`Odak: ${dispName(hedef.name)} ve yakınları`);
+  };
+})();
+
+// ESC: bloom katmanlarını da kapat
+addEventListener("keydown",e=>{
+  if(e.key!=="Escape") return;
+  if(BLOOM.pathIds || BLOOM.pathMode){ yolTemizle(); BLOOM.pathMode=false;
+    const b=document.getElementById("pathBtn"); if(b) b.classList.remove("on"); }
+  if(BLOOM.focusIds) odakKapat();
+});
 
 // ---- fizik (force-directed) ----
 let physics=false, alpha=1;
@@ -1199,10 +1333,18 @@ function draw(){
   ctx.lineWidth=1.2;
   const filterActive = (typeof branchFilter!=="undefined" && branchFilter!=null);
   edges.forEach(e=>{ const a=byId[e.from],b=byId[e.to]; if(!a||!b)return;
+    if(!nodeVisible(a) || !nodeVisible(b)) return;   // iki ucu da görünür olmalı
     const pa=w2sn(a), pb=w2sn(b);
     const lit=highlightSet.has(a.id)&&highlightSet.has(b.id);
     const inF = inBranchFilter(a) && inBranchFilter(b);
-    if(filterActive){
+    if(edgeOnPath(a.id,b.id)){
+      // YOL BULMA: akrabalık yolu her şeyin üstünde, altın ve kalın
+      ctx.strokeStyle=getVar("--edge-lit"); ctx.globalAlpha=1; ctx.lineWidth=3.2;
+    } else if(BLOOM.pathIds || BLOOM.focusIds){
+      // yol/odak aktifken ilgisiz kenarlar geri çekilir
+      const ua=nodeAlpha(a), ub=nodeAlpha(b);
+      ctx.strokeStyle=getVar("--edge"); ctx.globalAlpha=Math.min(ua,ub)*0.5; ctx.lineWidth=1.2;
+    } else if(filterActive){
       if(inF){
         // seçili kolun kenarı: altın, belirgin
         ctx.strokeStyle=getVar("--edge-lit"); ctx.globalAlpha=0.9; ctx.lineWidth=1.8;
@@ -1220,6 +1362,7 @@ function draw(){
 
   // anne bağları (baba hattından ayrı). Sadece seçiliyle ilgili olan belirgin.
   motherEdges.forEach(m=>{ const a=byId[m.from],b=byId[m.to]; if(!a||!b)return;
+    if(!nodeVisible(a) || !nodeVisible(b)) return;
     const rel = selNode && (m.from===selNode.id || m.to===selNode.id);
     if(!rel && highlightSet.size) return;       // seçim varken sadece ilgili anne bağı
     const pa=w2sn(a), pb=w2sn(b);
@@ -1230,6 +1373,7 @@ function draw(){
   });
   // evlilik bağları — hepsi kesikli çizgi (dashline)
   marriages.forEach(m=>{ const a=byId[m.from],b=byId[m.to]; if(!a||!b)return;
+    if(!nodeVisible(a) || !nodeVisible(b)) return;
     const pa=w2sn(a), pb=w2sn(b);
     const lit=highlightSet.has(a.id)||highlightSet.has(b.id);
     const dist=Math.hypot(pb.x-pa.x,pb.y-pa.y);
@@ -1252,7 +1396,8 @@ function draw(){
 
   // düğümler — derinliğe göre sırala (arkadakiler önce, öndekiler üstte)
   const drawnLabels=[];   // çizilmiş isim kutuları (çakışma önleme)
-  const ordered = nodes.map(n=>{ const pr=project(n.x,n.y,nodeHeight(n)); return {n, pr}; })
+  const ordered = nodes.filter(nodeVisible)   // kademeli açılım ∩ nesil aralığı
+                       .map(n=>{ const pr=project(n.x,n.y,nodeHeight(n)); return {n, pr}; })
                        .sort((a,b)=> a.pr.z - b.pr.z);   // z küçük=uzak, önce çiz
   ordered.forEach(({n,pr})=>{
     const p={x:pr.x, y:pr.y};
@@ -1265,13 +1410,33 @@ function draw(){
     // halo
     if(sel||hov||isViewer){ ctx.beginPath(); ctx.arc(p.x,p.y,r+6,0,6.283);
       ctx.fillStyle=isViewer?"rgba(245,209,90,.18)":"rgba(92,200,216,.16)"; ctx.fill(); }
+    // BLOOM: yol üzerindeki kişiye altın halka
+    if(BLOOM.pathIds && BLOOM.pathIds.has(n.id)){
+      ctx.beginPath(); ctx.arc(p.x,p.y,r+5,0,6.283);
+      ctx.strokeStyle=getVar("--edge-lit"); ctx.lineWidth=2.4; ctx.globalAlpha=1; ctx.stroke();
+    }
+    // BLOOM: kademeli açılımda çocukları gizli olan düğümde "+" halkası
+    if(BLOOM.visible && acilabilirMi(n)){
+      ctx.beginPath(); ctx.arc(p.x,p.y,r+4.5,0,6.283);
+      ctx.strokeStyle=getVar("--accent"); ctx.lineWidth=1.4;
+      ctx.globalAlpha=0.75*depthAlpha; ctx.setLineDash([2,3]); ctx.stroke();
+      ctx.setLineDash([]);
+      const kolSayi=(CHILDREN.get(n.id)||new Set()).size;
+      if(scale>0.45){
+        ctx.font=`700 ${Math.max(8,r*0.9)}px Inter`; ctx.fillStyle=getVar("--accent");
+        ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText("+"+kolSayi, p.x, p.y-r-9);
+      }
+      ctx.globalAlpha=1;
+    }
     // fotoğraf varsa avatar olarak çiz, yoksa renkli daire
     // (aktif/merkeze alınan düğüm hariç — o, aşağıdaki aktif blokta büyük çizilir)
     const prof=PROFILES[n.id];
     const hasPhoto=prof&&prof.photo;
     const inFilter = inBranchFilter(n);
-    const filterDim = inFilter ? 1 : 0.12;   // filtre dışı çok sönük
-    const dimAlpha=((highlightSet.size&&!hl)?0.35:1) * depthAlpha * filterDim;
+    // Parlaklık artık tek yerden: nodeAlpha() (kol filtresi + odak + yol + arama).
+    // Derinlik soluklaştırması ayrı çarpan olarak kalıyor (3B his).
+    const dimAlpha = nodeAlpha(n) * depthAlpha;
     if(n===activeNode && (n._grow||0)>0.05){
       // aktif düğüm: sadece taban daire (foto/detay aktif blokta) — çakışmayı önle
       ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
@@ -1424,7 +1589,9 @@ requestAnimationFrame(loop);
 let mouse={x:0,y:0}, down=null, dragNode=null, panning=false, moved=0;
 function pick(sx,sy){
   let best=null,bd=1e9;
-  for(const n of nodes){ const pr=project(n.x,n.y,nodeHeight(n));
+  for(const n of nodes){
+    if(!nodeVisible(n)) continue;      // gizli düğüm tıklanamaz (çizimle aynı kural)
+    const pr=project(n.x,n.y,nodeHeight(n));
     const d=Math.hypot(pr.x-sx,pr.y-sy);
     const r=radius(n)*zoomK()*pr.k+8;   // +8: dokunma/tıklama payı
     if(d<r && d<bd){bd=d;best=n;} }
@@ -1515,7 +1682,11 @@ function showRelationCard(edge, mx, my){
   highlightSet.clear(); highlightSet.add(info.a.id); highlightSet.add(info.b.id);
 }
 function hideRelationCard(){ const c=document.getElementById("relCard"); if(c) c.style.display="none"; }
+// BLOOM: uzun bas ölçümü (mobilde çift tık yerine uzun bas = aç/kapat)
+let basimT=0;
+function basiliSure(now){ return basimT ? (now-basimT) : 0; }
 canvas.addEventListener("pointerdown",e=>{ down={x:e.clientX,y:e.clientY}; moved=0;
+  basimT=Date.now();
   mouse={x:e.clientX,y:e.clientY};
   const hit=pick(e.clientX,e.clientY);
   if(reparentMode && selNode){ // reparent hedefi seçiliyor
@@ -1586,12 +1757,32 @@ canvas.addEventListener("pointerup",e=>{
   if(dragNode){ dragNode.fixed=false;
     if(moved<5){ // tıklama
       const now=Date.now();
+      // BLOOM uzun bas (~450ms): kademeli açılımda alt ağacı aç/kapat.
+      // Tek tık seçim davranışını bozmaz; sürükleme zaten moved>=5 ile ayrılıyor.
+      if(BLOOM.visible && basiliSure(now) > 450){
+        toggleExpand(dragNode); dragNode=null; down=null; basimT=0; return;
+      }
+      // BLOOM yol bulma modu: birinci tık A, ikinci tık B
+      if(BLOOM.pathMode){
+        if(!BLOOM.pathA){
+          BLOOM.pathA=dragNode.id;
+          showHint(`Başlangıç: ${dispName(dragNode.name)} — şimdi ikinci kişiye tıkla`);
+        } else if(BLOOM.pathA===dragNode.id){
+          showHint("Aynı kişi — ikinci olarak başka birini seç");
+        } else {
+          yolBul(BLOOM.pathA, dragNode.id);
+          BLOOM.pathA=null;
+        }
+        dragNode=null; down=null; return;
+      }
       if(now-lastTap<320 && lastTapNode===dragNode){ // çift tık → panel
         openPanel(dragNode); lastTap=0; lastTapNode=null;
       } else if(dragNode===activeNode){ // zaten merkezdeyse tekrar dokunuş → panel (mobil dostu)
         openPanel(dragNode); lastTap=now; lastTapNode=dragNode;
       } else { // tek tık → merkeze al + genişlet + detay halkası
         focusCenter(dragNode); lastTap=now; lastTapNode=dragNode;
+        // Odak modu açıksa seçim onu takip eder (mod kendiliğinden açılmaz).
+        if(BLOOM.focusIds) odakAc(dragNode.id);
       }
     }
     dragNode=null;
@@ -1603,6 +1794,9 @@ canvas.addEventListener("pointerup",e=>{
       activeNode=null; highlightSet.clear();
       document.getElementById("hoverCard").style.display="none";
       showActiveCard(null); hideRelationCard();
+      // BLOOM: boşluğa tık odağı ve yolu da bırakır (normal görünüme dön)
+      if(BLOOM.focusIds) odakKapat();
+      if(BLOOM.pathIds) yolTemizle();
     }
   } }
   down=null;
