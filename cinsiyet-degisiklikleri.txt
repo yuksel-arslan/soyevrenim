@@ -1,0 +1,46 @@
+A · Birsen (p1221131): parentRole baba -> anne  [ebeveyn Bedriye kadın]
+A · M. Ali (p1221132): parentRole baba -> anne  [ebeveyn Bedriye kadın]
+A · Aysen (p1221133): parentRole baba -> anne  [ebeveyn Bedriye kadın]
+A · Yılmaz (p1221134): parentRole baba -> anne  [ebeveyn Bedriye kadın]
+A · Ferdane (p122331): parentRole baba -> anne  [ebeveyn Naciye kadın]
+B · Hatice (p1221111): anne alanı babanın kendisiydi (Behçet) -> boşaltıldı
+B · İlknur (p1221121): anne alanı babanın kendisiydi (Behçet) -> boşaltıldı
+B · Öznur (p1221122): anne alanı babanın kendisiydi (Behçet) -> boşaltıldı
+B · Haluk (p1221221): anne alanı babanın kendisiydi (Ruknettin) -> boşaltıldı
+B · Leman (p1221222): anne alanı babanın kendisiydi (Ruknettin) -> boşaltıldı
+B · Şükran (p1221223): anne alanı babanın kendisiydi (Ruknettin) -> boşaltıldı
+B · Oktay (p1221224): anne alanı babanın kendisiydi (Ruknettin) -> boşaltıldı
+B · Yavuz (p1221225): anne alanı babanın kendisiydi (Ruknettin) -> boşaltıldı
+B · Furuzan (p1221226): anne alanı babanın kendisiydi (Ruknettin) -> boşaltıldı
+B · Fatma (p12222111): anne alanı babanın kendisiydi (Enver) -> boşaltıldı
+B · Mustafa (p12222112): anne alanı babanın kendisiydi (Enver) -> boşaltıldı
+B · Gülten (p12222113): anne alanı babanın kendisiydi (Enver) -> boşaltıldı
+B · Gülen (p12222114): anne alanı babanın kendisiydi (Enver) -> boşaltıldı
+B · Lütfü (p12222115): anne alanı babanın kendisiydi (Enver) -> boşaltıldı
+B · Nihal Su (p122221321): anne alanı babanın kendisiydi (Metin) -> boşaltıldı
+B · Şeref Mete (p122221322): anne alanı babanın kendisiydi (Metin) -> boşaltıldı
+B · Müzeyyen (p1222231): anne alanı babanın kendisiydi (Kadir) -> boşaltıldı
+B · Fahri (p1222233): anne alanı babanın kendisiydi (Kadir) -> boşaltıldı
+B · Fahri Kaan (p122221231): anne alanı babanın kendisiydi (Yüksel) -> boşaltıldı
+B · Neriman (p12222341): anne alanı babanın kendisiydi (Nazmi) -> boşaltıldı
+B · Suzan (p12222342): anne alanı babanın kendisiydi (Nazmi) -> boşaltıldı
+B · Makbule (p12222343): anne alanı babanın kendisiydi (Nazmi) -> boşaltıldı
+B · Meryem (p12222344): anne alanı babanın kendisiydi (Nazmi) -> boşaltıldı
+B · Hatice (p12222345): anne alanı babanın kendisiydi (Nazmi) -> boşaltıldı
+B · Ayşe (p12222346): anne alanı babanın kendisiydi (Nazmi) -> boşaltıldı
+B · Kemal (p12222347): anne alanı babanın kendisiydi (Nazmi) -> boşaltıldı
+B · Kenan (p12222348): anne alanı babanın kendisiydi (Nazmi) -> boşaltıldı
+B · Sevde Su (p122224141): anne alanı babanın kendisiydi (Fehmi) -> boşaltıldı
+B · Ayla (p12222251): anne alanı babanın kendisiydi (Mehmet Reşat) -> boşaltıldı
+B · Leyla (p12222252): anne alanı babanın kendisiydi (Mehmet Reşat) -> boşaltıldı
+B · Necla (p12222253): anne alanı babanın kendisiydi (Mehmet Reşat) -> boşaltıldı
+B · Tamer (p12222254): anne alanı babanın kendisiydi (Mehmet Reşat) -> boşaltıldı
+B · Gizem (p122222541): anne alanı babanın kendisiydi (Tamer) -> boşaltıldı
+B · Zeki (p12222255): anne alanı babanın kendisiydi (Mehmet Reşat) -> boşaltıldı
+B · Derin (p122222551): anne alanı babanın kendisiydi (Zeki) -> boşaltıldı
+B · Selma (p12222256): anne alanı babanın kendisiydi (Mehmet Reşat) -> boşaltıldı
+B · İlkay (p1234351): anne alanı babanın kendisiydi (Ravi) -> boşaltıldı
+B · Mehmet (p1234352): anne alanı babanın kendisiydi (Ravi) -> boşaltıldı
+B · Hatice (p1234353): anne alanı babanın kendisiydi (Ravi) -> boşaltıldı
+B · Neriman (p1234441): anne alanı babanın kendisiydi (Hasan) -> boşaltıldı
+B · Yüksel (p1234442): anne alanı babanın kendisiydi (Hasan) -> boşaltıldı
