@@ -785,15 +785,17 @@ function layoutSpiral(){
   // Kol başları. Derin baş, üst kolu EZER (aşağıdaki sort + mark sırası) —
   // yani bir kişi hangi kol başına daha yakınsa o kola sayılır.
   const KOL_BASLARI_ID = {
-    "p13":    "Aslanişi",     // Aslan (Molla Memiş'in oğlu) — 46 kişi
-    "p11":    "Memişişi",     // Memiş (Molla Memiş'in oğlu) — 49 kişi
-    "p112":   "Karyağdışi",   // Karyağdı Mehmet (Memiş'in oğlu) — 18 kişi
+    // 1. halka — Molla Memiş'in oğulları
+    "p13":    "Aslan Oğulları (Aslanişi)",   // Aslan — 46 kişi
+    "p11":    "Memiş Oğulları (Memişişi)",   // Memiş — 49 kişi
+    // 2. halka — torunlar
+    "p112":   "Karyağdişi",   // Karyağdı Mehmet (Memiş'in oğlu) — 18 kişi
     "p111":   "Baratişi",     // Barat Ali (Memiş'in oğlu) — 29 kişi
     // Abdurrahman oğulları Abdurrahman'dan başlar: p12 kolun başıdır.
     // Alt kollar (Musaşi/Tayişi/Noktaşi) daha derin olduğu için kendi
     // alt ağaçlarını ondan geri alır; kalan hat (Mehmet Yazıcı, Hamit, Fahri…)
     // Abdurrahman kolunda kalır.
-    "p12":    "Abdurrahman",  // Abdurrahman (Molla Memiş'in oğlu) — 142 kişi
+    "p12":    "Abdurrahman Oğulları",  // Abdurrahman (Molla Memiş'in oğlu) — 142 kişi
     "p121":   "Musaşi",       // Musa (Abdurrahman'ın oğlu) — 17 kişi
     "p123":   "Tayişi",       // Mustafa Tahsin (Abdurrahman'ın oğlu) — 12 kişi
     "p12222": "Noktaşi"       // Ömer (Hamit'in oğlu) — 68 kişi
@@ -1875,12 +1877,15 @@ function draw(){
     }
     // etiket
     const isFounder=!!FOUNDERS[n.id];
-    // her zaman görünecekler: kurucular, seçili, hover, merkeze alınan kişi (viewer)
-    const alwaysShow = isFounder||isViewer||sel||hov;
+    // Kurucuların (Molla Memiş, Abdurrahman) isimleri artık SÜREKLİ yazılmıyor:
+    // merkezde sabit duran iki etiket ağacın dibini kapatıyordu ve üzerine
+    // gelince ya da seçilince zaten görünüyorlar. Boyut vurgusu (FOUNDERS
+    // yarıçapı) korunuyor — kim oldukları büyüklüklerinden okunuyor.
+    const alwaysShow = isViewer||sel||hov;
     // aktif düğüm (merkeze alınan) — ismi aktif blokta büyük yazılıyor, burada atla
     const isActive = (n===activeNode && (n._grow||0)>0.3);
     // KADEMELİ İSİM GÖSTERME (uzakta gizli, yakınlaştıkça belirir):
-    //  scale < 0.5  → sadece alwaysShow (kurucu/seçili/hover)
+    //  scale < 0.5  → sadece alwaysShow (seçili/hover/merkeze alınan)
     //  0.5 – 0.9    → + soy hattı (omurga)
     //  scale > 0.9  → tüm isimler
     let showLabel = alwaysShow;
@@ -3338,15 +3343,28 @@ let branchFilter=null;   // null=tümü, ya da kol kök id → sadece o kol vurg
     const heads=[...new Set(Object.values(SPIRAL_OF))];
     const rowStyle="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:13px;padding:9px 8px;border-radius:8px;cursor:pointer";
     let html=`<button class="brOpt" data-branch="" style="${rowStyle}"><span>Tümü</span></button>`;
-    // her kolu kişi sayısına göre sırala (kalabalık üstte)
-    heads.map(hid=>({hid, cnt:nodes.filter(n=>SPIRAL_ANCESTORS[n.id] && SPIRAL_ANCESTORS[n.id].has(hid)).length,
-                     isim:SPIRAL_NAME[hid]||(byId[hid]?dispName(byId[hid].name):"Kol")}))
-      .sort((a,b)=>b.cnt-a.cnt)
-      .forEach(k=>{
+    // Kollar HALKAYA göre gruplanır. Halka numarası kol başının nesil
+    // derinliğinden gelir (veri odaklı): 1. halka Molla Memiş'in oğulları,
+    // 2. halka torunlar, daha derin başlar kendi halkasında listelenir.
+    // Böylece KOL_BASLARI_ID değişirse liste kendiliğinden doğru kalır.
+    const kayit = heads.map(hid=>({
+      hid,
+      halka: (byId[hid] && byId[hid]._depth!=null) ? byId[hid]._depth : 99,
+      cnt: nodes.filter(n=>SPIRAL_ANCESTORS[n.id] && SPIRAL_ANCESTORS[n.id].has(hid)).length,
+      isim: SPIRAL_NAME[hid]||(byId[hid]?dispName(byId[hid].name):"Kol")
+    }));
+    const halkaAdi = h => h===1 ? "1. halka · Molla Memiş'in oğulları"
+                        : h===2 ? "2. halka · torunlar"
+                        : `${h}. halka`;
+    const basStyle="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 6px 4px";
+    [...new Set(kayit.map(k=>k.halka))].sort((a,b)=>a-b).forEach(h=>{
+      html+=`<div style="${basStyle}">${escapeHtml(halkaAdi(h))}</div>`;
+      kayit.filter(k=>k.halka===h).sort((a,b)=>b.cnt-a.cnt).forEach(k=>{
         html+=`<button class="brOpt" data-branch="${k.hid}" style="${rowStyle}">
           <span>${escapeHtml(k.isim)}</span>
           <span style="color:var(--muted);font-weight:600">${k.cnt}</span></button>`;
       });
+    });
     list.innerHTML=html;
     list.querySelectorAll(".brOpt").forEach(opt=>{
       opt.onclick=()=>{
