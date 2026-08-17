@@ -579,69 +579,76 @@ function layoutRadial(){
   const ARALIK = MOBIL ? 1.45 : 1;
   const NODE_R = 10.5*ARALIK;
   const MIN_SEP = NODE_R*3;          // merkez-merkez min mesafe = 1 çap boşluk
-  // alt-ağaç yaprak ağırlığı (açı payı için)
-  (function weigh(n){ const k=n._kids||[];
-    n._w = k.length ? k.reduce((s,c)=>s+weigh(c),0) : 1; return n._w; })(root);
+  // ===== KAMA PAYI: alt ağacın EN KALABALIK NESLİ =====
+  // Eskiden yaprak sayısı (_w) kullanılıyordu; bu yanlış ölçüydü. 20 yaprağı tek
+  // nesilde toplanmış bir alt ağaç ile aynı 20 yaprağı dört nesle yaymış bir alt
+  // ağaç aynı genişliği alıyordu — ikincisi hiçbir nesilde 7 kişiyi geçmediği hâlde.
+  // Doğru ölçü: alt ağacın herhangi bir neslindeki EN YÜKSEK kişi sayısı (_need).
+  // Böylece kama, o alt ağacın gerçekten ihtiyaç duyduğu kadar geniş olur.
+  (function profil(n){
+    const k=n._kids||[];
+    if(!k.length){ n._lvl=[1]; n._need=1; return n._lvl; }
+    const cocuk=k.map(profil);
+    const uzun=Math.max(...cocuk.map(a=>a.length));
+    const lvl=[1];
+    for(let g=0; g<uzun; g++){
+      let t=0; cocuk.forEach(a=>{ t += (a[g]||0); });
+      lvl.push(t);
+    }
+    n._lvl=lvl; n._need=Math.max(...lvl);
+    return lvl;
+  })(root);
   // açıları kama-paylaşımıyla dağıt (omurga hattı yukarı, -90°'de merkezlensin)
   const A0=-Math.PI/2 - Math.PI, A1=-Math.PI/2 + Math.PI; // tam tur
   const kolOf={}, kolDilim={};   // düğüm -> kol kökü ; kol kökü -> [a0,a1]
+  const kamaGen={};              // nesil -> o nesildeki en DAR kama genişliği
   (function assign(n,a0,a1,kolKok){
     const mid=(a0+a1)/2; n._ang=mid;
     if(kolKok!=null){ kolOf[n.id]=kolKok; }
     const r=ringRadius(n._depth);
     n.x=Math.cos(mid)*r; n.y=Math.sin(mid)*r;
+    // kama genişliklerini nesil bazında topla: halka yarıçapı bunlardan hesaplanacak
+    const gen=n._depth||0, w=Math.abs(a1-a0);
+    if(n!==root){ if(!kamaGen[gen]) kamaGen[gen]=[]; kamaGen[gen].push(w); }
+    n._wedge=w;
     const k=n._kids||[]; if(!k.length) return;
-    const tot=k.reduce((s,c)=>s+c._w,0)||1;
+    const tot=k.reduce((s,c)=>s+c._need,0)||1;
     let acc=a0;
-    k.forEach(c=>{ const frac=c._w/tot; const ca0=acc, ca1=acc+(a1-a0)*frac;
+    k.forEach(c=>{ const frac=c._need/tot; const ca0=acc, ca1=acc+(a1-a0)*frac;
       // kökün doğrudan çocukları ana kolları tanımlar
       const kk = (n===root) ? c.id : kolKok;
       if(n===root) kolDilim[c.id]=[ca0,ca1];
       assign(c,ca0,ca1,kk); acc=ca1; });
   })(root,A0,A1,null);
 
-  // ===== NESİL İÇİNDE EŞİT ARALIKLI YERLEŞİM =====
-  // Kama-paylaşımı her kişiye ATASININ dar kamasının ORTASINI veriyordu; kalabalık
-  // nesillerde bu üst üste binmeye yol açıyor. Artık her (nesil, kol) grubu, kolun
-  // kaması içinde eşit aralıklara yayılıyor. Sıralama mevcut açıya göre yapılıyor,
-  // böylece aynı ebeveynin çocukları yan yana kalıyor (aile bitişikliği korunuyor).
-  // Tam daireye değil KOL KAMASI içine yayıyoruz ki damarlar bitişik okunsun.
-  const grup=new Map();
-  nodes.forEach(n=>{
-    if(n===root || n._ang==null) return;
-    const kid=kolOf[n.id]; if(kid==null) return;
-    const key=(n._depth||1)+"|"+kid;
-    if(!grup.has(key)) grup.set(key,[]);
-    grup.get(key).push(n);
-  });
-  // 1) gereken yarıçap: kamanın GERÇEK genişliğiyle (w*R/n >= MIN_SEP)
+  // ===== HALKA YARIÇAPI: EN DAR KAMADAN HESAPLA =====
+  // Neslin tamamını eşit yaymak yerine (bu ebeveyn-çocuk yakınlığını bozuyordu:
+  // çocuk, ebeveyninin altında değil neslin sırasında rastgele bir yere düşüyordu)
+  // herkes ATASININ kaması içinde kalıyor. Sıkışmayı yarıçapla çözüyoruz:
+  // o nesildeki en dar kama w ise, iki komşu arası yay = w*R. Bu MIN_SEP'in
+  // altına düşerse halkayı büyüt → R >= MIN_SEP/w.
+  // En dar kamayı doğrudan kullanmıyoruz: tek bir patolojik dar kama (çok geniş
+  // kardeşlerin yanındaki tek çocuk) halkayı gereksiz yere şişirirdi. 15. yüzdelik
+  // alınıyor; ondan daha dar kalan birkaç düğümü çakışma çözücü hallediyor.
   RING_R_OVR={};
-  grup.forEach((liste,key)=>{
-    const [ds,kid]=key.split("|"); const d=+ds;
-    const dil=kolDilim[kid]; if(!dil) return;
-    const w=Math.max(0.05, Math.abs(dil[1]-dil[0]));
-    const gerekli=(liste.length*MIN_SEP)/w;
-    RING_R_OVR[d]=Math.max(RING_R_OVR[d]||0, d*RING_GAP, gerekli);
+  Object.keys(kamaGen).forEach(dk=>{
+    const d=+dk, liste=kamaGen[d].slice().sort((a,b)=>a-b);
+    const idx=Math.floor(liste.length*0.15);
+    const w=Math.max(0.0005, liste[Math.min(idx, liste.length-1)]);
+    RING_R_OVR[d]=Math.max(d*RING_GAP, MIN_SEP/w);
   });
-  // halkalar iç içe geçmesin
+  // halkalar iç içe geçmesin ve dışa doğru monoton büyüsün
   const dler=Object.keys(RING_R_OVR).map(Number).sort((a,b)=>a-b);
   for(let i=1;i<dler.length;i++){
     const onc=RING_R_OVR[dler[i-1]], sim=RING_R_OVR[dler[i]];
     if(sim < onc + RING_GAP*0.6) RING_R_OVR[dler[i]] = onc + RING_GAP*0.6;
   }
-  // 2) açıları kama içinde eşit aralıklara yay
-  grup.forEach((liste,key)=>{
-    const [ds,kid]=key.split("|"); const d=+ds;
-    const dil=kolDilim[kid]; if(!dil) return;
-    liste.sort((a,b)=>a._ang-b._ang);          // aile bitişikliğini koru
-    const n=liste.length, r=ringRadius(d);
-    const kenar=Math.abs(dil[1]-dil[0])*0.06;  // kama kenarlarında pay
-    const a0=Math.min(dil[0],dil[1])+kenar, a1=Math.max(dil[0],dil[1])-kenar;
-    liste.forEach((nd,i)=>{
-      const t=(n===1)?0.5:i/(n-1);
-      const ang=a0+(a1-a0)*t;
-      nd._ang=ang; nd.x=Math.cos(ang)*r; nd.y=Math.sin(ang)*r;
-    });
+  // Yarıçaplar değişti; konumları yeni yarıçapla bir kez daha yaz
+  // (açılar aynı kalır — ebeveyn-çocuk hizası korunur).
+  nodes.forEach(n=>{
+    if(n===root || n._ang==null) return;
+    const r=ringRadius(n._depth||1);
+    n.x=Math.cos(n._ang)*r; n.y=Math.sin(n._ang)*r;
   });
   // kök merkeze
   root.x=0; root.y=0; root._ang=-Math.PI/2;
