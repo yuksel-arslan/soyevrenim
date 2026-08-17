@@ -246,8 +246,40 @@ ya da ilgili dock düğmesini tıklar — paralel bir sistem kurulmadı.
 en küçük olan (en eski) seçilir — 37 tekrarlı ad var (§10), bu kaçınılmaz bir
 tercih; kullanıcı üst bar aramasından ebeveyn adına bakarak daraltabilir.
 
-Yanıtlar kısa onay biçiminde: "Yüksel getirildi — 7. nesil · Nevin Kaya ile
-evli, 1 çocuğu var."
+Yanıtlar kısa onay biçiminde: "Fahri oğlu Yüksel getirildi — 7. nesil · Nevin
+Kaya ile evli, 1 çocuğu var."
+
+**Adaş yönetimi:** `rehberKisiAra()` TÜM eşleşmeleri döndürür; sıralama
+*bakan kişinin kendisi > yaşayan > soyu kalabalık*. Adaş varsa sessiz kalınmaz,
+diğerleri ebeveyn adıyla sayılır. ("En eski nesli seç" kuralı denendi ve
+kaldırıldı: "Yüksel" aramasında 6. nesildeki adaşı getirip kullanıcının
+kendisini atlıyordu.)
+
+### Sesli komut
+
+🎤 düğmesi, tarayıcı yerleşik **Web Speech API** (`SpeechRecognition` /
+`webkitSpeechRecognition`). Anahtar, servis, kütüphane **yok** → maliyet yok.
+
+- `lang="tr-TR"`, `interimResults=true` (konuşurken metin girişe yazılır),
+  `continuous=false` (tek komut — iOS'ta en güvenli mod)
+- Ses yalnızca bir **giriş yöntemi**: tanınan metin aynı `calistirKomut()`'a gider
+- API yoksa düğme hiç gösterilmez (kullanıcı yazmaya yönlendirilir)
+- `onend` durumu **her zaman** sıfırlar; iOS'ta tanıma sessizce durabiliyor ve
+  düğme "dinliyor" hâlinde takılı kalıyordu
+- Başlatma yalnızca düğme tıklamasıyla (iOS otomatik başlatmayı engelliyor)
+- Panel kapanınca dinleme de durur — yoksa mikrofon arka planda açık kalıyordu
+- Hata mesajları ayrı ayrı: izin yok / ses duyulmadı / desteklenmiyor / genel
+
+**Ses toleransı yerel.** Talimat bunu "`diyalogGonder` zaten Claude'a gidiyor"
+diyerek LLM'e bırakıyordu; burada LLM yok. `rehberKisiAra()` içinde son çare
+olarak Levenshtein uzaklığı kullanılır (eşik ≈ sorgu uzunluğunun %35'i), yalnızca
+tam/baştan/içinde eşleşme hiç tutmazsa. Gerçek veriyle sınandı:
+
+| Girdi | Sonuç |
+|---|---|
+| "yüksele", "yüksek", "yükselı" | → Yüksel |
+| "emineyi", "fahriyi" | → Emine, Fahri |
+| "merhaba", "teşekkürler", "hava nasıl" | → hiçbir şey (yanlış eşleşme yok) |
 
 ## 7. Etkileşim modeli
 

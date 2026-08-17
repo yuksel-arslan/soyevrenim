@@ -88,6 +88,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);
   /* iOS lastik-bant (rubber-band) kaydırması dokunma olaylarını canvas'tan
      çalabiliyor; sayfa zaten kaydırılmıyor, davranışı tamamen kapatıyoruz. */
   overscroll-behavior:none;-webkit-overflow-scrolling:auto}
+/* Sesli komut: dinlerken mikrofon düğmesi nabız atar (görsel geri bildirim) */
+@keyframes micNabiz{0%{box-shadow:0 0 0 0 rgba(220,80,70,.55)}70%{box-shadow:0 0 0 9px rgba(220,80,70,0)}100%{box-shadow:0 0 0 0 rgba(220,80,70,0)}}
+#rehberMic.dinliyor{border-color:var(--danger);animation:micNabiz 1.3s infinite}
 canvas{display:block;position:fixed;inset:0;
   touch-action:none;-ms-touch-action:none;
   /* iOS: dokunma vurgusu, metin seçimi ve uzun-bas menüsü kapalı —
@@ -456,11 +459,15 @@ canvas{display:block;position:fixed;inset:0;
   <div id="rehberMesaj" style="padding:0 14px;font-size:13.5px;line-height:1.55;color:var(--text)"></div>
   <div id="rehberCipler" style="display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px 4px"></div>
   <div style="display:flex;gap:6px;padding:10px 14px 14px">
-    <input id="rehberGiris" placeholder="ya da yaz: Yüksel'i göster" autocomplete="off"
+    <input id="rehberGiris" placeholder="yaz ya da 🎤 ile söyle" autocomplete="off"
       style="flex:1;min-width:0;background:var(--bg2);border:1px solid var(--line);border-radius:9px;
       color:var(--text);font-size:14px;padding:9px 11px;outline:none">
+    <!-- Sesli komut: tarayıcı yerleşik Web Speech API. Desteklenmiyorsa gizlenir. -->
+    <button id="rehberMic" title="Sesle söyle" style="display:none;background:var(--panel2);
+      border:1px solid var(--line);border-radius:9px;width:40px;padding:0;font-size:15px;
+      cursor:pointer;position:relative;flex:none">🎤</button>
     <button id="rehberGonder" style="background:var(--accent);color:var(--on-accent);border:none;
-      border-radius:9px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer">Git</button>
+      border-radius:9px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;flex:none">Git</button>
   </div>
 </div>
 
@@ -3640,7 +3647,33 @@ function rehberKisiAra(ad){
   const tam=nodes.filter(n=>norm(n)===q);
   const bas=nodes.filter(n=>norm(n).startsWith(q));
   const ic =nodes.filter(n=>norm(n).includes(q));
-  const liste=(tam.length?tam:(bas.length?bas:ic));
+  let liste=(tam.length?tam:(bas.length?bas:ic));
+  // SES TOLERANSI: hiçbir şey tutmazsa yakın yazımı dene. Sesli tanıma "Yüksel"i
+  // "yüksele / yüksek / yükselı" diye döndürebiliyor. Talimat bu toleransı LLM'e
+  // bırakıyordu; LLM yok, o yüzden yerel düzenleme-uzaklığı ile çözülüyor.
+  // Yalnızca son çare: tam/baştan/içinde eşleşme varsa buraya hiç girilmiyor.
+  if(!liste.length){
+    const mesafe=(a,b)=>{               // Levenshtein (küçük dizgiler, ucuz)
+      const m=a.length,n=b.length;
+      if(!m||!n) return Math.max(m,n);
+      let onc=Array.from({length:n+1},(_,j)=>j);
+      for(let i=1;i<=m;i++){
+        const cur=[i];
+        for(let j=1;j<=n;j++){
+          cur[j]=Math.min(onc[j]+1, cur[j-1]+1, onc[j-1]+(a[i-1]===b[j-1]?0:1));
+        }
+        onc=cur;
+      }
+      return onc[n];
+    };
+    // eşik: kelime uzunluğunun ~%35'i (kısa adlarda 1, uzunlarda 2-3 harf hata)
+    const esik=Math.max(1, Math.floor(q.length*0.35));
+    const adaylar=nodes
+      .map(n=>({n, d:Math.min(...dispName(n.name).toLocaleLowerCase("tr").split(/\s+/).map(p=>mesafe(q,p)))}))
+      .filter(x=>x.d<=esik)
+      .sort((a,b)=>a.d-b.d);
+    liste=adaylar.map(x=>x.n);
+  }
   // Sıralama: bakan kişinin kendisi > yaşayan > soyu kalabalık olan.
   // "En eski nesil" kuralı kullanılmıyordu: "Yüksel" aramasında 6. nesildeki
   // adaşı getiriyor, kullanıcının kendisini (7. nesil) atlıyordu.
@@ -3696,9 +3729,66 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     ciplerKur();
     panel.style.display="block";
   }
-  function kapat(){ panel.style.display="none"; }
+  // Panel kapanınca dinleme de dursun: panel dışına tıklayınca panel kapanıyor
+  // ama tanıma arka planda çalışmaya devam ediyordu (mikrofon açık kalıyordu).
+  function kapat(){ panel.style.display="none"; if(typeof sesDurdur==="function") sesDurdur(); }
 
-  el("rehberKapat").onclick=kapat;
+  // ---- SESLİ KOMUT (tarayıcı yerleşik Web Speech API; anahtar/servis yok) ----
+  // Ses yalnızca bir GİRİŞ yöntemi: tanınan metin aynı calistirKomut()'a gidiyor,
+  // paralel bir komut sistemi yok.
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const mic = el("rehberMic");
+  let taniyici=null, dinliyor=false;
+  function micDurum(d){
+    dinliyor=(d==="dinliyor");
+    if(!mic) return;
+    mic.classList.toggle("dinliyor", dinliyor);
+    mic.textContent = dinliyor ? "■" : "🎤";
+    mic.title = dinliyor ? "Dinlemeyi bitir" : "Sesle söyle";
+  }
+  function sesDurdur(){ try{ taniyici && taniyici.stop(); }catch(e){} micDurum("kapali"); }
+  function sesBaslat(){
+    if(!SR){ yaz("Tarayıcın sesli komutu desteklemiyor, yazabilirsin."); return; }
+    try{
+      taniyici=new SR();
+      taniyici.lang="tr-TR";
+      taniyici.interimResults=true;   // konuşurken canlı metin
+      taniyici.continuous=false;      // tek komut; iOS'ta en güvenli mod
+      taniyici.maxAlternatives=1;
+      taniyici.onstart=()=>{ micDurum("dinliyor"); yaz("Dinliyorum…"); };
+      taniyici.onresult=(e)=>{
+        const metin=Array.from(e.results).map(r=>r[0].transcript).join("").trim();
+        giris.value=metin;                                  // canlı göster
+        if(e.results[e.results.length-1].isFinal && metin){
+          micDurum("kapali");
+          calistirKomut(metin);                             // MEVCUT akışa ver
+        }
+      };
+      taniyici.onerror=(e)=>{
+        micDurum("kapali");
+        if(e.error==="not-allowed" || e.error==="service-not-allowed")
+          yaz("Mikrofon izni gerekiyor. Tarayıcı ayarlarından izin verip tekrar dene.");
+        else if(e.error==="no-speech") yaz("Sesini duyamadım, tekrar dener misin?");
+        else if(e.error==="aborted") yaz("Dinleme durduruldu.");
+        else yaz("Ses tanımada sorun oldu, yazarak deneyebilirsin.");
+      };
+      // iOS'ta tanıma bazen sessizce durur; durumu HER ZAMAN sıfırla ki
+      // düğme "dinliyor" hâlinde takılı kalmasın.
+      taniyici.onend=()=>micDurum("kapali");
+      taniyici.start();
+    }catch(e){ micDurum("kapali"); yaz("Mikrofon başlatılamadı."); }
+  }
+  if(mic){
+    if(SR){
+      mic.style.display="";     // yalnızca destekleniyorsa göster
+      // Mikrofon erişimi kullanıcı hareketiyle tetiklenmeli (iOS zorunlu kılıyor)
+      mic.onclick=()=>{ if(dinliyor) sesDurdur(); else sesBaslat(); };
+    } else {
+      mic.style.display="none"; // desteklenmiyorsa hiç göstermiyoruz
+    }
+  }
+
+  el("rehberKapat").onclick=kapat;   // kapat() dinlemeyi de durduruyor
   el("rehberGonder").onclick=()=>calistirKomut(giris.value);
   giris.addEventListener("keydown",e=>{ if(e.key==="Enter") calistirKomut(giris.value); });
   const rb=el("rehberBtn");
