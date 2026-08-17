@@ -805,9 +805,12 @@ function fit(){
 // Not: Talimattaki veri modeli (k.baba / k.anne) bu projede yok; burada bağlar
 // edges (ebeveyn→çocuk), motherEdges (anne→çocuk) ve marriages üzerinden kurulur.
 
-// Açılışta kademeli açılım kapalı: canlı sitede aile ağacın tamamını görmeli.
-// Açmak için: BLOOM_KADEMELI_BASLA = true
-const BLOOM_KADEMELI_BASLA = false;
+// Kademeli açılım varsayılan KAPALI: canlı sitede aile, açılışta ağacın tamamını
+// görmeli — sadece kök+1. nesille karşılaşmak şaşırtıcı olurdu.
+// Denemek için adrese ?kademeli=1 ekle (ör. soyevrenim.com/?kademeli=1).
+// Kalıcı açmak istersen buradaki false'u true yap.
+const BLOOM_KADEMELI_BASLA =
+  new URLSearchParams(location.search).has("kademeli") || false;
 const BLOOM_DIM = 0.12;          // sönük parlaklık (mevcut filtre değeriyle aynı)
 
 let ADJ = new Map();             // yönsüz komşuluk (akrabalık gezme)
