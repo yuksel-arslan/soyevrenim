@@ -18,6 +18,8 @@
   --shadow:rgba(0,0,0,.45);
   /* düğüm konturu / vefat iç halkası — temaya göre değişir */
   --node-edge:rgba(255,255,255,.28); --node-inner:rgba(255,255,255,.35);
+  /* vurgu zemini uzerindeki yazi + tam ekran katman zemini */
+  --on-accent:#06121a; --overlay:rgba(8,12,20,.97); --welcome-1:#101a30; --welcome-2:#0b1220;
 }
 /* GÜNDÜZ (light) modu */
 :root[data-theme="light"]{
@@ -29,6 +31,7 @@
   --accent:#2596a8; --danger:#c8483e; --ok:#3a9a5a;
   --shadow:rgba(30,50,90,.15);
   --node-edge:rgba(20,32,54,.42); --node-inner:rgba(20,32,54,.30);
+  --on-accent:#ffffff; --overlay:rgba(244,246,251,.97); --welcome-1:#ffffff; --welcome-2:#eef2f8;
 }
 /* ============ YADİGÂR — 1956 çizimine uygun tema ============
    Fahri Arslan'ın el çiziminin dilini ekrana taşır: yaşlanmış kağıt, elle
@@ -50,6 +53,7 @@
   /* Çizimdeki yapraklar gibi: açık dolgu + KOYU mürekkep kontur.
      Kağıt üzerinde düğümü okunur kılan asıl unsur bu. */
   --node-edge:rgba(47,44,38,.62); --node-inner:rgba(47,44,38,.42);
+  --on-accent:#efe7d3; --overlay:rgba(232,223,200,.97); --welcome-1:#efe7d3; --welcome-2:#ddd2b7;
 }
 /* Kağıt dokusu: iki katman ince gren + kenarda hafif vinyet.
    Görsel/dosya eklemeden, sadece gradyanlarla — CSP ve boyut dostu. */
@@ -105,7 +109,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:9px 13px;cursor:pointer;
   display:inline-flex;align-items:center;gap:6px;transition:.15s}
 .tbtn:hover{border-color:var(--line2);background:var(--panel2)}
-.tbtn.primary{background:var(--accent);color:#06121a;border-color:var(--accent);font-weight:600}
+.tbtn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600}
 .tbtn.primary:hover{filter:brightness(1.08)}
 
 /* sol araç kolonu */
@@ -113,7 +117,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 .dock button{width:40px;height:40px;border-radius:8px;background:var(--panel);border:1px solid var(--line);
   color:var(--text);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s}
 .dock button:hover{background:var(--panel2);border-color:var(--line2)}
-.dock button.on{background:var(--accent);color:#06121a;border-color:var(--accent)}
+.dock button.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .dock button svg{width:19px;height:19px;stroke:currentColor;stroke-width:1.7;fill:none;
   stroke-linecap:round;stroke-linejoin:round;display:block}
 .dock .sep{height:1px;background:var(--line);margin:3px 4px}
@@ -164,7 +168,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 
 /* mod ipucu */
 .hint{position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:9;background:var(--accent);
-  color:#06121a;font-size:12px;font-weight:600;padding:7px 14px;border-radius:20px;opacity:0;
+  color:var(--on-accent);font-size:12px;font-weight:600;padding:7px 14px;border-radius:20px;opacity:0;
   transition:opacity .3s;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .hint.show{opacity:1}
 
@@ -254,43 +258,43 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 
 <!-- açılış: kim bakıyor? -->
 <div id="welcome" style="position:fixed;inset:0;z-index:50;display:flex;align-items:center;
-  justify-content:center;background:radial-gradient(120% 90% at 50% 40%,#101a30,#0b1220)">
+  justify-content:center;background:radial-gradient(120% 90% at 50% 40%,var(--welcome-1),var(--welcome-2))">
   <div style="text-align:center;max-width:420px;padding:0 24px">
     <div id="welcomeLabel" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:3px;
-      text-transform:uppercase;color:#5f6f88;margin-bottom:6px">Abdurrahman Oğulları</div>
+      text-transform:uppercase;color:var(--muted);margin-bottom:6px">Abdurrahman Oğulları</div>
     <div id="welcomeSlogan" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;
       color:#4a5568;margin-bottom:14px">Soy Evreni · 1615'ten beri</div>
-    <h1 style="font-family:'Inter';font-weight:700;font-size:28px;margin:0 0 8px;color:#e6edf6">Bu ağaca kim bakıyor?</h1>
-    <p style="font-size:14px;color:#8c9cb4;line-height:1.5;margin:0 0 22px">
+    <h1 style="font-family:'Inter';font-weight:700;font-size:28px;margin:0 0 8px;color:var(--text)">Bu ağaca kim bakıyor?</h1>
+    <p style="font-size:14px;color:var(--text-soft);line-height:1.5;margin:0 0 22px">
       Adını seç — ağaç seni merkezine alsın, soyunu köke kadar aydınlatsın.
       Herkes kendi bakışında ağacın merkezidir.</p>
     <div style="position:relative">
       <input id="whoInput" placeholder="adını yaz…" autocomplete="off"
-        style="width:100%;font-family:'Inter';font-size:16px;color:#e6edf6;background:#131c30;
-        border:1px solid #26324a;border-radius:9px;padding:13px 15px;outline:none;text-align:center">
+        style="width:100%;font-family:'Inter';font-size:16px;color:var(--text);background:var(--panel);
+        border:1px solid var(--line);border-radius:9px;padding:13px 15px;outline:none;text-align:center">
       <div id="whoResults" style="position:absolute;top:calc(100% + 6px);left:0;right:0;
-        background:#131c30;border:1px solid #26324a;border-radius:9px;max-height:40vh;overflow:auto;
+        background:var(--panel);border:1px solid var(--line);border-radius:9px;max-height:40vh;overflow:auto;
         display:none;box-shadow:0 16px 50px rgba(0,0,0,.5);text-align:left;z-index:2"></div>
     </div>
-    <button id="skipWho" style="margin-top:16px;background:none;border:none;color:#5f6f88;
+    <button id="skipWho" style="margin-top:16px;background:none;border:none;color:var(--muted);
       font-size:13px;cursor:pointer;text-decoration:underline">Sadece ağaca bakmak istiyorum</button>
 
     <!-- AİLE ŞİFRESİ ile giriş (yalnızca bulut/canlı modda görünür) -->
     <div id="smsLogin" style="display:none;margin-top:22px;border-top:1px solid #1c2740;padding-top:20px">
-      <div style="font-size:13px;color:#8c9cb4;margin-bottom:10px">
+      <div style="font-size:13px;color:var(--text-soft);margin-bottom:10px">
         Katılmak için aile şifresiyle giriş yap</div>
       <input id="ailePass" type="password" placeholder="Aile şifresi" autocomplete="current-password"
-        style="width:100%;font-size:16px;color:#e6edf6;background:#131c30;border:1px solid #26324a;
+        style="width:100%;font-size:16px;color:var(--text);background:var(--panel);border:1px solid var(--line);
         border-radius:9px;padding:12px 14px;outline:none;text-align:center;margin-bottom:8px">
-      <button id="aileGir" style="width:100%;font-size:14px;font-weight:600;color:#06121a;
-        background:#5cc8d8;border:none;border-radius:9px;padding:12px;cursor:pointer">Gir</button>
+      <button id="aileGir" style="width:100%;font-size:14px;font-weight:600;color:var(--on-accent);
+        background:var(--accent);border:none;border-radius:9px;padding:12px;cursor:pointer">Gir</button>
       <div id="smsErr" style="font-size:12px;color:#e0645a;margin-top:8px;min-height:16px"></div>
-      <div style="font-size:11px;color:#5f6f88;margin-top:6px">
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">
         Şifreyi aile büyüklerinden alabilirsin. Girenler değişiklik önerebilir ve sohbete yazabilir.</div>
     </div>
 
     <div id="welcomeStats" style="margin-top:28px;display:flex;gap:22px;justify-content:center;
-      font-family:'IBM Plex Mono',monospace;color:#5f6f88;font-size:11px"></div>
+      font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:11px"></div>
   </div>
 </div>
 
@@ -339,7 +343,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
     <input id="chatInput" placeholder="Mesaj yaz…" maxlength="2000"
       style="flex:1;font-size:15px;color:var(--text);background:var(--bg2);border:1px solid var(--line2);
       border-radius:9px;padding:10px 12px;outline:none">
-    <button id="chatSend" style="background:var(--accent);color:#06121a;border:none;border-radius:9px;
+    <button id="chatSend" style="background:var(--accent);color:var(--on-accent);border:none;border-radius:9px;
       padding:0 16px;font-weight:600;cursor:pointer">Gönder</button>
   </div>
 </div>
@@ -377,15 +381,15 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
 </div>
 
 <!-- KÖKEN / MİRAS — babanın 1956 çizimi -->
-<div id="kokenScreen" style="position:fixed;inset:0;z-index:60;background:rgba(8,12,20,.97);
+<div id="kokenScreen" style="position:fixed;inset:0;z-index:60;background:var(--overlay);
   display:none;flex-direction:column;backdrop-filter:blur(4px)">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:20px 24px;flex:none">
     <div style="max-width:70%">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:3px;
         text-transform:uppercase;color:var(--spine);margin-bottom:6px">Kökenimiz</div>
-      <div style="font-weight:700;font-size:20px;color:#e6edf6">Abdurrahman Oğullarının Soy Ağacı</div>
+      <div style="font-weight:700;font-size:20px;color:var(--text)">Abdurrahman Oğullarının Soy Ağacı</div>
       <div style="font-size:13px;color:#9aa8bd;margin-top:6px;line-height:1.6;max-width:640px">
-        Bu evrenin başladığı yer: babam <b style="color:#e6edf6">Fahri Arslan</b>'ın 1956'da,
+        Bu evrenin başladığı yer: babam <b style="color:var(--text)">Fahri Arslan</b>'ın 1956'da,
         elleriyle çizdiği soy ağacı. Aşağıdaki her dal, her yaprak, onun sabrıyla ve sevgisiyle
         kâğıda geçti. Bugün ekranda dönen bu koni, onun o eserinin yaşayan devamıdır.
         <span style="color:var(--spine)">Saygıyla anıyoruz.</span>
@@ -1437,7 +1441,7 @@ let BRANCH_COLORS = {};// kol kök id'si -> renk
 function computeBranches(){
   BRANCH_OF={}; BRANCH_COLORS={};
   const root=nodes.find(n=>!n._parent); if(!root) return;
-  const palette=["#4a90d9","#d96a9a","#5ac87a","#e0b64a","#c88ad0","#5cc8d8","#e0645a","#8ad94a"];
+  const palette=["#4a90d9","#d96a9a","#5ac87a","#e0b64a","#c88ad0","var(--accent)","#e0645a","#8ad94a"];
   (root._kids||[]).forEach((k,i)=>{
     const col=palette[i%palette.length]; BRANCH_COLORS[k.id]=col;
     (function mark(n){ BRANCH_OF[n.id]=k.id; (n._kids||[]).forEach(mark); })(k);
@@ -2638,7 +2642,7 @@ function renderProfileSections(n){
     const src = isVid ? item.url : item;
     const cell=document.createElement("div");
     cell.style.cssText=`aspect-ratio:1;border-radius:7px;position:relative;cursor:pointer;
-      border:1px solid var(--line);overflow:hidden;background:#0e1526`;
+      border:1px solid var(--line);overflow:hidden;background:var(--bg2)`;
     if(isVid){
       cell.innerHTML=`<video src="${src}#t=0.1" style="width:100%;height:100%;object-fit:cover" muted playsinline preload="metadata"></video>
         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -3418,12 +3422,12 @@ whoInput.addEventListener("input",()=>{
   whoResults.innerHTML=hits.length?hits.map(n=>{
     const gen=(function(){let c=[],x=n;while(x){c.push(x);x=x._parent;}return c.length-1;})();
     return `<div class="whoR" data-id="${n.id}" style="padding:10px 14px;cursor:pointer;
-      border-bottom:1px solid #26324a;font-size:14px;color:#e6edf6;display:flex;justify-content:space-between">
-      <span>${dispName(n.name)}</span><small style="color:#5f6f88;text-align:right">${kimlikSatiri(n)}<br>${gen}. nesil</small></div>`;
-  }).join(""):`<div style="padding:10px 14px;color:#5f6f88;font-size:13px">yaşayan biri bulunamadı</div>`;
+      border-bottom:1px solid var(--line);font-size:14px;color:var(--text);display:flex;justify-content:space-between">
+      <span>${dispName(n.name)}</span><small style="color:var(--muted);text-align:right">${kimlikSatiri(n)}<br>${gen}. nesil</small></div>`;
+  }).join(""):`<div style="padding:10px 14px;color:var(--muted);font-size:13px">yaşayan biri bulunamadı</div>`;
   whoResults.style.display="block";
   whoResults.querySelectorAll(".whoR[data-id]").forEach(r=>{
-    r.onmouseenter=()=>r.style.background="#182238"; r.onmouseleave=()=>r.style.background="";
+    r.onmouseenter=()=>r.style.background="var(--panel2)"; r.onmouseleave=()=>r.style.background="";
     r.onclick=()=>startAs(r.dataset.id);
   });
 });
@@ -3586,7 +3590,7 @@ function updatePendingBar(){
       background:var(--panel);border:1px solid var(--spine);border-radius:12px;padding:8px 10px 8px 14px;
       box-shadow:0 12px 40px var(--shadow);font-size:13px`;
     bar.innerHTML=`<span style="color:var(--text-soft)">Kaydedilmemiş değişikliklerin var</span>
-      <button id="sendApprovalBtn" style="background:var(--spine);color:#06121a;border:none;
+      <button id="sendApprovalBtn" style="background:var(--spine);color:var(--on-accent);border:none;
         border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Onaya gönder</button>`;
     document.body.appendChild(bar);
     document.getElementById("sendApprovalBtn").onclick=sendForApproval;
@@ -3736,7 +3740,7 @@ function renderApprovalList(list){
       <div style="font-size:12px;line-height:1.6;margin-bottom:10px">${detay.join("<br>")||""}</div>`;
     const row=document.createElement("div"); row.style.cssText="display:flex;gap:8px";
     const onay=document.createElement("button"); onay.textContent="✓ Onayla";
-    onay.style.cssText="flex:1;background:var(--ok);color:#06121a;border:none;border-radius:7px;padding:9px;font-weight:600;cursor:pointer;font-size:13px";
+    onay.style.cssText="flex:1;background:var(--ok);color:var(--on-accent);border:none;border-radius:7px;padding:9px;font-weight:600;cursor:pointer;font-size:13px";
     onay.onclick=()=>karar(o.id,"onayla");
     const ret=document.createElement("button"); ret.textContent="✕ Reddet";
     ret.style.cssText="flex:1;background:none;color:var(--danger);border:1px solid var(--danger);border-radius:7px;padding:9px;font-weight:600;cursor:pointer;font-size:13px";
@@ -3801,7 +3805,7 @@ function renderChat(msgs, container, kapsam){
       <span>${fmtChatTime(m.zaman)}</span>`;
     const bubble=document.createElement("div");
     bubble.style.cssText=`font-size:14px;line-height:1.4;padding:8px 12px;border-radius:12px;
-      background:${mine?"var(--accent)":"var(--bg2)"};color:${mine?"#06121a":"var(--text)"};
+      background:${mine?"var(--accent)":"var(--bg2)"};color:${mine?"var(--on-accent)":"var(--text)"};
       border:1px solid ${mine?"var(--accent)":"var(--line)"};word-break:break-word`;
     bubble.textContent=m.mesaj;
     wrap.appendChild(meta); wrap.appendChild(bubble);
