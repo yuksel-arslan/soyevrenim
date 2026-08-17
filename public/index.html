@@ -1473,7 +1473,12 @@ const FOUNDERS={ "p1":20, "p12":16 };  // Molla Memiş (kök), Abdurrahman
 // sabit kaldığı için ağaç "incelmiş" görünüyordu. Artık zoom'u boydan boya izler.
 // Alt sınır 0.5: genel bakışta düğümler tamamen kaybolmasın.
 // Üst sınır 3.4: en yakın zoom'da ekranı kaplamasın.
-function zoomK(){ return Math.max(0.5, Math.min(3.4, scale)); }
+// Taban 0.5 iken aralık garantisi EKRANDA bozuluyordu: uzaklaşınca dünya
+// mesafeleri scale ile küçülürken düğümler 0.5'te takılıp küçülmüyordu.
+// Açılış zoom'u (~0.35) tam bu bölgeye düşüyor, düğümler bitişik görünüyordu.
+// Taban 0.28: düğümler genel bakışta hâlâ görünür kalıyor ama artık mesafeyle
+// birlikte küçülüyor, bir çap boşluk ekranda da korunuyor.
+function zoomK(){ return Math.max(0.28, Math.min(3.4, scale)); }
 
 function radius(n){
   // Boyutta herkes eşit; kurucu atalar ve merkeze alınan/viewer belirgin.
@@ -3383,7 +3388,11 @@ applyEvren();
   const MOON='<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
   // Yadigâr: 1956 el çizimine uygun kağıt/mürekkep teması — yaprak simgesi
   const YAPRAK='<svg viewBox="0 0 24 24"><path d="M12 21c0-7 3-12 8-15-1 8-4 12-8 15z"/><path d="M12 21C8 18 5 14 4 6c5 3 8 8 8 15z"/></svg>';
-  const SIRA=["dark","light","yadigar"];   // düğme üçünü sırayla geçer
+  // Yadigâr VARSAYILAN: uygulamanın görsel dili baba yadigârı 1956 çizimine
+  // uygun olmalı — tema gizli bir seçenek değil, kimliğin kendisi.
+  // Gece ve gündüz modları düğmeyle erişilebilir kalıyor.
+  const SIRA=["yadigar","dark","light"];   // düğme üçünü sırayla geçer
+  const VARSAYILAN="yadigar";
   function apply(mode){
     if(mode==="light"){ document.documentElement.setAttribute("data-theme","light");
       if(btn){ btn.innerHTML=SUN; btn.title="Gündüz modu — yadigâr temaya geç"; } }
@@ -3392,9 +3401,9 @@ applyEvren();
     else { document.documentElement.removeAttribute("data-theme");
       if(btn){ btn.innerHTML=MOON; btn.title="Gece modu — gündüz moduna geç"; } }
   }
-  let saved="dark";
-  try{ saved=localStorage.getItem(KEY)||"dark"; }catch(e){}
-  if(!SIRA.includes(saved)) saved="dark";
+  let saved=VARSAYILAN;
+  try{ saved=localStorage.getItem(KEY)||VARSAYILAN; }catch(e){}
+  if(!SIRA.includes(saved)) saved=VARSAYILAN;
   apply(saved);
   if(btn) btn.onclick=()=>{
     const suanki=document.documentElement.getAttribute("data-theme")||"dark";
