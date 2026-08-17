@@ -1537,7 +1537,10 @@ function draw(){
   // kısalması derinliği anında okutuyor.
   // Çok soluk tutuluyor (244 düğüm + kenar zaten yoğun) ve uzaklaşınca güçleniyor.
   if(coneMode && nodes.length && kafesGoster){
-    const telAlpha = ringAlpha*0.85;
+    // Tel örgü kendi alfasını kullanır. ringAlpha'ya bağlıyken (0.18 tabanlı)
+    // meridyenler ~0.09'a düşüp görünmez oluyordu — yüzeyi hissettirmiyordu.
+    // Taban 0.30, uzaklaşınca 0.60'a çıkıyor.
+    const telAlpha = 0.30 + 0.30*zoomOut;
     const dMin = Math.max(1, BLOOM.genLo||0);
     const dMax = Math.min(MAXDEPTH, BLOOM.genHi!=null?BLOOM.genHi:MAXDEPTH);
     // 1) meridyenler: tabandaki tepe noktasından yukarı, her nesil halkasına uğrayarak
@@ -1553,7 +1556,7 @@ function draw(){
         const pp=project(Math.cos(a)*rr, Math.sin(a)*rr, rh);
         if(!basladi){ ctx.moveTo(pp.x,pp.y); basladi=true; } else ctx.lineTo(pp.x,pp.y);
       }
-      ctx.globalAlpha=telAlpha*0.55;         // meridyenler halkalardan daha soluk
+      ctx.globalAlpha=telAlpha*0.7;          // meridyenler halkalardan bir tık soluk
       ctx.stroke();
     }
     ctx.globalAlpha=1;
