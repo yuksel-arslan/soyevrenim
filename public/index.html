@@ -3175,12 +3175,78 @@ document.getElementById("addBtn").onclick=()=>{
 function deleteNode(n){
   const kids=n._kids||[];
   if(!confirm(`"${dispName(n.name)}" silinsin mi?`+(kids.length?` (${kids.length} çocuğu ebeveynine bağlanacak)`:""))) return;
-  // çocukları büyükanne/babaya bağla
   const gp=n._parent;
+  const sayim={ anne:0, evlilik:0, alan:0 };
+
+  // 1) soy bağları
   edges=edges.filter(e=>e.from!==n.id && e.to!==n.id);
-  if(gp){ kids.forEach(k=>edges.push({from:gp.id,to:k.id})); }
+
+  // 2) ANNE BAĞLARI — eskiden temizlenmiyordu: kişi silinince onun anne bağları
+  //    sahipsiz kalıyor, dışa aktarılan yedeklere de sızıyordu. (Özge silinip
+  //    geri eklenirken fark edildi: düğüm gitmiş, anne bağı kalmıştı.)
+  const meOnce=motherEdges.length;
+  motherEdges=motherEdges.filter(m=>m.from!==n.id && m.to!==n.id);
+  sayim.anne=meOnce-motherEdges.length;
+
+  // 3) EVLİLİK BAĞLARI — aynı sorun
+  const mrOnce=(marriages||[]).length;
+  marriages=(marriages||[]).filter(m=>m.from!==n.id && m.to!==n.id);
+  sayim.evlilik=mrOnce-marriages.length;
+
+  // 4) Başka düğümlerin bu kişiye işaret eden alanları (mother / kin)
+  nodes.forEach(x=>{
+    if(x.mother===n.id){ x.mother=null; sayim.alan++; }
+    if(x.kin===n.id){ x.kin=null; sayim.alan++; }
+  });
+
+  // 5) Çocukları büyükanne/babaya bağla. parentRole YENİ ebeveynin cinsiyetine
+  //    göre düzeltilir; yoksa "kadın baba konumunda" türü çelişki üretiyorduk
+  //    (bkz. cinsiyet-rapor.md — o sınıfın 46 düzeltmesi bu yüzden gerekmişti).
+  if(gp){
+    kids.forEach(k=>{
+      edges.push({from:gp.id,to:k.id});
+      if(gp.sex==="K"){
+        k.parentRole="anne"; k.mother=gp.id;
+        if(!motherEdges.some(m=>m.from===gp.id && m.to===k.id))
+          motherEdges.push({from:gp.id,to:k.id,type:"mother"});
+      } else {
+        k.parentRole="baba";
+      }
+    });
+  }
+
   nodes=nodes.filter(x=>x!==n); reindex(); touch();
-  closeInspector(); toast("Kişi silindi");
+  closeInspector();
+  const ek=[];
+  if(sayim.anne)    ek.push(`${sayim.anne} anne bağı`);
+  if(sayim.evlilik) ek.push(`${sayim.evlilik} evlilik bağı`);
+  if(sayim.alan)    ek.push(`${sayim.alan} referans`);
+  toast("Kişi silindi"+(ek.length?" · "+ek.join(", ")+" temizlendi":""));
+}
+
+// ---- SAHİPSİZ BAĞ TARAMASI ----
+// Var olmayan kişiye işaret eden bağ/alan bırakan eski silme davranışının
+// mirasını temizlemek için. Yalnızca yöneticiye açık; rapor döndürür.
+function sahipsizBaglariTara(temizle){
+  const id=new Set(nodes.map(n=>n.id));
+  const kE=(edges||[]).filter(e=>!id.has(e.from)||!id.has(e.to));
+  const kM=(motherEdges||[]).filter(m=>!id.has(m.from)||!id.has(m.to));
+  const kV=(marriages||[]).filter(m=>!id.has(m.from)||!id.has(m.to));
+  const kMother=nodes.filter(n=>n.mother && !id.has(n.mother));
+  const kKin=nodes.filter(n=>n.kin && !id.has(n.kin));
+  const kendine=(edges||[]).filter(e=>e.from===e.to);
+  const toplam=kE.length+kM.length+kV.length+kMother.length+kKin.length+kendine.length;
+
+  if(temizle && toplam){
+    edges=(edges||[]).filter(e=>id.has(e.from) && id.has(e.to) && e.from!==e.to);
+    motherEdges=(motherEdges||[]).filter(m=>id.has(m.from) && id.has(m.to));
+    marriages=(marriages||[]).filter(m=>id.has(m.from) && id.has(m.to));
+    nodes.forEach(n=>{ if(n.mother && !id.has(n.mother)) n.mother=null;
+                       if(n.kin && !id.has(n.kin)) n.kin=null; });
+    reindex(); touch();
+  }
+  return { toplam, soy:kE.length, anne:kM.length, evlilik:kV.length,
+           motherAlan:kMother.length, kinAlan:kKin.length, kendine:kendine.length };
 }
 
 // ---- reparent (ebeveyn bağı değiştir) ----
@@ -3614,6 +3680,25 @@ const KOMUTLAR=[
       if(typeof yolTemizle==="function") yolTemizle();
       if(typeof updateStatus==="function") updateStatus();
       return "Bütün filtreleri kaldırdım.";
+    } },
+  // Yönetici bakım komutu: sahipsiz bağ taraması. "tara" sadece raporlar,
+  // "temizle" yazarsan düzeltir (değişiklik yine onay/kayıt akışından geçer).
+  { ad:"bakim", desen:/sahipsiz|bütünlük|butunluk|bağ tara|bag tara/i,
+    calistir:(m,metin)=>{
+      if(!isAdmin) return "Bu tarama yalnızca yöneticiye açık.";
+      const temizle=/temizle|düzelt|duzelt|onar/i.test(metin);
+      const r=sahipsizBaglariTara(temizle);
+      if(!r.toplam) return "Bütünlük temiz — sahipsiz bağ ya da referans yok.";
+      const dok=[];
+      if(r.soy) dok.push(`${r.soy} soy bağı`);
+      if(r.anne) dok.push(`${r.anne} anne bağı`);
+      if(r.evlilik) dok.push(`${r.evlilik} evlilik bağı`);
+      if(r.motherAlan) dok.push(`${r.motherAlan} anne alanı`);
+      if(r.kinAlan) dok.push(`${r.kinAlan} kin alanı`);
+      if(r.kendine) dok.push(`${r.kendine} kendine bağ`);
+      return temizle
+        ? `Temizlendi: ${dok.join(", ")}. Kaydetmeyi unutma.`
+        : `${r.toplam} sahipsiz kayıt buldum: ${dok.join(", ")}. Düzeltmek için “sahipsiz bağları temizle” de.`;
     } },
   { ad:"kollar", desen:/^\s*(kollar|kolları|kollarımız|damarlar)\b/i,
     calistir:()=>{

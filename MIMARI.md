@@ -366,6 +366,38 @@ Ayrıca Neon `gunluk` tablosunda `guncelleyen='cinsiyet-duzeltmesi-oncesi'`.
 
 ---
 
+## 8b. Silme ve bütünlük
+
+`deleteNode()` eskiden **yalnızca `edges`'i** temizliyordu. Sonuç: silinen kişinin
+`motherEdges`, `marriages` kayıtları ve başkalarının `mother`/`kin` alanındaki
+referansları sahipsiz kalıyordu.
+
+> Nasıl fark edildi: Özge (`p122221212`) silinip geri eklenirken anne bağı sayısı
+> 52'de kaldı — düğüm gitmiş, anne bağı kalmıştı. Çizim kırık bağı atladığı için
+> görünmüyordu, ama dışa aktarılan yedeklere sızıyor ve "anne sayısı" gibi bir
+> hesap yapılırsa yanlış sonuç veriyordu.
+
+Artık silme şunları da yapar:
+
+1. `motherEdges` ve `marriages`'ten o kişiye ait bağları çıkarır
+2. Başka düğümlerin `mother` / `kin` alanındaki referansını temizler
+3. Çocukları büyükanne/babaya bağlarken **`parentRole`'ü yeni ebeveynin
+   cinsiyetine göre** düzeltir — yoksa "kadın baba konumunda" çelişkisi
+   üretiliyordu (o sınıfın 46 düzeltmesi bu yüzden gerekmişti, bkz.
+   `cinsiyet-rapor.md`). Yeni ebeveyn kadınsa `mother` ve anne bağı da kurulur.
+4. Ne temizlendiğini toast'ta söyler
+
+### `sahipsizBaglariTara(temizle)`
+
+Eski davranışın mirasını bulmak için. Yalnızca yöneticiye açık, rehberden:
+
+- **"sahipsiz bağları tara"** → yalnızca raporlar
+- **"sahipsiz bağları temizle"** → düzeltir (değişiklik yine kayıt akışından geçer)
+
+Kontrol ettiği şeyler: sahipsiz soy/anne/evlilik bağı, sahipsiz `mother`/`kin`
+alanı, kendine bağ. (17 Ağustos 2026 taraması: hepsi 0 — tek sahipsiz kayıt
+Özge'nin geri eklenmesiyle eşleşti.)
+
 ## 9. Yetki modeli
 
 Giriş **aile şifresi** ile: `/api/giris` şifreyi kontrol eder, HMAC-SHA256 imzalı
