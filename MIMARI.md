@@ -221,6 +221,39 @@ iki parmak                              → pinch zoom
 
 `TAP_SLOP=10 px`, `TAP_TIME=600 ms`.
 
+### iOS Safari: `movementX` tuzağı
+
+**Pan iPhone'da hiç çalışmıyordu, Android'de çalışıyordu.** Sebep `e.movementX` /
+`e.movementY` kullanmaktı:
+
+- Bunlar Pointer Lock API'sine ait; Chrome dokunma kaynaklı pointer olaylarında
+  da hesaplar, **WebKit pointer lock dışında 0 döner**.
+- Sonuç: iOS'ta `moved` hiç artmıyor → `moved > TAP_SLOP` hiç doğru olmuyor →
+  pan hiç başlamıyor. Dokunma seçimi ise `moved` 0 kaldığı için çalışmaya devam
+  ediyordu; "tıklama oluyor ama kaydırma olmuyor" tablosu buradan geliyor.
+
+**Kural: pointer olaylarında `movementX/Y` kullanma.** Delta `clientX/clientY`
+farkından hesaplanır (`sonPX`/`sonPY`); her tarayıcıda çalışır ve ayrı bir touch
+kod yolu gerektirmez.
+
+Ek sertleştirmeler (aynı düzeltmeyle birlikte):
+
+- Tüm `touch*` dinleyicileri **`{passive:false}`**. iOS Safari onları varsayılan
+  passive sayar ve passive dinleyicide `preventDefault()` sessizce yok sayılır.
+- `html,body { overscroll-behavior:none }` — iOS lastik-bant kaydırması dokunma
+  olaylarını canvas'tan çalabiliyor.
+- Canvas'ta `-webkit-tap-highlight-color:transparent`, `user-select:none`,
+  `-webkit-touch-callout:none` — uzun bas bizim jestimiz, sistem menüsü
+  araya girmesin.
+
+**Ayrı touch kod yolu eklenmedi** (talimat öneriyordu). Pointer olayları düzeltmeden
+sonra üç platformda da çalışıyor; ikinci bir sistem eklemek Android ve masaüstünde
+çift işleme riski doğurur — talimatın kendi 6. maddesi de bu riski söylüyor.
+
+**Viewport `user-scalable=no` yapılmadı** (talimat öneriyordu): sayfa genelinde
+yakınlaştırmayı kapatmak erişilebilirlik gerilemesi olur. Canvas'ta zaten
+`touch-action:none` var, panellerde metin büyütmek gerekebilir.
+
 **Düğüm sürükleme kaldırıldı.** Mobilde parmağı düğüme değdirince düğüm
 yakalanıyor ve taşınıyordu. Kalıcı bir kayıp yok: konumlar hiçbir yere
 yazılmıyor (`currentGraphJSON` `x`/`y` göndermez), her yüklemede yeniden

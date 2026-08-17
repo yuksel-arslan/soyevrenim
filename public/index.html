@@ -84,8 +84,16 @@
 html,body{background:var(--bg);transition:background .3s}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);
-  font-family:"Inter",system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
-canvas{display:block;position:fixed;inset:0;touch-action:none}
+  font-family:"Inter",system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
+  /* iOS lastik-bant (rubber-band) kaydırması dokunma olaylarını canvas'tan
+     çalabiliyor; sayfa zaten kaydırılmıyor, davranışı tamamen kapatıyoruz. */
+  overscroll-behavior:none;-webkit-overflow-scrolling:auto}
+canvas{display:block;position:fixed;inset:0;
+  touch-action:none;-ms-touch-action:none;
+  /* iOS: dokunma vurgusu, metin seçimi ve uzun-bas menüsü kapalı —
+     uzun bas bizim "alt ağacı aç/kapat" jestimiz, sistem menüsü araya girmesin */
+  -webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 
 /* üst bar */
 .topbar{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;gap:12px;
@@ -2058,6 +2066,9 @@ requestAnimationFrame(loop);
 
 // ---- pointer: pan / drag / select ----
 let mouse={x:0,y:0}, down=null, dragNode=null, panning=false, moved=0;
+// Son pointer konumu — hareket deltası buradan hesaplanır (e.movementX/Y iOS
+// Safari'de dokunmada 0 döndüğü için kullanılmıyor; bkz. pointermove yorumu).
+let sonPX=null, sonPY=null;
 // Tık ile sürükleme ayrımı: bu kadar hareketten sonra artık tık değil, pan.
 const TAP_SLOP=10;    // px (talimat değeri; eskiden dağınık şekilde 5 kullanılıyordu)
 const TAP_TIME=600;   // ms — bundan uzun basış tık sayılmaz (uzun bas ayrı ele alınır)
@@ -2176,19 +2187,30 @@ canvas.addEventListener("pointerdown",e=>{ down={x:e.clientX,y:e.clientY}; moved
     if(e.pointerType==="touch"){ hoverNode=hit; updateHoverCard(hit, e.clientX, e.clientY); }
   }
   panning=true;   // her durumda pan'e hazır; TAP_SLOP aşılırsa devreye girer
+  sonPX=e.clientX; sonPY=e.clientY;   // delta hesabı için başlangıç
 });
 canvas.addEventListener("pointermove",e=>{
+  // iOS DÜZELTMESİ — pan'in iPhone'da hiç çalışmamasının sebebi buydu:
+  // Eskiden e.movementX/e.movementY kullanılıyordu. Bunlar Pointer Lock API'sine
+  // ait; Chrome dokunma kaynaklı pointer olaylarında da hesaplar, WebKit (iOS
+  // Safari) ise pointer lock dışında 0 döner. Sonuç: iOS'ta `moved` hiç artmıyor,
+  // TAP_SLOP eşiği aşılmıyor, pan HİÇ başlamıyordu — Android'de çalışıp iOS'ta
+  // çalışmamasının tam açıklaması.
+  // Artık delta clientX/clientY farkından hesaplanıyor: her tarayıcıda çalışır.
+  const dx = (sonPX==null? 0 : e.clientX - sonPX);
+  const dy = (sonPY==null? 0 : e.clientY - sonPY);
+  sonPX=e.clientX; sonPY=e.clientY;
   mouse={x:e.clientX,y:e.clientY};
-  if(down) moved+=Math.abs(e.movementX)+Math.abs(e.movementY);
+  if(down) moved+=Math.abs(dx)+Math.abs(dy);
   // Sürükleme her zaman pan/döndürme — düğüm taşıma YOK.
   // TAP_SLOP eşiği aşılmadan kamerayı oynatmıyoruz ki tık titremesi pan sayılmasın.
   if(down && panning && moved>TAP_SLOP){
     // Her iki modda da: yatay sürükleme diski döndürür (yaw), dikey kaydırır.
     // 2B'de de eğimli bir disk var, döndürmek "güneş sistemini çevirmek" gibi
     // çalışıyor — bu his kasten korunuyor.
-    yawRest += e.movementX * 0.005;
+    yawRest += dx * 0.005;
     yawTarget = yawRest; yaw = yawRest;
-    oy += e.movementY;
+    oy += dy;
     document.getElementById("hoverCard").style.display="none";
   }
   else if(down){ /* eşik altı: henüz tık sayılıyor, hiçbir şey oynatma */ }
@@ -2299,9 +2321,12 @@ canvas.addEventListener("wheel",e=>{ e.preventDefault();
 },{passive:false});
 // pinch
 let pinch=null;
-canvas.addEventListener("touchstart",e=>{if(e.touches.length===2)pinch=tdist(e.touches);},{passive:true});
-canvas.addEventListener("touchmove",e=>{if(e.touches.length===2&&pinch){const d=tdist(e.touches);
-  scale*=d/pinch; scale=Math.max(0.15,Math.min(4,scale)); pinch=d;}},{passive:true});
+// iOS Safari touch dinleyicilerini varsayılan PASSIVE sayar; passive dinleyicide
+// preventDefault() sessizce yok sayılır. Pinch sırasında sayfanın kendi zoom'una
+// kapılmaması için hepsi {passive:false} ile bağlanıyor.
+canvas.addEventListener("touchstart",e=>{if(e.touches.length===2){pinch=tdist(e.touches); e.preventDefault();}},{passive:false});
+canvas.addEventListener("touchmove",e=>{if(e.touches.length===2&&pinch){e.preventDefault(); const d=tdist(e.touches);
+  scale*=d/pinch; scale=Math.max(0.15,Math.min(4,scale)); pinch=d;}},{passive:false});
 canvas.addEventListener("touchend",()=>pinch=null);
 function tdist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
 
@@ -3448,7 +3473,8 @@ function renderAnalysis(){
   });
   wrap.addEventListener("pointermove",e=>{
     if(!bas) return;
-    bas.hareket += Math.abs(e.movementX)+Math.abs(e.movementY);
+    // movementX/Y iOS'ta 0 döner → mesafe clientX/Y'den hesaplanıyor
+    bas.hareket = Math.hypot(e.clientX-bas.x, e.clientY-bas.y);
     if(k<=1) return;                            // sığdırılmışken kaydırma yok
     tx=bas.tx+(e.clientX-bas.x); ty=bas.ty+(e.clientY-bas.y);
     sinirla(); uygula(false);
@@ -3465,7 +3491,8 @@ function renderAnalysis(){
   // pinch (iki parmak)
   let pin=null;
   const uzaklik=t=>Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
-  wrap.addEventListener("touchstart",e=>{ if(e.touches.length===2){ bas=null; pin=uzaklik(e.touches); } },{passive:true});
+  // {passive:false}: iOS'ta passive dinleyicide preventDefault yok sayılır
+  wrap.addEventListener("touchstart",e=>{ if(e.touches.length===2){ bas=null; pin=uzaklik(e.touches); e.preventDefault(); } },{passive:false});
   wrap.addEventListener("touchmove",e=>{
     if(e.touches.length===2 && pin){ e.preventDefault();
       const d=uzaklik(e.touches);
