@@ -2970,8 +2970,13 @@ const _touch_local = touch;
 touch = function(){ _touch_local(); cloudSave(false); };
 
 // diğer kullanıcıların değişikliklerini periyodik çek (30 sn'de bir, düzenleme yokken)
-setInterval(async ()=>{
+// MALİYET NOTU: sekme arka plandayken yoklama yapılmaz. Açık bırakılan bir sekme
+// eskiden saatte 120 fonksiyon çağrısı üretiyordu (7/24 açık kalırsa ayda ~86 bin);
+// kimse bakmıyorken bu tamamen boşa gidiyordu. Sekmeye dönülünce hemen bir kez
+// yoklanır, böylece kullanıcı bekletilmez.
+async function bulutYokla(){
   if(!CLOUD.on || CLOUD.saving || dirty) return;
+  if(document.hidden) return;   // arka planda: istek yok
   try{
     const r = await fetch(CLOUD.url, {method:"GET"}); if(!r.ok) return;
     const j = await r.json();
@@ -2990,7 +2995,10 @@ setInterval(async ()=>{
       showHint("Ağaç güncellendi — biri yeni bilgi ekledi");
     }
   }catch(e){}
-}, 30000);
+}
+setInterval(bulutYokla, 30000);
+// sekmeye geri dönülünce beklemeden bir kez tazele
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) bulutYokla(); });
 
 // açılışta bulutu dene (welcome ekranı kapanınca değil, hemen — sessiz)
 cloudLoad();
@@ -3116,7 +3124,7 @@ async function karar(id, karar){
 const _tryAdmin_orig = tryAdminLogin;
 tryAdminLogin = function(){ _tryAdmin_orig(); setTimeout(showApprovalBtn, 100); };
 // periyodik: yeni öneri geldi mi (admin açıkken)
-setInterval(()=>{ if(isAdmin && CLOUD.on) refreshApprovals(); }, 45000);
+setInterval(()=>{ if(isAdmin && CLOUD.on && !document.hidden) refreshApprovals(); }, 45000);
 
 // ============================ SOHBET (genel + kişi yorumları) ============================
 function chatShowBtn(){ const b=document.getElementById("chatBtn"); if(b&&CLOUD.on) b.style.display=""; }
@@ -3194,7 +3202,7 @@ async function chatDelete(id, kapsam, container){
     const canWrite = !!sessionToken || isAdmin;
     input.disabled=!canWrite; send.disabled=!canWrite;
     input.placeholder = canWrite ? "Mesaj yaz…" : "Yazmak için telefonla giriş yap";
-    poll=setInterval(()=>{ if(pnl.style.display!=="none") chatLoad("genel", msgs); }, 15000);
+    poll=setInterval(()=>{ if(pnl.style.display!=="none" && !document.hidden) chatLoad("genel", msgs); }, 15000);
   };
   const close=()=>{ pnl.style.display="none"; if(poll)clearInterval(poll); };
   btn.onclick=()=>{ if(pnl.style.display==="none") open(); else close(); };
