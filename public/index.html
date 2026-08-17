@@ -260,6 +260,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   <button id="physBtn" class="on" title="Fizik aç/kapa"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><ellipse cx="12" cy="12" rx="10" ry="4.4"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(120 12 12)"/></svg></button>
   <button id="reparentBtn" title="Ebeveyn bağı değiştir"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
   <div class="sep"></div>
+  <button id="kafesBtn" class="on" title="Koni yüzeyi (tel örgü) aç/kapa"><svg viewBox="0 0 24 24"><path d="M12 3l8 15H4z"/><path d="M7.4 12h9.2M9.7 7.5h4.6"/><path d="M12 3v15"/></svg></button>
   <button id="pathBtn" title="Yol bul — iki kişi arasındaki akrabalık"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v4a3 3 0 0 0 3 3h3a3 3 0 0 1 3 3"/></svg></button>
   <button id="focusBtn" title="Odak modu — seçilenin yakınları"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
   <button id="genBtn" title="Nesil kaydırıcısı"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="7" cy="17" r="2" fill="currentColor" stroke="none"/></svg></button>
@@ -953,6 +954,9 @@ const DEPTH_K=0.9;             // derinlik→ölçek etkisi
 // KONİ/TOPAÇ modu: her nesil farklı yükseklikte. Molla Memiş (nesil 0) altta,
 // üst nesiller yukarıda ve daha geniş halkada → yukarı açılan koni.
 let coneMode=true;
+// Koni yüzeyinin tel örgüsü. Açık başlıyor: koninin 3B hissini o veriyor.
+// Fazla yoğun bulunursa dock'taki kafes düğmesiyle kapatılabilir.
+let kafesGoster=true;
 const CONE_H=155;              // nesiller arası dikey mesafe (yükseklik) — spiral için dik
 
 // dünya (x,y) + yükseklik(h) → ekran + derinlik. h yukarı taşır (koni).
@@ -1229,6 +1233,13 @@ function genSliderKur(){
     lo.addEventListener("input",uygula); hi.addEventListener("input",uygula);
     el("genReset").onclick=()=>{ lo.value=0; hi.value=hi.max; uygula(); };
   }
+  // koni tel örgüsü aç/kapa
+  const kb=el("kafesBtn");
+  if(kb) kb.onclick=()=>{
+    kafesGoster=!kafesGoster;
+    kb.classList.toggle("on", kafesGoster);
+    showHint(kafesGoster?"Koni yüzeyi açık":"Koni yüzeyi kapalı");
+  };
   // nesil panelini aç/kapa
   const gb=el("genBtn");
   if(gb) gb.onclick=()=>{
@@ -1518,29 +1529,59 @@ function draw(){
   const zoomOut=Math.max(0, Math.min(1, (0.75-scale)/0.6));  // 0..1
   const ringAlpha=0.18 + 0.55*zoomOut;    // uzakta belirgin
   const labelAlpha=0.35 + 0.6*zoomOut;
-  for(let d=1; d<=MAXDEPTH && false; d++){
-    const rr=ringRadius(d);   // dünya yarıçapı
-    const rh=coneMode? d*CONE_H : 0;   // bu neslin koni yüksekliği
-    // halkayı world uzayında bir daire olarak, project'ten geçirerek çiz (yaw ile döner)
-    ctx.beginPath();
-    const STEPS=64;
-    for(let i=0;i<=STEPS;i++){
-      const a=(i/STEPS)*Math.PI*2;
-      const pp=project(Math.cos(a)*rr, Math.sin(a)*rr, rh);
-      if(i===0) ctx.moveTo(pp.x,pp.y); else ctx.lineTo(pp.x,pp.y);
+  // ===== KONİ YÜZEYİ — TEL ÖRGÜ =====
+  // Koni şimdiye kadar yalnızca düğüm konumlarından ima ediliyordu; referans yüzey
+  // olmadığı için göz "uzakta mı, yukarıda mı" ayrımını yapamıyordu ve yaw ile
+  // döndürünce dönen bir cisim değil kayan noktalar görünüyordu.
+  // Tel örgü = nesil halkaları + tepeye birleşen meridyenler. Perspektifte
+  // kısalması derinliği anında okutuyor.
+  // Çok soluk tutuluyor (244 düğüm + kenar zaten yoğun) ve uzaklaşınca güçleniyor.
+  if(coneMode && nodes.length && kafesGoster){
+    const telAlpha = ringAlpha*0.85;
+    const dMin = Math.max(1, BLOOM.genLo||0);
+    const dMax = Math.min(MAXDEPTH, BLOOM.genHi!=null?BLOOM.genHi:MAXDEPTH);
+    // 1) meridyenler: tabandaki tepe noktasından yukarı, her nesil halkasına uğrayarak
+    const MERIDYEN=18;
+    ctx.strokeStyle=getVar("--line2"); ctx.lineWidth=1;
+    for(let m=0;m<MERIDYEN;m++){
+      const a=(m/MERIDYEN)*Math.PI*2;
+      ctx.beginPath();
+      let basladi=false;
+      for(let d=0; d<=dMax; d++){
+        if(d<dMin-1) continue;               // aralık dışını çizme (nesil kaydırıcısı)
+        const rr=ringRadius(d), rh=d*CONE_H;
+        const pp=project(Math.cos(a)*rr, Math.sin(a)*rr, rh);
+        if(!basladi){ ctx.moveTo(pp.x,pp.y); basladi=true; } else ctx.lineTo(pp.x,pp.y);
+      }
+      ctx.globalAlpha=telAlpha*0.55;         // meridyenler halkalardan daha soluk
+      ctx.stroke();
     }
-    ctx.strokeStyle=getVar("--line2"); ctx.globalAlpha=ringAlpha; ctx.lineWidth=1+zoomOut; ctx.stroke();
     ctx.globalAlpha=1;
-    // nesil etiketi — halkanın sol-üst noktasında (project ile döner)
-    if(scale>0.22){
-      ctx.font=`600 ${10+2*zoomOut}px 'IBM Plex Mono', monospace`;
-      ctx.fillStyle=getVar("--muted");
-      ctx.globalAlpha=(0.3 + 0.5*zoomOut);
-      ctx.textAlign="right"; ctx.textBaseline="middle";
-      const ang=Math.PI*1.18;
-      const ep=project(Math.cos(ang)*rr, Math.sin(ang)*rr, rh);
-      ctx.fillText(`${d}. nesil`, ep.x-4, ep.y);
+    // 2) nesil halkaları
+    for(let d=dMin; d<=dMax; d++){
+      const rr=ringRadius(d);   // dünya yarıçapı
+      const rh=coneMode? d*CONE_H : 0;   // bu neslin koni yüksekliği
+      // halkayı world uzayında bir daire olarak, project'ten geçirerek çiz (yaw ile döner)
+      ctx.beginPath();
+      const STEPS=72;
+      for(let i=0;i<=STEPS;i++){
+        const a=(i/STEPS)*Math.PI*2;
+        const pp=project(Math.cos(a)*rr, Math.sin(a)*rr, rh);
+        if(i===0) ctx.moveTo(pp.x,pp.y); else ctx.lineTo(pp.x,pp.y);
+      }
+      ctx.strokeStyle=getVar("--line2"); ctx.globalAlpha=telAlpha; ctx.lineWidth=1+zoomOut*0.6; ctx.stroke();
       ctx.globalAlpha=1;
+      // nesil etiketi — halkanın sol-üst noktasında (project ile döner)
+      if(scale>0.22){
+        ctx.font=`600 ${10+2*zoomOut}px 'IBM Plex Mono', monospace`;
+        ctx.fillStyle=getVar("--muted");
+        ctx.globalAlpha=(0.3 + 0.5*zoomOut);
+        ctx.textAlign="right"; ctx.textBaseline="middle";
+        const ang=Math.PI*1.18;
+        const ep=project(Math.cos(ang)*rr, Math.sin(ang)*rr, rh);
+        ctx.fillText(`${d}. nesil`, ep.x-4, ep.y);
+        ctx.globalAlpha=1;
+      }
     }
   }
 
