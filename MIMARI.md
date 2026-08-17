@@ -319,9 +319,21 @@ olur ve yönetici onayından geçer.
 - sohbete yazamıyorlardı, hata metni "telefonla giriş yap" diyordu
 - aile üyesinin mesajı **"Yönetici" imzalı** görünüyordu
 
-`kimlikId()` = `sessionKisiId || viewerId`: kimlik olarak karşılama ekranında
-seçilen kişi kullanılır. Güvenlik dengesi kabul edilebilir, çünkü aile şifresi
-zaten paylaşılan bir sır ve her değişiklik yönetici onayından geçiyor.
+`kimlikId()` = `sessionKisiId || (jeton varsa viewerId)`. **Jeton koşulu şart:**
+`viewerId` yalnızca isim seçmekle doluyor, şifre istemiyor. Koşul olmadan şifre
+girmemiş biri düzenleme alanlarını açık görüyordu — değişiklikleri hiçbir yere
+gitmediği hâlde. Veri riski değildi (aşağıya bak) ama yanıltıcıydı.
+
+**Kural: kimlik = şifreyle girmiş olmak + kim olduğunu seçmiş olmak.**
+
+Jetonsuz yazmaya karşı üç katman (hepsi bağımsız):
+
+1. "Onaya gönder" çubuğu `sessionToken` yoksa hiç görünmez
+2. `/api/oneri` jetonsuz isteği **401** ile reddeder
+3. `/api/agac` POST yalnızca **admin** jetonu kabul eder
+
+Karşılama ekranından çıkış ipucu da yetkiye göre değişir: şifresiz kullanıcıya
+"düzenle" vaat edilmez, "görüntüleme modu" denir.
 
 **Yönetici yetkisi zaten tamdır:** `canEdit()` ilk satırı `if(isAdmin) return true`,
 dört API'nin hepsinde admin sınırsız.

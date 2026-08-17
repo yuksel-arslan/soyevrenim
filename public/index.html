@@ -1600,7 +1600,17 @@ let sessionToken=null, sessionKisiId=null, sessionRol=null;
 // Düzenleyenin kimliği. sessionKisiId SMS döneminden kalma (giriş bir kişiyi
 // doğruluyordu) ve aile şifresi sisteminde hiç atanmıyor; o yüzden karşılama
 // ekranında seçilen kişiye (viewerId) düşülür.
-function kimlikId(){ return sessionKisiId || viewerId || null; }
+//
+// AMA yalnızca geçerli bir oturum jetonu varsa. viewerId sadece isim seçmekle
+// doluyor; şifre istemiyor. Jeton koşulu olmadan şifre girmemiş biri düzenleme
+// alanlarını AÇIK görüyordu — değişiklikleri hiçbir yere gitmediği hâlde
+// (sunucu jetonsuz yazmayı 401 ile reddediyor, "Onaya gönder" çubuğu da
+// sessionToken olmadan görünmüyor). Veri riski değildi ama yanıltıcıydı.
+// Kural: kimlik = şifreyle girmiş olmak + kim olduğunu seçmiş olmak.
+function kimlikId(){
+  if(sessionKisiId) return sessionKisiId;
+  return (sessionToken || isAdmin) ? (viewerId || null) : null;
+}
 
 // Eş/çocuk özetini TAM CÜMLE olarak üretir. Hem hover kartı hem sağ üst kart
 // bunu kullanır (tek kaynak; eskiden ikisinde de "⚭ Ad · N çocuk" biçimi
@@ -3641,7 +3651,17 @@ function startAs(id){
   setTimeout(()=>welcome.remove(),500);
   fit();
   if(id){ selectNode(byId[id]); }
-  showHint(id?"Bu senin ağacın · sürükle, tıkla, düzenle":"Nesil halkaları · tıkla-seç · düzenle");
+  // İpucu yetkiye göre DÜRÜST olmalı: ikisi de "düzenle" diyordu, ama isim
+  // seçmek şifre istemiyor ve şifresiz kullanıcı hiçbir şey kaydedemiyor.
+  // Yanlış vaat vermek yerine ne yapabileceğini söylüyoruz.
+  const yetkili = !!sessionToken || isAdmin;
+  if(yetkili){
+    showHint(id ? "Bu senin evrenin · sürükle, tıkla, düzenle"
+                : "Nesil halkaları · tıkla-seç · düzenle");
+  } else {
+    showHint(id ? `Hoş geldin ${dispName((byId[id]||{}).name||"")} · görüntüleme modu — düzenlemek için aile şifresiyle gir`
+                : "Görüntüleme modu · düzenlemek için aile şifresiyle gir");
+  }
 }
 whoInput.addEventListener("input",()=>{
   const v=whoInput.value.toLocaleLowerCase("tr").replace(/\d+$/,"").trim();
