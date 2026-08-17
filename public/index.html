@@ -1046,7 +1046,10 @@ function resize(){DPR=Math.min(devicePixelRatio||1,2);
   const belirgin = !sonEnW || Math.abs(bW-sonEnW)/sonEnW > 0.15
                            || Math.abs(bH-sonEnH)/Math.max(sonEnH,1) > 0.25;
   if(belirgin && typeof nodes!=="undefined" && nodes.length){
-    if(typeof layoutSpiral==="function") layoutSpiral();   // ölçekler ekrana bağlı
+    // ETKİN YERLEŞİM layoutRadial'dır (bkz. MIMARI.md). Burada layoutSpiral
+    // çağrılıyordu: telefon çevrilince yerleşim başka bir algoritmaya atlıyor,
+    // ağacın şekli değişiyordu. Mobil aralık çarpanı da layoutRadial içinde.
+    if(typeof layoutRadial==="function") layoutRadial();
     fit();
   }
   sonEnW=bW; sonEnH=bH;
@@ -1590,6 +1593,28 @@ let sessionToken=null, sessionKisiId=null, sessionRol=null;
 // doğruluyordu) ve aile şifresi sisteminde hiç atanmıyor; o yüzden karşılama
 // ekranında seçilen kişiye (viewerId) düşülür.
 function kimlikId(){ return sessionKisiId || viewerId || null; }
+
+// Eş/çocuk özetini TAM CÜMLE olarak üretir. Hem hover kartı hem sağ üst kart
+// bunu kullanır (tek kaynak; eskiden ikisinde de "⚭ Ad · N çocuk" biçimi
+// ayrı ayrı kuruluyordu).
+//   eş + çocuk  -> "Nevin Kaya ile evli, 1 çocuğu var"
+//   yalnız eş   -> "Nevin Kaya ile evli"
+//   yalnız çocuk-> "1 çocuğu var"
+//   ikisi yok   -> ""  (çağıran satırı hiç göstermez)
+// Türkçede sayıdan sonra ad tekil kalır: 1 de 3 de "çocuğu var".
+function esCocukCumlesi(n){
+  if(!n) return "";
+  const parcalar=[];
+  const esler=(n.spouse||[])
+    .map(s=>dispName(String(s).replace(" (aileden)","")))
+    .filter(Boolean);
+  if(esler.length) parcalar.push(`${esler.join(" ve ")} ile evli`);
+  // çocuk sayısı: baba hattı + yalnızca anne hattından gelenler (çift sayma yok)
+  const cocuk=(n._kids?n._kids.length:0)
+    + (motherEdges||[]).filter(m=>m.from===n.id && !(n._kids||[]).some(k=>k.id===m.to)).length;
+  if(cocuk>0) parcalar.push(`${cocuk} çocuğu var`);
+  return parcalar.join(", ");
+}
 try{ const s=JSON.parse(localStorage.getItem("kok_session")||"null");
   if(s){ sessionToken=s.jeton||s.token||null; sessionRol=s.rol||null; if(sessionRol==="admin"){ isAdmin=true; window.__adminRol="admin"; } } }catch(e){}
 function relativesOf(id){
@@ -2187,8 +2212,6 @@ function updateHoverCard(n,mx,my){
   document.getElementById("hoverName").textContent=dispName(n.name);
   // meta: nesil · durum · [meslek] · eş · çocuk
   const gen=chainOf(n).length-1;
-  const kidCount=(n._kids?n._kids.length:0)+motherEdges.filter(m=>m.from===n.id&&!(n._kids||[]).some(k=>k.id===m.to)).length;
-  const spouseTxt=(n.spouse&&n.spouse.length)?n.spouse.map(s=>s.replace(" (aileden)","")).join(", "):null;
   const inf = (prof && prof.info) || {};
   const parts=[];
   parts.push(`${gen}. nesil`);
@@ -2196,8 +2219,8 @@ function updateHoverCard(n,mx,my){
   parts.push(inf.work || (n.alive===false ? "Vefat" : "Yaşıyor"));
   let html=parts.join(" · ");
   if(inf.job) html+=`<br>${escapeHtml(inf.job)}`;
-  if(spouseTxt) html+=`<br>⚭ ${escapeHtml(spouseTxt)}`;
-  if(kidCount>0) html+=`<br>${kidCount} çocuk`;
+  const cumle=esCocukCumlesi(n);
+  if(cumle) html+=`<br>${escapeHtml(cumle)}`;
   document.getElementById("hoverMeta").innerHTML=html;
   card.style.display="block";
   // imlecin/dokunuşun yanında, ekran kenarına taşmasın
@@ -2312,8 +2335,6 @@ function showActiveCard(n){
   if(!n){ card.style.display="none"; return; }
   const prof=PROFILES[n.id]||{};
   const gen=chainOf(n).length-1;
-  const kidCount=(n._kids?n._kids.length:0)+motherEdges.filter(m=>m.from===n.id&&!(n._kids||[]).some(k=>k.id===m.to)).length;
-  const spouseTxt=(n.spouse&&n.spouse.length)?n.spouse.map(s=>s.replace(" (aileden)","")).join(", "):null;
   // foto
   const ph=document.getElementById("acPhoto");
   if(prof.photo){ ph.innerHTML=`<img src="${prof.photo}" style="width:100%;height:100%;object-fit:cover">`; }
@@ -2325,8 +2346,8 @@ function showActiveCard(n){
   // ek bilgi satırları
   const info=prof.info||{};
   const lines=[];
-  if(spouseTxt) lines.push(`⚭ ${spouseTxt}`);
-  if(kidCount>0) lines.push(`${kidCount} çocuk`);
+  const cumle=esCocukCumlesi(n);
+  if(cumle) lines.push(cumle);
   if(info.job) lines.push(info.job);
   if(info.work) lines.push(info.work);
   const acInfo=document.getElementById("acInfo");
