@@ -235,6 +235,11 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   #activeCard.acOpen #acToggle{transform:rotate(180deg)}
   /* lens paneli ve göstergesi mobilde */
   #lensPanel{left:12px !important;right:12px;top:auto !important;bottom:calc(env(safe-area-inset-bottom,0) + 74px);width:auto !important}
+  /* Nesil paneli: mobilde dock alta taşındığı için panel onun ÜSTÜNE çıkar.
+     Aksi hâlde panel dock'u (ve kendi aç/kapa düğmesini) örtüyor,
+     kullanıcı paneli kapatamıyordu. */
+  #genPanel{left:12px !important;right:12px;transform:none !important;
+    bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;width:auto !important}
   #lensLegend{left:12px !important;right:auto;bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;font-size:11px;max-width:60vw}
   /* dock SVG ikonları biraz daha büyük (dokunma) */
   .dock button svg{width:22px;height:22px}
@@ -477,8 +482,14 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
     <span id="genLabel" style="font-size:12px;color:var(--muted);
       font-family:'IBM Plex Mono',monospace">Nesil</span>
-    <button id="genReset" style="background:var(--panel2);border:1px solid var(--line);
-      color:var(--text);font-size:11px;border-radius:14px;padding:4px 10px;cursor:pointer">sıfırla</button>
+    <span style="display:flex;gap:6px;align-items:center">
+      <button id="genReset" style="background:var(--panel2);border:1px solid var(--line);
+        color:var(--text);font-size:11px;border-radius:14px;padding:4px 10px;cursor:pointer">sıfırla</button>
+      <!-- Mobilde panel dock'un üstüne binip kendi düğmesini kapatabiliyordu;
+           panel her koşulda buradan kapatılabilir. -->
+      <button id="genClose" title="Kapat" style="background:none;border:none;
+        color:var(--muted);font-size:16px;line-height:1;padding:2px 6px;cursor:pointer">✕</button>
+    </span>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <span style="font-size:11px;color:var(--muted);width:12px;text-align:center" id="genLoNum">0</span>
@@ -1328,6 +1339,12 @@ function genSliderKur(){
     lo.addEventListener("input",uygula); hi.addEventListener("input",uygula);
     el("genReset").onclick=()=>{ lo.value=0; hi.value=hi.max; uygula(); };
   }
+  // panelin kendi kapatma düğmesi (mobilde dock'u örtme sorunu için)
+  const gc=el("genClose");
+  if(gc) gc.onclick=()=>{
+    const p=el("genPanel"); if(p) p.style.display="none";
+    const gb2=el("genBtn"); if(gb2) gb2.classList.remove("on");
+  };
   // 2B / 3B görünüm
   const db=el("duzBtn");
   function duzUygula(){
