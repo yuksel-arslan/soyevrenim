@@ -782,14 +782,21 @@ function layoutSpiral(){
   // Kol başları: her kol, ağaçtaki bir atadan başlar (nesil fark etmez).
   // ID bazlı kesin eşleşme (aynı isimli kişiler karışmasın).
   // Derin başlar önce işlenir → alt-kol üst-kolu ezer (ör. Tayişi, Noktaşi içinden ayrılır).
+  // Kol başları. Derin baş, üst kolu EZER (aşağıdaki sort + mark sırası) —
+  // yani bir kişi hangi kol başına daha yakınsa o kola sayılır.
   const KOL_BASLARI_ID = {
-    "p13":  "Aslanişi",     // Aslan (Molla Memiş'in oğlu)
-    "p11":  "Memişişi",     // Memiş (Molla Memiş'in oğlu)
-    "p12":  "Noktaşi",      // Abdurrahman
-    "p123": "Tayişi",       // Mustafa Tahsin (Abdurrahman'ın oğlu)
-    "p112": "Karyağdışi",   // Karyağdı Mehmet (Memiş'in oğlu)
-    "p111": "Baratişi"      // Barat Ali (Memiş'in oğlu)
-    // Musaşi, Şabanişi sonra eklenecek
+    "p13":    "Aslanişi",     // Aslan (Molla Memiş'in oğlu) — 46 kişi
+    "p11":    "Memişişi",     // Memiş (Molla Memiş'in oğlu) — 49 kişi
+    "p112":   "Karyağdışi",   // Karyağdı Mehmet (Memiş'in oğlu) — 18 kişi
+    "p111":   "Baratişi",     // Barat Ali (Memiş'in oğlu) — 29 kişi
+    "p121":   "Musaşi",       // Musa (Abdurrahman'ın oğlu) — 17 kişi
+    "p123":   "Tayişi",       // Mustafa Tahsin (Abdurrahman'ın oğlu) — 12 kişi
+    "p12222": "Noktaşi"       // Ömer (Hamit'in oğlu) — 68 kişi
+    // Şabanişi sonra eklenecek.
+    // NOT: Abdurrahman (p12) artık kol başı DEĞİL — Noktaşi ondan alınıp
+    // torunu Ömer'e verildi. Bu yüzden Mehmet Yazıcı/Hamit hattında Ömer'in
+    // altına düşmeyen ~45 kişi şu an hiçbir halk-dili kola ait değil.
+    // Onlara ad verilecekse buraya bir baş eklenmeli (ör. "p122": "...").
   };
   // isim bazlı ek tanımlar (varsa) — KOL_TANIMLARI global ile
   const KOL_BASLARI = (typeof KOL_TANIMLARI!=="undefined" && KOL_TANIMLARI) ? KOL_TANIMLARI : {};
