@@ -578,7 +578,12 @@ function layoutRadial(){
   const MOBIL = innerWidth<=760;
   const ARALIK = MOBIL ? 1.45 : 1;
   const NODE_R = 10.5*ARALIK;
-  const MIN_SEP = NODE_R*3;          // merkez-merkez min mesafe = 1 çap boşluk
+  // Merkez-merkez minimum mesafe: iki düğüm arasında BİR ÇAP boşluk kalsın.
+  //   yarıçap R, çap 2R  ->  kenar-kenar boşluk 2R
+  //   merkez-merkez = R + 2R + R = 4R
+  // (Talimatta "3*r" yazıyordu ama hemen ardından "çap × 2" diyordu; 4R olan doğrusu.
+  //  3R ile boşluk yalnızca yarım çap kalıyordu.)
+  const MIN_SEP = NODE_R*4;
   // ===== KAMA PAYI: alt ağacın EN KALABALIK NESLİ =====
   // Eskiden yaprak sayısı (_w) kullanılıyordu; bu yanlış ölçüydü. 20 yaprağı tek
   // nesilde toplanmış bir alt ağaç ile aynı 20 yaprağı dört nesle yaymış bir alt
@@ -801,7 +806,7 @@ function layoutSpiral(){
   // Sıralama payAng'e göre yapılır: aynı ebeveynin çocukları yan yana kalır,
   // yani aile grupları bitişikliğini korur — sadece aralar eşitlenir.
   const NODE_R  = 10.5*ARALIK;      // taban düğüm yarıçapı ile uyumlu
-  const MIN_SEP = NODE_R*3;         // merkez-merkez min mesafe = 1 çap boşluk
+  const MIN_SEP = NODE_R*4;         // merkez-merkez: aralarında bir ÇAP boşluk (R+2R+R)
 
   // (nesil, kol) gruplarını topla
   const gruplar=new Map();          // "d|kolId" -> [düğüm]
