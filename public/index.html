@@ -248,6 +248,12 @@ canvas{display:block;position:fixed;inset:0;
      kullanıcı paneli kapatamıyordu. */
   #genPanel{left:12px !important;right:12px;transform:none !important;
     bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;width:auto !important}
+  /* Rehber mobilde alttan açılan panel; dock'un üstünde durur. Klavye açılınca
+     örtülmesin diye alt boşluk safe-area + dock yüksekliği kadar. */
+  #rehber{left:10px !important;right:10px;width:auto !important;
+    bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;
+    max-height:62vh;overflow-y:auto}
+  #rehberCipler button{font-size:13px !important;padding:9px 12px !important}
   #lensLegend{left:12px !important;right:auto;bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;font-size:11px;max-width:60vw}
   /* dock SVG ikonları biraz daha büyük (dokunma) */
   .dock button svg{width:22px;height:22px}
@@ -327,6 +333,7 @@ canvas{display:block;position:fixed;inset:0;
   <button id="physBtn" class="on" title="Fizik aç/kapa"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><ellipse cx="12" cy="12" rx="10" ry="4.4"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(120 12 12)"/></svg></button>
   <button id="reparentBtn" title="Ebeveyn bağı değiştir"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
   <div class="sep"></div>
+  <button id="rehberBtn" title="Rehber — ne yapabilirim?"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.4 9a2.7 2.7 0 0 1 5.2.9c0 1.8-2.6 2.1-2.6 4"/><circle cx="12" cy="17.5" r="1" fill="currentColor" stroke="none"/></svg></button>
   <button id="duzBtn" title="Düzlem / Koni görünümü"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9.5" ry="4"/><ellipse cx="12" cy="12" rx="4.5" ry="1.9"/><circle cx="12" cy="12" r="1"/></svg></button>
   <button id="kafesBtn" class="on" title="Koni yüzeyi (tel örgü) aç/kapa"><svg viewBox="0 0 24 24"><path d="M12 3l8 15H4z"/><path d="M7.4 12h9.2M9.7 7.5h4.6"/><path d="M12 3v15"/></svg></button>
   <button id="pathBtn" title="Yol bul — iki kişi arasındaki akrabalık"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v4a3 3 0 0 0 3 3h3a3 3 0 0 1 3 3"/></svg></button>
@@ -432,6 +439,29 @@ canvas{display:block;position:fixed;inset:0;
   </div>
   <div style="flex:none;text-align:center;padding:0 0 18px;font-family:'IBM Plex Mono',monospace;
     font-size:11px;color:var(--muted);letter-spacing:1px">1956 — Fahri Arslan · Fındıklı, Derbent köyü · Uzunaloğulları soyundan</div>
+</div>
+
+<!-- REHBER — açılış karşılaması ve komut çipleri.
+     LLM YOK: komutlar yerel kural tablosuyla (KOMUTLAR) eşleşir ve hepsi zaten
+     var olan işlevleri çağırır. Sıfır API çağrısı, sıfır maliyet. -->
+<div id="rehber" style="display:none;position:fixed;right:16px;bottom:16px;z-index:19;
+  width:min(360px,92vw);background:var(--panel);border:1px solid var(--line2);
+  border-radius:14px;box-shadow:0 16px 50px var(--shadow);overflow:hidden">
+  <div style="display:flex;align-items:center;gap:8px;padding:12px 14px 8px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;
+      text-transform:uppercase;color:var(--spine);flex:1">Rehber</div>
+    <button id="rehberKapat" title="Kapat" style="background:none;border:none;color:var(--muted);
+      font-size:16px;line-height:1;cursor:pointer;padding:2px 6px">✕</button>
+  </div>
+  <div id="rehberMesaj" style="padding:0 14px;font-size:13.5px;line-height:1.55;color:var(--text)"></div>
+  <div id="rehberCipler" style="display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px 4px"></div>
+  <div style="display:flex;gap:6px;padding:10px 14px 14px">
+    <input id="rehberGiris" placeholder="ya da yaz: Yüksel'i göster" autocomplete="off"
+      style="flex:1;min-width:0;background:var(--bg2);border:1px solid var(--line);border-radius:9px;
+      color:var(--text);font-size:14px;padding:9px 11px;outline:none">
+    <button id="rehberGonder" style="background:var(--accent);color:var(--on-accent);border:none;
+      border-radius:9px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer">Git</button>
+  </div>
 </div>
 
 <!-- KATMAN / LENS seçici -->
@@ -3527,6 +3557,157 @@ function renderAnalysis(){
     else if(e.key==="+"||e.key==="=") olcekle(k*1.4,null,null,true);
     else if(e.key==="-") olcekle(k/1.4,null,null,true);
     else if(e.key==="0") sifirla();
+  });
+})();
+
+// ============================ REHBER (yerel komut katmanı) ============================
+// Talimat mevcut bir AI diyaloğunu (KOMUTLAR/diyalogGonder/yurut) varsayıyordu;
+// bu kod tabanında öyle bir sistem YOK. LLM de kurulmadı — ücretsiz katmanda
+// kalma kısıtı var ve gerek de yok: çiplerin hepsi zaten var olan işlevlere
+// denk düşüyor. Bu yüzden kural tabanlı YEREL bir eşleştirici: sıfır API çağrısı.
+const REHBER_KEY="kok_rehber_gorildi";
+
+// Komut tablosu: desen → çalıştırıcı. Sıra önemli (özel olan önce).
+const KOMUTLAR=[
+  { ad:"koken",  desen:/köken|1956|çizim|orijinal|miras/i,
+    calistir:()=>{ document.getElementById("kokenBtn")?.click();
+      return "Kökenimizi açtım — babanın 1956 çizimi."; } },
+  { ad:"istat",  desen:/istatistik|sayı|analiz|rapor/i,
+    calistir:()=>{ document.getElementById("statsBtn")?.click();
+      return "İstatistikleri açtım."; } },
+  { ad:"yasayan",desen:/yaşayan|hayatta|sağ olan/i,
+    calistir:()=>{ document.querySelector('.lensOpt[data-lens="alive"]')?.click();
+      return "Yaşam durumu katmanına geçtim — yaşayanlar belirgin."; } },
+  { ad:"nesil",  desen:/nesil/i,
+    calistir:(m,metin)=>{
+      const s=metin.match(/(\d+)\D+(\d+)/);
+      if(s && typeof genUygula==="function"){ genUygula(+s[1], +s[2]);
+        return `${s[1]}–${s[2]} nesil gösteriliyor.`; }
+      document.getElementById("genBtn")?.click();
+      return "Nesil kaydırıcısını açtım.";
+    } },
+  { ad:"akraba", desen:/nasıl akraba|akrabalı|ne akraba|yol bul/i,
+    calistir:(m,metin)=>{
+      const ikili=metin.match(/([\p{L}\.\- ]{2,30}?)\s+(?:ile|ve)\s+([\p{L}\.\- ]{2,30}?)\s*(?:nasıl|ne|$)/iu);
+      if(!ikili) return "İki isim gerek: “Emine ile Fahri nasıl akraba?” gibi.";
+      const a=rehberKisiBul(ikili[1]), b=rehberKisiBul(ikili[2]);
+      if(!a) return `“${ikili[1].trim()}” bulunamadı.`;
+      if(!b) return `“${ikili[2].trim()}” bulunamadı.`;
+      if(typeof yolBul!=="function") return "Yol bulma kullanılamıyor.";
+      yolBul(a.id,b.id);
+      return `${dispName(a.name)} ile ${dispName(b.name)} arasındaki yolu çizdim.`;
+    } },
+  { ad:"tumu",   desen:/tümünü göster|hepsini göster|filtreyi (kaldır|sıfırla)|sıfırla/i,
+    calistir:()=>{
+      if(typeof branchFilter!=="undefined") branchFilter=null;
+      if(typeof BLOOM!=="undefined" && typeof genUygula==="function"){
+        const enBuyuk=Math.max(1,...nodes.map(n=>n._depth||0)); genUygula(0,enBuyuk);
+      }
+      if(typeof odakKapat==="function") odakKapat();
+      if(typeof yolTemizle==="function") yolTemizle();
+      if(typeof updateStatus==="function") updateStatus();
+      return "Bütün filtreleri kaldırdım.";
+    } },
+  { ad:"kisi",   desen:/.*/,   // en genel: isim araması
+    calistir:(m,metin)=>{
+      const temiz=metin.replace(/['’]?[ıiu]?\s*(göster|getir|bul|aç|nerede|kim)\b/gi,"").trim();
+      const k=rehberKisiBul(temiz||metin);
+      if(!k) return `“${(temiz||metin).trim()}” için kimseyi bulamadım.`;
+      selectNode(k); if(typeof merkezeAl==="function") merkezeAl(k);
+      const ek=(typeof esCocukCumlesi==="function") ? esCocukCumlesi(k) : "";
+      return `${dispName(k.name)} getirildi — ${chainOf(k).length-1}. nesil${ek?" · "+ek:""}.`;
+    } },
+];
+
+// İsimden kişi bul: tam eşleşme > baştan eşleşme > içinde geçen. Adaş varsa
+// nesli en küçük olanı (en eski) seçilir; kullanıcı arama kutusundan daraltabilir.
+function rehberKisiBul(ad){
+  const q=String(ad||"").toLocaleLowerCase("tr").replace(/[’']/g,"").trim();
+  if(q.length<2 || !nodes.length) return null;
+  const norm=n=>dispName(n.name).toLocaleLowerCase("tr");
+  const tam=nodes.filter(n=>norm(n)===q);
+  const bas=nodes.filter(n=>norm(n).startsWith(q));
+  const ic =nodes.filter(n=>norm(n).includes(q));
+  const liste=(tam.length?tam:(bas.length?bas:ic));
+  if(!liste.length) return null;
+  return liste.sort((a,b)=>(a._depth||0)-(b._depth||0))[0];
+}
+
+(function bindRehber(){
+  const el=id=>document.getElementById(id);
+  const panel=el("rehber"), mesaj=el("rehberMesaj"), cipler=el("rehberCipler");
+  const giris=el("rehberGiris");
+  if(!panel) return;
+
+  const ORNEKLER=[
+    "Yüksel'i göster",
+    "Emine ile Fahri nasıl akraba?",
+    "Yaşayanları göster",
+    "İstatistikleri aç",
+    "Kökenimizi göster",
+  ];
+  function ciplerKur(){
+    cipler.innerHTML="";
+    ORNEKLER.forEach(t=>{
+      const b=document.createElement("button");
+      b.textContent=t;
+      b.style.cssText="background:var(--panel2);border:1px solid var(--line);color:var(--text);"+
+        "font-size:12px;padding:7px 11px;border-radius:16px;cursor:pointer";
+      b.onclick=()=>{ giris.value=t; calistirKomut(t); };
+      cipler.appendChild(b);
+    });
+  }
+  function yaz(t){ mesaj.textContent=t; }
+
+  function calistirKomut(metin){
+    const t=String(metin||"").trim();
+    if(!t) return;
+    for(const k of KOMUTLAR){
+      const m=t.match(k.desen);
+      if(m){ try{ yaz(k.calistir(m,t)||"Tamam."); }catch(e){ yaz("Bunu yapamadım."); } return; }
+    }
+    yaz("Anlayamadım. Örneklerden birine dokunabilirsin.");
+  }
+
+  function ac(ilkZiyaret){
+    yaz(ilkZiyaret
+      ? "Merhaba! Bu, Abdurrahman Oğullarının soy evreni — Fahri Arslan'ın 1956'da elle çizdiği ağacın yaşayan hâli. Bir kişiyi getirebilir, iki kişinin nasıl akraba olduğunu bulabilir ya da ağacı nesillere göre süzebilirim. Ne yapmak istersin?"
+      : "Tekrar hoş geldin! Ne yapmak istersin?");
+    ciplerKur();
+    panel.style.display="block";
+  }
+  function kapat(){ panel.style.display="none"; }
+
+  el("rehberKapat").onclick=kapat;
+  el("rehberGonder").onclick=()=>calistirKomut(giris.value);
+  giris.addEventListener("keydown",e=>{ if(e.key==="Enter") calistirKomut(giris.value); });
+  const rb=el("rehberBtn");
+  if(rb) rb.onclick=()=>{ if(panel.style.display==="block") kapat(); else ac(false); };
+
+  // Açılışta bir kez: ilk ziyarette tam karşılama, sonra kısa selam.
+  let gorildi=false;
+  try{ gorildi = localStorage.getItem(REHBER_KEY)==="1"; }catch(e){}
+  // Karşılama ekranı ("Bu evrene kim bakıyor?") kapanana kadar bekle. Tek
+  // setTimeout ile vazgeçilirse karşılamadan geçen kullanıcı rehberi hiç
+  // görmüyordu; onun yerine kapanmasını yoklayıp bir kez gösteriyoruz.
+  let denemeler=0;
+  const bekle=setInterval(()=>{
+    denemeler++;
+    const w=document.getElementById("welcome");
+    const acikMi = w && w.style.display!=="none" && w.style.opacity!=="0";
+    if(acikMi && denemeler<60) return;          // en fazla ~48 sn bekle
+    clearInterval(bekle);
+    ac(!gorildi);
+    try{ localStorage.setItem(REHBER_KEY,"1"); }catch(e){}
+  }, 800);
+
+  // İlk etkileşimde kenara çekil: ekranı boğmasın. Panelin kendi içi hariç.
+  ["pointerdown","wheel","keydown"].forEach(ev=>{
+    addEventListener(ev,e=>{
+      if(panel.style.display!=="block") return;
+      if(e.target && e.target.closest && e.target.closest("#rehber")) return;
+      kapat();
+    },{passive:true, once:false});
   });
 })();
 

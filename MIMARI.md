@@ -208,6 +208,47 @@ Ayrıntılar:
   (bu veride çoklu eş yok, dal pratikte sınanmadı).
 - Çocuk sayısı = baba hattı + **yalnızca** anne hattından gelenler; çift sayma yok.
 
+## 6c. Rehber (açılış karşılaması + komut çipleri)
+
+Dock'taki **?** düğmesi. Açılışta bir kez kendiliğinden görünür:
+
+- **ilk ziyaret** → tam karşılama (projeyi tanıtır, ne yapabileceğini söyler)
+- **sonraki ziyaretler** → kısa selam. Bayrak: `localStorage.kok_rehber_gorildi`
+- karşılama ekranı ("Bu evrene kim bakıyor?") kapanana kadar **bekler** (800 ms
+  aralıkla yoklar). Tek `setTimeout` ile vazgeçilirse karşılamadan geçen
+  kullanıcı rehberi hiç görmüyordu.
+- panel dışındaki ilk etkileşimde (tık/tekerlek/klavye) kendini kapatır
+
+### LLM YOK — yerel kural tablosu
+
+Talimat mevcut bir AI diyaloğunu (`KOMUTLAR` / `diyalogGonder` / `yurut`)
+varsayıyordu; **bu kod tabanında öyle bir sistem yoktu** (talimat başka bir
+sürüm için yazılmış, `kok-spiral` talimatları gibi). LLM de kurulmadı:
+
+- ücretsiz katmanda kalma kısıtı var (§12), LLM çağrısı maliyet demek
+- gerek de yok: çiplerin hepsi **zaten var olan** işlevlere denk düşüyor
+
+`KOMUTLAR` = `{desen (regex), calistir()}` listesi. Sıra önemli: özel desenler
+önce, en sonda "her şeye uyan" isim araması. Komutlar mevcut işlevleri çağırır
+ya da ilgili dock düğmesini tıklar — paralel bir sistem kurulmadı.
+
+| Komut | Yapar |
+|---|---|
+| "Yüksel'i göster" | `rehberKisiBul` → `selectNode` + `merkezeAl` |
+| "Emine ile Fahri nasıl akraba?" | `yolBul(a,b)` |
+| "Yaşayanları göster" | `.lensOpt[data-lens="alive"]` tıklar |
+| "İstatistikleri aç" | `#statsBtn` tıklar |
+| "Kökenimizi göster" | `#kokenBtn` tıklar |
+| "3–6 nesil" | `genUygula(3,6)` |
+| "tümünü göster" | filtreleri sıfırlar |
+
+`rehberKisiBul()`: tam eşleşme > baştan eşleşme > içinde geçen. Adaş varsa nesli
+en küçük olan (en eski) seçilir — 37 tekrarlı ad var (§10), bu kaçınılmaz bir
+tercih; kullanıcı üst bar aramasından ebeveyn adına bakarak daraltabilir.
+
+Yanıtlar kısa onay biçiminde: "Yüksel getirildi — 7. nesil · Nevin Kaya ile
+evli, 1 çocuğu var."
+
 ## 7. Etkileşim modeli
 
 ```
