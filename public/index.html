@@ -3662,6 +3662,9 @@ const KOMUTLAR=[
       const s=metin.match(/(\d+)\D+(\d+)/);
       if(s && typeof genUygula==="function"){ genUygula(+s[1], +s[2]);
         return `${s[1]}–${s[2]} nesil gösteriliyor.`; }
+      // "Zeki kaçıncı nesil?" bir İLİŞKİ sorusu — kaydırıcı komutu değil.
+      // Sayı yoksa ve soru biçimindeyse null döndürüp iliski komutuna bırak.
+      if(/kaçıncı|kacinci|hangi nesil|kim|nedir/i.test(metin)) return null;
       document.getElementById("genBtn")?.click();
       return "Nesil kaydırıcısını açtım.";
     } },
@@ -3686,6 +3689,111 @@ const KOMUTLAR=[
       if(typeof yolTemizle==="function") yolTemizle();
       if(typeof updateStatus==="function") updateStatus();
       return "Bütün filtreleri kaldırdım.";
+    } },
+  // ---- İLİŞKİ SORULARI ----
+  // "Zeki'nin oğlunun adı nedir?", "Fahri'nin annesi kim?", "Emine'nin
+  // kardeşleri", "Hamit'in torunları"… Bu komut olmadan böyle sorular en genel
+  // dala (kişi adı arama) düşüyor ve bulunamıyordu.
+  // LLM yok: ilişki sözcüğü + isim çıkarılıp veriden hesaplanıyor.
+  { ad:"iliski", desen:/oğl|ogl|kız|kiz|çocu|cocu|baba|anne|ebeveyn|eş[iy]|esi|kardeş|kardes|dede|nine|büyükanne|büyükbaba|torun|amca|dayı|dayi|hala|teyze|yeğen|yegen|kaçıncı nesil|kacinci nesil/i,
+    calistir:(m,metin)=>{
+      const t=metin.toLocaleLowerCase("tr");
+      // hangi ilişki soruluyor (ilk eşleşen kazanır; özel olanlar önce)
+      const tur =
+        /büyükanne|nine/.test(t) ? "nine" :
+        /büyükbaba|dede/.test(t) ? "dede" :
+        /torun/.test(t)          ? "torun" :
+        /yeğen|yegen/.test(t)    ? "yegen" :
+        /amca/.test(t)           ? "amca" :
+        /dayı|dayi/.test(t)      ? "dayi" :
+        /hala/.test(t)           ? "hala" :
+        /teyze/.test(t)          ? "teyze" :
+        /kardeş|kardes/.test(t)  ? "kardes" :
+        /eş[iy]|esi|karısı|kocası/.test(t) ? "es" :
+        /anne/.test(t)           ? "anne" :
+        /baba/.test(t)           ? "baba" :
+        /ebeveyn/.test(t)        ? "ebeveyn" :
+        /oğl|ogl/.test(t)        ? "ogul" :
+        /kız|kiz/.test(t)        ? "kiz" :
+        /çocu|cocu/.test(t)      ? "cocuk" :
+        /nesil/.test(t)          ? "nesil" : null;
+      if(!tur) return null;
+      // ismi çıkar: ilişki ve soru sözcüklerini at, kalan isim olsun
+      const kisiMetni=metin
+        .replace(/[?!.]/g,"")
+        .replace(/\b(kim|kimdir|nedir|ne|adı|ismi|kaç|kaçıncı|hangi|söyle|göster|getir|var|mı|mi)\b/gi," ")
+        .replace(/(oğlu|oğlunun|oğulları|kızı|kızının|kızları|çocuğu|çocukları|çocuğunun|babası|babasının|annesi|annesinin|ebeveyni|eşi|eşinin|karısı|kocası|kardeşi|kardeşleri|dedesi|ninesi|büyükannesi|büyükbabası|torunu|torunları|amcası|dayısı|halası|teyzesi|yeğeni|yeğenleri|nesil|nesli)/gi," ")
+        .replace(/['’](n?[iıuü]n|n?[iıuü])?/g," ")
+        .replace(/\s+/g," ").trim();
+      const liste=rehberKisiAra(kisiMetni);
+      if(!liste.length) return `“${kisiMetni||metin}” için kimseyi bulamadım.`;
+      const k=liste[0];
+      const ad=n=>dispName(n.name);
+      const kimlik=n=>{ const s=(typeof kimlikSatiri==="function")?kimlikSatiri(n):""; return (s?s+" ":"")+ad(n); };
+      const say=l=>l.map(ad).join(", ");
+      const cocuklar=(k._kids||[]).slice();
+      // anne hattından gelen çocuklar da (baba hattında yoksa) eklenir
+      (motherEdges||[]).forEach(me=>{ if(me.from===k.id){ const c=byId[me.to];
+        if(c && !cocuklar.some(x=>x.id===c.id)) cocuklar.push(c); } });
+      const anneDugum = k.mother ? byId[k.mother] : null;
+      const babaDugum = (k._parent && k._parent.sex!=="K") ? k._parent : null;
+      const kardesler = k._parent ? (k._parent._kids||[]).filter(x=>x.id!==k.id) : [];
+      const esler = (k.spouse||[]).map(s=>dispName(String(s).replace(" (aileden)","")));
+
+      const yok=(ne)=>`${kimlik(k)} için kayıtlı ${ne} yok.`;
+      switch(tur){
+        case "ogul": { const l=cocuklar.filter(c=>c.sex!=="K");
+          return l.length ? `${kimlik(k)}'nin oğlu: ${say(l)}.` : yok("oğul"); }
+        case "kiz": { const l=cocuklar.filter(c=>c.sex==="K");
+          return l.length ? `${kimlik(k)}'nin kızı: ${say(l)}.` : yok("kız"); }
+        case "cocuk":
+          return cocuklar.length
+            ? `${kimlik(k)}'nin ${cocuklar.length} çocuğu var: ${say(cocuklar)}.`
+            : yok("çocuk");
+        case "anne":
+          return anneDugum ? `${kimlik(k)}'nin annesi: ${ad(anneDugum)}.`
+                           : (k.fatherExt ? yok("anne") : yok("anne"));
+        case "baba":
+          return babaDugum ? `${kimlik(k)}'nin babası: ${ad(babaDugum)}.`
+                 : (k.fatherExt ? `${kimlik(k)}'nin babası: ${k.fatherExt} (ağaç dışından).`
+                                : yok("baba"));
+        case "ebeveyn": {
+          const p=[]; if(babaDugum) p.push("baba: "+ad(babaDugum));
+          else if(k.fatherExt) p.push("baba: "+k.fatherExt+" (ağaç dışından)");
+          if(anneDugum) p.push("anne: "+ad(anneDugum));
+          return p.length ? `${kimlik(k)} — ${p.join(" · ")}.` : yok("ebeveyn"); }
+        case "es":
+          return esler.length ? `${kimlik(k)}'nin eşi: ${esler.join(", ")}.` : yok("eş");
+        case "kardes":
+          return kardesler.length
+            ? `${kimlik(k)}'nin ${kardesler.length} kardeşi var: ${say(kardesler)}.`
+            : yok("kardeş");
+        case "dede": {
+          const d=k._parent && k._parent._parent;
+          return d ? `${kimlik(k)}'nin dedesi: ${ad(d)}.` : yok("dede"); }
+        case "nine": {
+          const p=k._parent; const n=p && p.mother ? byId[p.mother] : null;
+          return n ? `${kimlik(k)}'nin ninesi: ${ad(n)}.` : yok("nine"); }
+        case "torun": {
+          const tl=[]; cocuklar.forEach(c=>(c._kids||[]).forEach(g=>tl.push(g)));
+          return tl.length ? `${kimlik(k)}'nin ${tl.length} torunu var: ${say(tl)}.` : yok("torun"); }
+        case "yegen": {
+          const yl=[]; kardesler.forEach(s=>(s._kids||[]).forEach(x=>yl.push(x)));
+          return yl.length ? `${kimlik(k)}'nin ${yl.length} yeğeni var: ${say(yl)}.` : yok("yeğen"); }
+        case "amca": case "dayi": case "hala": case "teyze": {
+          // amca/hala = babanın kardeşleri, dayı/teyze = annenin kardeşleri
+          const anaTaraf=(tur==="dayi"||tur==="teyze");
+          const ebe = anaTaraf ? anneDugum : (babaDugum||k._parent);
+          if(!ebe) return yok(tur);
+          const kk=(ebe._parent? (ebe._parent._kids||[]) : []).filter(x=>x.id!==ebe.id);
+          const erkek=(tur==="amca"||tur==="dayi");
+          const l=kk.filter(x=> erkek ? x.sex!=="K" : x.sex==="K");
+          const et={amca:"amca",dayi:"dayı",hala:"hala",teyze:"teyze"}[tur];
+          return l.length ? `${kimlik(k)}'nin ${et}sı: ${say(l)}.` : yok(et); }
+        case "nesil":
+          return `${kimlik(k)} — ${chainOf(k).length-1}. nesil.`;
+      }
+      return null;
     } },
   // Yönetici bakım komutu: sahipsiz bağ taraması. "tara" sadece raporlar,
   // "temizle" yazarsan düzeltir (değişiklik yine onay/kayıt akışından geçer).
