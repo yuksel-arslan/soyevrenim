@@ -310,6 +310,7 @@ canvas{display:block;position:fixed;inset:0;touch-action:none}
   <button id="physBtn" class="on" title="Fizik aç/kapa"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><ellipse cx="12" cy="12" rx="10" ry="4.4"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(120 12 12)"/></svg></button>
   <button id="reparentBtn" title="Ebeveyn bağı değiştir"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
   <div class="sep"></div>
+  <button id="duzBtn" title="2B / 3B görünüm"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></button>
   <button id="kafesBtn" class="on" title="Koni yüzeyi (tel örgü) aç/kapa"><svg viewBox="0 0 24 24"><path d="M12 3l8 15H4z"/><path d="M7.4 12h9.2M9.7 7.5h4.6"/><path d="M12 3v15"/></svg></button>
   <button id="pathBtn" title="Yol bul — iki kişi arasındaki akrabalık"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v4a3 3 0 0 0 3 3h3a3 3 0 0 1 3 3"/></svg></button>
   <button id="focusBtn" title="Odak modu — seçilenin yakınları"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
@@ -1024,6 +1025,10 @@ const DEPTH_K=0.9;             // derinlik→ölçek etkisi
 // KONİ/TOPAÇ modu: her nesil farklı yükseklikte. Molla Memiş (nesil 0) altta,
 // üst nesiller yukarıda ve daha geniş halkada → yukarı açılan koni.
 let coneMode=true;
+// 2B (düz) mod: tepeden bakılan düz halkalar. Koni yerine sade görünüm isteyen
+// kullanıcı için. Dock'taki 2B/3B düğmesiyle geçilir, seçim kaydedilir.
+let duzMod=false;
+try{ duzMod = localStorage.getItem("kok_duz")==="1"; }catch(e){}
 // Koni yüzeyinin tel örgüsü. Açık başlıyor: koninin 3B hissini o veriyor.
 // Fazla yoğun bulunursa dock'taki kafes düğmesiyle kapatılabilir.
 let kafesGoster=true;
@@ -1032,6 +1037,17 @@ const CONE_H=155;              // nesiller arası dikey mesafe (yükseklik) — 
 // dünya (x,y) + yükseklik(h) → ekran + derinlik. h yukarı taşır (koni).
 function project(wx, wy, h){
   h = h||0;
+  // 2B (düz) mod: perspektif ve eğim yok, yükseklik yok — tepeden bakılan
+  // düz nesil halkaları. Koniyi sevmeyen için sade seçenek.
+  // coneMode=false tek başına yetmiyordu: yükseklik sıfırlanıyor ama disk
+  // hâlâ TILT ile eziliyor ve perspektifle küçülüyordu, yani yine 3B duruyordu.
+  if(duzMod){
+    const c=Math.cos(yaw), s=Math.sin(yaw);
+    const rx = wx*c - wy*s, ry = wx*s + wy*c;
+    return { x: rx*scale + ox + innerWidth/2,
+             y: ry*scale + oy + innerHeight/2,
+             z: 0, k: 1 };
+  }
   // world → 3B: diski yaw ile döndür (Y ekseni etrafında). h dikey eksen.
   const c=Math.cos(yaw), s=Math.sin(yaw);
   const rx = wx*c - wy*s;      // döndürülmüş x (yatay)
@@ -1072,7 +1088,11 @@ function fit(){
   kume.forEach(n=>{minX=Math.min(minX,n.x);maxX=Math.max(maxX,n.x);
     minY=Math.min(minY,n.y);maxY=Math.max(maxY,n.y);});
   const w=maxX-minX+200, hFlat=maxY-minY+200;
-  if(coneMode){
+  if(duzMod){
+    // 2B: perspektif/eğim yok, sade kadraj
+    scale=Math.min(innerWidth/w, innerHeight/hFlat, 1.4)*0.9;
+    ox=-(minX+maxX)/2*scale; oy=-(minY+maxY)/2*scale;
+  } else if(coneMode){
     // koni: yatay çap + dikey (nesil yüksekliği toplamı) kadrajı
     const coneHeight = (MAXDEPTH*CONE_H)*TILT + hFlat*TILT + 200;
     scale=Math.min(innerWidth/w, innerHeight/coneHeight, 1.2)*0.85;
@@ -1303,6 +1323,22 @@ function genSliderKur(){
     lo.addEventListener("input",uygula); hi.addEventListener("input",uygula);
     el("genReset").onclick=()=>{ lo.value=0; hi.value=hi.max; uygula(); };
   }
+  // 2B / 3B görünüm
+  const db=el("duzBtn");
+  function duzUygula(){
+    coneMode = !duzMod;                 // 2B'de nesil yüksekliği yok
+    if(db){ db.classList.toggle("on", duzMod);
+      db.title = duzMod ? "2B görünüm — 3B koniye geç" : "3B koni — 2B görünüme geç"; }
+    if(duzMod){ yaw=0; yawTarget=0; yawRest=0; }   // düz modda döndürme sıfırla
+    if(typeof layoutRadial==="function" && nodes.length) layoutRadial();
+    fit();
+  }
+  if(db){ db.onclick=()=>{
+    duzMod=!duzMod;
+    try{ localStorage.setItem("kok_duz", duzMod?"1":"0"); }catch(e){}
+    duzUygula();
+    showHint(duzMod ? "2B görünüm — düz nesil halkaları" : "3B koni görünümü");
+  }; duzUygula(); }
   // koni tel örgüsü aç/kapa
   const kb=el("kafesBtn");
   if(kb) kb.onclick=()=>{
@@ -1626,7 +1662,9 @@ function draw(){
   // Tel örgü = nesil halkaları + tepeye birleşen meridyenler. Perspektifte
   // kısalması derinliği anında okutuyor.
   // Çok soluk tutuluyor (244 düğüm + kenar zaten yoğun) ve uzaklaşınca güçleniyor.
-  if(coneMode && nodes.length && kafesGoster){
+  // Tel örgü 2B modda da çizilir: orada halkalar düz daireler, meridyenler
+  // merkezden çıkan düz ışınlar olur — nesil yapısını okutan aynı iskelet.
+  if(nodes.length && kafesGoster){
     // Tel örgü kendi alfasını kullanır. ringAlpha'ya bağlıyken (0.18 tabanlı)
     // meridyenler ~0.09'a düşüp görünmez oluyordu — yüzeyi hissettirmiyordu.
     // Taban 0.30, uzaklaşınca 0.60'a çıkıyor.
@@ -1642,7 +1680,7 @@ function draw(){
       let basladi=false;
       for(let d=0; d<=dMax; d++){
         if(d<dMin-1) continue;               // aralık dışını çizme (nesil kaydırıcısı)
-        const rr=ringRadius(d), rh=d*CONE_H;
+        const rr=ringRadius(d), rh=coneMode? d*CONE_H : 0;
         const pp=project(Math.cos(a)*rr, Math.sin(a)*rr, rh);
         if(!basladi){ ctx.moveTo(pp.x,pp.y); basladi=true; } else ctx.lineTo(pp.x,pp.y);
       }
@@ -2065,10 +2103,15 @@ canvas.addEventListener("pointermove",e=>{
   // Sürükleme her zaman pan/döndürme — düğüm taşıma YOK.
   // TAP_SLOP eşiği aşılmadan kamerayı oynatmıyoruz ki tık titremesi pan sayılmasın.
   if(down && panning && moved>TAP_SLOP){
-    // yatay sürükleme → diski döndür (yaw); dikey sürükleme → kaydır
-    yawRest += e.movementX * 0.005;
-    yawTarget = yawRest; yaw = yawRest;
-    oy += e.movementY;
+    if(duzMod){
+      // 2B: döndürecek bir disk yok — iki eksende de sade kaydırma
+      ox += e.movementX; oy += e.movementY;
+    } else {
+      // 3B: yatay sürükleme → diski döndür (yaw); dikey sürükleme → kaydır
+      yawRest += e.movementX * 0.005;
+      yawTarget = yawRest; yaw = yawRest;
+      oy += e.movementY;
+    }
     document.getElementById("hoverCard").style.display="none";
   }
   else if(down){ /* eşik altı: henüz tık sayılıyor, hiçbir şey oynatma */ }
@@ -2138,8 +2181,16 @@ canvas.addEventListener("pointerup",e=>{
         dragNode=null; down=null; return;
       }
       if(basiliSure(now) <= TAP_TIME){
-        if(now-lastTap<320 && lastTapNode===dragNode){ // çift tık → panel
-          openPanel(dragNode); lastTap=0; lastTapNode=null;
+        if(now-lastTap<320 && lastTapNode===dragNode){
+          // ÇİFT TIK → kişiyi merkeze al ve yakınlarıyla birlikte göster.
+          // (Eskiden düzenleme panelini açıyordu; panel artık yalnızca "zaten
+          //  merkezdeyken tekrar dokun" ile açılıyor — o yol korunuyor.)
+          // Katmandan bağımsız: 2B ve 3B modda aynı çalışır.
+          focusCenter(dragNode);
+          merkezeAl(dragNode);
+          odakAc(dragNode.id);
+          showHint(`${dispName(dragNode.name)} merkezde · yakınları vurgulu`);
+          lastTap=0; lastTapNode=null;
         } else if(dragNode===activeNode){ // zaten merkezdeyse tekrar dokunuş → panel (mobil dostu)
           openPanel(dragNode); lastTap=now; lastTapNode=dragNode;
         } else { // tek tık → merkeze al + genişlet + detay halkası
@@ -2869,6 +2920,26 @@ function focus(n){
     const needOy = targetSY - raw.y;
     ox = sox+(needOx-sox)*k;
     oy = soy+(needOy-soy)*k;
+    if(k<1) requestAnimationFrame(step);
+  })(performance.now());
+}
+
+// Kişiyi HER ZAMAN ekran ortasına getirir (focus() yalnızca ekran dışındaysa
+// oynatıyor; "merkeze al" isteği için o yetersizdi). project() kullandığı için
+// 2B ve 3B modda aynı şekilde çalışır.
+function merkezeAl(n, sure){
+  if(!n) return;
+  const dur = (sure==null? 480 : sure), t0=performance.now();
+  const sox=ox, soy=oy;
+  const hedefX=innerWidth*0.5, hedefY=innerHeight*0.52;
+  (function step(now){
+    let k=Math.min(1,(now-t0)/dur); k=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    const savedOx=ox, savedOy=oy;
+    ox=0; oy=0;
+    const raw=project(n.x, n.y, nodeHeight(n));
+    ox=savedOx; oy=savedOy;
+    ox = sox+((hedefX-raw.x)-sox)*k;
+    oy = soy+((hedefY-raw.y)-soy)*k;
     if(k<1) requestAnimationFrame(step);
   })(performance.now());
 }
