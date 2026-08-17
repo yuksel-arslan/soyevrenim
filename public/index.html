@@ -564,28 +564,88 @@ function reindex(){
 // ---- radyal nesil-halkası yerleşimi ----
 const RING_GAP=130;              // halkalar arası mesafe (nesil aralığı)
 let MAXDEPTH=1;
-function ringRadius(d){ return d*RING_GAP; }
+// Nesil halkası yarıçapı. Kalabalık nesiller için layoutRadial içinde
+// büyütülmüş değer kullanılır (RING_R_OVR); yoksa sabit aralık.
+let RING_R_OVR={};
+function ringRadius(d){ return (RING_R_OVR[d]!=null) ? RING_R_OVR[d] : d*RING_GAP; }
 function layoutRadial(){
   const root=nodes.find(n=>!n._parent); if(!root) return;
   nodes.forEach(n=>{ n._ang=null; });   // her düzende yeniden hesapla
   MAXDEPTH=Math.max(...nodes.map(n=>n._depth||0),1);
+  // MOBİL ARALIK: dar ekranda düğüm yarıçapının alt sınırı (zoomK tabanı 0.5)
+  // yüzünden fit() küçültünce düğümler birbirine giriyor → dünya mesafelerini aç.
+  const MOBIL = innerWidth<=760;
+  const ARALIK = MOBIL ? 1.45 : 1;
+  const NODE_R = 10.5*ARALIK;
+  const MIN_SEP = NODE_R*3;          // merkez-merkez min mesafe = 1 çap boşluk
   // alt-ağaç yaprak ağırlığı (açı payı için)
   (function weigh(n){ const k=n._kids||[];
     n._w = k.length ? k.reduce((s,c)=>s+weigh(c),0) : 1; return n._w; })(root);
   // açıları kama-paylaşımıyla dağıt (omurga hattı yukarı, -90°'de merkezlensin)
   const A0=-Math.PI/2 - Math.PI, A1=-Math.PI/2 + Math.PI; // tam tur
-  (function assign(n,a0,a1){
+  const kolOf={}, kolDilim={};   // düğüm -> kol kökü ; kol kökü -> [a0,a1]
+  (function assign(n,a0,a1,kolKok){
     const mid=(a0+a1)/2; n._ang=mid;
+    if(kolKok!=null){ kolOf[n.id]=kolKok; }
     const r=ringRadius(n._depth);
     n.x=Math.cos(mid)*r; n.y=Math.sin(mid)*r;
     const k=n._kids||[]; if(!k.length) return;
     const tot=k.reduce((s,c)=>s+c._w,0)||1;
     let acc=a0;
     k.forEach(c=>{ const frac=c._w/tot; const ca0=acc, ca1=acc+(a1-a0)*frac;
-      assign(c,ca0,ca1); acc=ca1; });
-  })(root,A0,A1);
+      // kökün doğrudan çocukları ana kolları tanımlar
+      const kk = (n===root) ? c.id : kolKok;
+      if(n===root) kolDilim[c.id]=[ca0,ca1];
+      assign(c,ca0,ca1,kk); acc=ca1; });
+  })(root,A0,A1,null);
+
+  // ===== NESİL İÇİNDE EŞİT ARALIKLI YERLEŞİM =====
+  // Kama-paylaşımı her kişiye ATASININ dar kamasının ORTASINI veriyordu; kalabalık
+  // nesillerde bu üst üste binmeye yol açıyor. Artık her (nesil, kol) grubu, kolun
+  // kaması içinde eşit aralıklara yayılıyor. Sıralama mevcut açıya göre yapılıyor,
+  // böylece aynı ebeveynin çocukları yan yana kalıyor (aile bitişikliği korunuyor).
+  // Tam daireye değil KOL KAMASI içine yayıyoruz ki damarlar bitişik okunsun.
+  const grup=new Map();
+  nodes.forEach(n=>{
+    if(n===root || n._ang==null) return;
+    const kid=kolOf[n.id]; if(kid==null) return;
+    const key=(n._depth||1)+"|"+kid;
+    if(!grup.has(key)) grup.set(key,[]);
+    grup.get(key).push(n);
+  });
+  // 1) gereken yarıçap: kamanın GERÇEK genişliğiyle (w*R/n >= MIN_SEP)
+  RING_R_OVR={};
+  grup.forEach((liste,key)=>{
+    const [ds,kid]=key.split("|"); const d=+ds;
+    const dil=kolDilim[kid]; if(!dil) return;
+    const w=Math.max(0.05, Math.abs(dil[1]-dil[0]));
+    const gerekli=(liste.length*MIN_SEP)/w;
+    RING_R_OVR[d]=Math.max(RING_R_OVR[d]||0, d*RING_GAP, gerekli);
+  });
+  // halkalar iç içe geçmesin
+  const dler=Object.keys(RING_R_OVR).map(Number).sort((a,b)=>a-b);
+  for(let i=1;i<dler.length;i++){
+    const onc=RING_R_OVR[dler[i-1]], sim=RING_R_OVR[dler[i]];
+    if(sim < onc + RING_GAP*0.6) RING_R_OVR[dler[i]] = onc + RING_GAP*0.6;
+  }
+  // 2) açıları kama içinde eşit aralıklara yay
+  grup.forEach((liste,key)=>{
+    const [ds,kid]=key.split("|"); const d=+ds;
+    const dil=kolDilim[kid]; if(!dil) return;
+    liste.sort((a,b)=>a._ang-b._ang);          // aile bitişikliğini koru
+    const n=liste.length, r=ringRadius(d);
+    const kenar=Math.abs(dil[1]-dil[0])*0.06;  // kama kenarlarında pay
+    const a0=Math.min(dil[0],dil[1])+kenar, a1=Math.max(dil[0],dil[1])-kenar;
+    liste.forEach((nd,i)=>{
+      const t=(n===1)?0.5:i/(n-1);
+      const ang=a0+(a1-a0)*t;
+      nd._ang=ang; nd.x=Math.cos(ang)*r; nd.y=Math.sin(ang)*r;
+    });
+  });
   // kök merkeze
   root.x=0; root.y=0; root._ang=-Math.PI/2;
+  nodes.forEach(n=>{ n._pin=false; n._ringR=(n===root)?null:ringRadius(n._depth||1); });
+  root._pin=true;
   // ana ağaçta olmayan düğümler (eşler, onların ebeveynleri): açıyı komşudan al
   for(let pass=0; pass<12; pass++){
     nodes.forEach(n=>{
@@ -603,9 +663,12 @@ function layoutRadial(){
         n._ang=refAng+off;
         const r=ringRadius(n._depth||0);
         n.x=Math.cos(n._ang)*r; n.y=Math.sin(n._ang)*r;
+        n._ringR=r;
       }
     });
   }
+  // kalan çakışmalar için güvence katmanı
+  cakismaCoz(nodes, MIN_SEP, RING_GAP);
 }
 
 // ========================= ÜÇ HELEZON (SPİRAL) DÜZENİ =========================
