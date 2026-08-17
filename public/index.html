@@ -698,6 +698,8 @@ function layoutSpiral(){
   // AÇISAL DAĞITIM: KÖK seviyesinde üç kola EŞİT dilim (küçük kollar ezilmesin),
   // içeride kardeşler yaprak ağırlığına göre böler → aynı damar bitişik akar.
   const payAng={};
+  const kolDilim={};   // kol kök id -> [a0,a1]  (o kolun açısal dilimi)
+  const kolOf={};      // düğüm id -> kol kök id (hangi damarda)
   const K3=kids.length||1;
   const GAP=0.18;   // kollar arası boşluk (radyan)
   (function assignRoot(){
@@ -706,8 +708,10 @@ function layoutSpiral(){
       // her kola eşit dilim
       const slice=(Math.PI*2)/K3;
       const a0=i*slice+GAP/2, a1=(i+1)*slice-GAP/2;
+      kolDilim[k.id]=[a0,a1];
       (function assign(n,x0,x1){
         payAng[n.id]=(x0+x1)/2;
+        kolOf[n.id]=k.id;
         const kk=n._kids||[]; if(!kk.length) return;
         const tot=kk.reduce((s,c)=>s+c._w,0)||1;
         let acc=x0;
@@ -716,27 +720,44 @@ function layoutSpiral(){
     });
   })();
 
-  // konum: sarmal yüzey — açı = temel açı + nesil başına belirgin dönüş
-  // aynı nesil/dilimdeki kişileri yarıçapta da hafif kaydır → üst üste binmesinler
-  const rjSeq={};  // aynı yaklaşık açıdaki kişileri saymak için
-
-  // ===== AÇISAL ARALIK GARANTİSİ (talimat: yay >= MIN_SEP) =====
-  // Bir halkadaki n kişi, yarıçap R ise komşu iki kişi arası yay = 2πR/n.
-  // Bu MIN_SEP'in altına düşerse o nesil için yarıçapı BÜYÜT — böylece
-  // kalabalık nesiller (bu ağaçta 6-8. nesiller) baştan çakışmaz.
+  // ===== NESİL İÇİNDE EŞİT ARALIKLI YERLEŞİM =====
+  // Her nesil, kendi KOLUNUN dilimi içinde eşit aralıklarla dizilir.
+  // Neden tam daireye değil de dilim içine: kollar (Aslanişi, Noktaşi, Tayişi…)
+  // bitişik damarlar olarak okunsun. Tam daireye yayarsak kardeşler çemberin
+  // dört bir yanına saçılır, kenarlar daireyi çapraz keser, kol filtresi ve
+  // renkler görsel anlamını yitirir.
+  //
+  // Sıralama payAng'e göre yapılır: aynı ebeveynin çocukları yan yana kalır,
+  // yani aile grupları bitişikliğini korur — sadece aralar eşitlenir.
   const NODE_R  = 10.5*ARALIK;      // taban düğüm yarıçapı ile uyumlu
   const MIN_SEP = NODE_R*3;         // merkez-merkez min mesafe = 1 çap boşluk
-  const neslSayi={};
-  nodes.forEach(n=>{ if(n!==root && payAng[n.id]!=null){ const d=n._depth||1; neslSayi[d]=(neslSayi[d]||0)+1; } });
-  const neslR={};
-  Object.keys(neslSayi).forEach(dk=>{
-    const d=+dk, n=neslSayi[d];
-    const atanan = R0 + d*R_GROW;
-    const gerekli = (n*MIN_SEP)/(Math.PI*2);    // tam çevreye yayıldığı varsayımı
-    neslR[d] = Math.max(atanan, gerekli);
+
+  // (nesil, kol) gruplarını topla
+  const gruplar=new Map();          // "d|kolId" -> [düğüm]
+  nodes.forEach(n=>{
+    if(n===root || payAng[n.id]==null) return;
+    const d=n._depth||1, kid=kolOf[n.id];
+    if(kid==null) return;
+    const k=d+"|"+kid;
+    if(!gruplar.has(k)) gruplar.set(k,[]);
+    gruplar.get(k).push(n);
   });
-  // halkalar iç içe geçmesin: dıştaki halka içtekinden en az R_GROW*0.6 uzak
-  const dler=Object.keys(neslR).map(Number).sort((a,b)=>a-b);
+
+  // 1) Gereken yarıçap: dilim GENİŞLİĞİNİ kullan (2π DEĞİL).
+  //    Dilim genişliği w, o dilimde n kişi varsa yay = w*R/n >= MIN_SEP olmalı.
+  const neslR={};
+  const dSet=new Set();
+  gruplar.forEach((liste,k)=>{
+    const [ds,kid]=k.split("|");
+    const d=+ds; dSet.add(d);
+    const dil=kolDilim[kid]; if(!dil) return;
+    const w=Math.max(0.05, dil[1]-dil[0]);
+    const gerekli=(liste.length*MIN_SEP)/w;
+    const atanan=R0+d*R_GROW;
+    neslR[d]=Math.max(neslR[d]||0, atanan, gerekli);
+  });
+  // halkalar iç içe geçmesin: dıştaki içtekinden en az R_GROW*0.6 uzak
+  const dler=[...dSet].sort((a,b)=>a-b);
   for(let i=1;i<dler.length;i++){
     const onceki=neslR[dler[i-1]], simdi=neslR[dler[i]];
     if(simdi < onceki + R_GROW*0.6) neslR[dler[i]] = onceki + R_GROW*0.6;
@@ -745,21 +766,27 @@ function layoutSpiral(){
   root.x=0; root.y=0; root._ang=-Math.PI/2;
   nodes.forEach(n=>{ n._pin=false; });
   root._pin=true;   // Molla Memiş merkezde kalır (çakışma çözücü onu oynatmaz)
-  nodes.forEach(n=>{
-    if(n===root) return;
-    const d=n._depth||1;
-    let base = payAng[n.id];
-    if(base==null){ n.x=n.x||0; n.y=n.y||0; return; }
-    const ang = base + d*0.42;         // belirgin sarmal dönüş
-    // radyal serpiştirme: yakın açıdaki kişileri farklı yarıçaplara yay
-    const key = d+"|"+Math.round(base*20);   // nesil + kaba açı kovası
-    const idx = (rjSeq[key]=(rjSeq[key]||0)+1) - 1;
-    const jitter = (idx%3 - 1) * (MIN_SEP*0.5);   // üç kademe yarıçap
-    const rr  = (neslR[d] || (R0 + d*R_GROW)) + jitter;
-    n.x = Math.cos(ang)*rr;
-    n.y = Math.sin(ang)*rr;
-    n._ang=ang; n._surfR=rr; n._ringR=neslR[d] || (R0 + d*R_GROW);
+
+  // 2) Açıları dilim içinde EŞİT aralıklara yay
+  gruplar.forEach((liste,k)=>{
+    const [ds,kid]=k.split("|");
+    const d=+ds;
+    const dil=kolDilim[kid]; if(!dil) return;
+    liste.sort((a,b)=>payAng[a.id]-payAng[b.id]);   // aile bitişikliğini koru
+    const n=liste.length;
+    const kenar=(dil[1]-dil[0])*0.06;               // dilim kenarlarında pay
+    const a0=dil[0]+kenar, a1=dil[1]-kenar;
+    const rr=neslR[d] || (R0+d*R_GROW);
+    liste.forEach((nd,i)=>{
+      // n=1 ise dilimin ortası; değilse uçlar dahil eşit bölüm
+      const t = (n===1) ? 0.5 : i/(n-1);
+      const ang = a0 + (a1-a0)*t + d*0.42;          // + sarmal dönüş
+      nd.x=Math.cos(ang)*rr; nd.y=Math.sin(ang)*rr;
+      nd._ang=ang; nd._surfR=rr; nd._ringR=rr;
+    });
   });
+  // dilime giremeyenler (payAng yok) mevcut yerinde kalsın
+  nodes.forEach(n=>{ if(n!==root && payAng[n.id]==null){ n.x=n.x||0; n.y=n.y||0; } });
   // dış eşler: eşinin yanına, aynı damara
   for(let pass=0; pass<8; pass++){
     nodes.forEach(n=>{
