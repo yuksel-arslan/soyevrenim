@@ -184,6 +184,7 @@ body:has(.inspector.show) #activeCard{display:none !important}
   color:var(--on-accent);font-size:12px;font-weight:600;padding:7px 14px;border-radius:20px;opacity:0;
   transition:opacity .3s;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .hint.show{opacity:1}
+.hint.show.tikla{pointer-events:auto;cursor:pointer}   /* eylemli ipucu: dokununca açar */
 
 /* toast */
 .toast{position:fixed;bottom:56px;left:50%;transform:translateX(-50%) translateY(16px);z-index:20;
@@ -456,7 +457,7 @@ body:has(.inspector.show) #activeCard{display:none !important}
   <button id="kokenBtn" title="Köken — 1956, Fahri Arslan'ın eseri"><svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v4h4M8.5 13h7M8.5 16.5h7M8.5 9.5h2"/></svg></button>
   <button id="lensBtn" title="Katman / renklendirme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg></button>
   <button id="themeBtn" title="Gece / Gündüz modu"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
-  <button id="chatBtn" title="Aile sohbeti" style="display:none"><svg viewBox="0 0 24 24"><path d="M20 12a7 7 0 0 1-9.5 6.5L4 20l1.5-4.5A7 7 0 1 1 20 12z"/></svg></button>
+  <button id="chatBtn" title="Aile sohbeti" style="display:none;position:relative"><svg viewBox="0 0 24 24"><path d="M20 12a7 7 0 0 1-9.5 6.5L4 20l1.5-4.5A7 7 0 1 1 20 12z"/></svg><span id="chatRozet" style="display:none;position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--on-accent);font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--panel)"></span></button>
   <button id="adminBtn" title="Yönetici girişi"><svg viewBox="0 0 24 24"><circle cx="8" cy="10" r="4"/><path d="M11 12l7 7M16 20l2-2M18 18l2-2"/></svg></button>
   <button id="approvalBtn" title="Onay kutusu" style="display:none;position:relative"><svg viewBox="0 0 24 24"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span id="approvalCount" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--danger);color:#fff;font-size:9px;min-width:15px;height:15px;border-radius:8px;line-height:15px;text-align:center;padding:0 3px"></span></button>
 </div>
@@ -467,8 +468,16 @@ body:has(.inspector.show) #activeCard{display:none !important}
   box-shadow:0 16px 50px var(--shadow);display:none;flex-direction:column;overflow:hidden">
   <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 15px;
     border-bottom:1px solid var(--line)">
-    <div style="font-weight:700;font-size:15px">Aile Sohbeti</div>
-    <button id="chatClose" style="background:none;border:none;color:var(--text-soft);font-size:18px;cursor:pointer">×</button>
+    <div style="min-width:0">
+      <div style="font-weight:700;font-size:15px">Aile Sohbeti</div>
+      <div id="chatAlt" style="font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.35">
+        Tüm ailenin ortak odası · aile şifresiyle girenler okur ve yazar</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex:none">
+      <button id="chatDavet" title="Aileyi sohbete davet et" style="background:none;border:1px solid var(--line2);border-radius:8px;
+        color:var(--accent);font-size:12.5px;font-weight:600;padding:5px 9px;cursor:pointer">＋ Davet et</button>
+      <button id="chatClose" style="background:none;border:none;color:var(--text-soft);font-size:18px;cursor:pointer">×</button>
+    </div>
   </div>
   <div id="chatMsgs" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px"></div>
   <div id="chatInputWrap" style="border-top:1px solid var(--line);padding:10px 12px;display:flex;gap:8px">
@@ -4771,6 +4780,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     const acikMi = w && w.style.display!=="none" && w.style.opacity!=="0";
     if(acikMi && denemeler<60) return;          // en fazla ~48 sn bekle
     clearInterval(bekle);
+    if(new URLSearchParams(location.search).has("sohbet")) return;   // davetle gelen: sohbet açılacak
     ac(!gorildi);
     try{ localStorage.setItem(REHBER_KEY,"1"); }catch(e){}
   }, 800);
@@ -4889,6 +4899,7 @@ async function ayarYukle(){
   if(AYAR) return AYAR;
   try{ const r=await fetch("/api/kullanim?adim=ayar"); const j=await r.json(); if(j.ok) AYAR=j.ayar; }catch(e){}
   if(typeof asistanAdiGuncelle==="function") asistanAdiGuncelle();
+  if(AYAR) dispatchEvent(new Event("kok-ayar-hazir"));
   return AYAR;
 }
 if(typeof fetch==="function") ayarYukle();
@@ -5340,8 +5351,11 @@ let branchFilter=null;   // null=tümü, ya da kol kök id → sadece o kol vurg
 })();
 
 let hintT=null;
-function showHint(msg){ const h=document.getElementById("hint");
+function showHint(msg, eylem){ const h=document.getElementById("hint");
   if(!msg){ h.classList.remove("show"); return; }
+  // eylem verilirse ipucu dokunulabilir olur (ör. "Fahri sohbete yazdı" → sohbeti aç)
+  h.classList.toggle("tikla", !!eylem);
+  h.onclick = eylem ? ()=>{ h.classList.remove("show"); eylem(); } : null;
   h.textContent=msg; h.classList.add("show"); clearTimeout(hintT);
   hintT=setTimeout(()=>h.classList.remove("show"),3500); }
 function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
@@ -5355,6 +5369,9 @@ const welcome=document.getElementById("welcome");
 const whoInput=document.getElementById("whoInput");
 const whoResults=document.getElementById("whoResults");
 function startAs(id){
+  // Davet bağlantısıyla (?sohbet=1) gelen kişi karşılamadan sonra doğrudan Aile Sohbeti'ne
+  if(new URLSearchParams(location.search).has("sohbet"))
+    setTimeout(()=>{ if(typeof window.sohbetAc==="function") window.sohbetAc(); }, 700);
   if(id){ setViewer(id); benAta(id); }
   else { layoutRadial(); }        // nötr: kimse merkez değil
   welcome.style.transition="opacity .5s"; welcome.style.opacity="0";
@@ -5760,6 +5777,10 @@ tryAdminLogin = function(){ _tryAdmin_orig(); setTimeout(showApprovalBtn, 100); 
 setInterval(()=>{ if(isAdmin && CLOUD.on && !document.hidden) refreshApprovals(); }, 45000);
 
 // ============================ SOHBET (genel + kişi yorumları) ============================
+// Aile sohbeti: son görülen mesaj (rozet için). Yoklama süreleri api/_lib/ayar.js → SOHBET.
+// null = bu tarayıcı sohbete hiç bakmadı (ilk ziyaret: eski mesajlar "yeni" sayılmaz)
+function sohbetSonGorulen(){ try{ const v=localStorage.getItem("kok_sohbet_son"); return v===null ? null : (Number(v)||0); }catch(e){ return 0; } }
+function sohbetGoruldu(id){ try{ const s=sohbetSonGorulen(); if(s===null || id>s) localStorage.setItem("kok_sohbet_son", String(id||0)); }catch(e){} }
 function chatShowBtn(){ const b=document.getElementById("chatBtn"); if(b&&CLOUD.on) b.style.display=""; }
 function fmtChatTime(t){ return new Date(t).toLocaleString("tr-TR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}); }
 
@@ -5768,22 +5789,39 @@ async function chatLoad(kapsam, container){
     const r=await fetch("/api/sohbet?adim=oku",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({kapsam})});
     const j=await r.json();
-    if(j.ok) renderChat(j.mesajlar, container, kapsam);
+    if(j.ok){ renderChat(j.mesajlar, container, kapsam);
+      if(kapsam==="genel" && j.mesajlar.length) sohbetGoruldu(Math.max(...j.mesajlar.map(m=>Number(m.id)||0))); }
   }catch(e){}
 }
 function renderChat(msgs, container, kapsam){
   if(!container) return;
-  if(!msgs.length){ container.innerHTML=`<div style="color:var(--muted);font-size:13px;text-align:center;padding:24px">
-    Henüz mesaj yok — ilk yazan sen ol.</div>`; return; }
+  const ben=kimlikId();
+  // Yazarı tanıt: ağaçtaki kişiyse "Fahri oğlu Yüksel" (adaşlar karışmasın), değilse kayıtlı ad
+  const yazan=m=>{ const n=byId[m.yazan_id]; return n ? `${kimlikSatiri(n)!=="kök"?kimlikSatiri(n)+" ":""}${dispName(n.name)}` : (m.yazan_ad||"Biri"); };
+  if(kapsam==="genel"){
+    // Başlıkta kimlerin konuştuğu görünsün
+    const alt=document.getElementById("chatAlt");
+    if(alt){
+      const benYazdim=msgs.some(m=>ben && m.yazan_id===ben);
+      const adlar=[...new Set(msgs.filter(m=>!(ben && m.yazan_id===ben))
+        .map(m=>byId[m.yazan_id]?dispName(byId[m.yazan_id].name):(m.yazan_ad||"Biri")))];
+      if(benYazdim) adlar.push("sen");
+      alt.textContent = adlar.length
+        ? `Tüm ailenin ortak odası · konuşanlar: ${adlar.slice(0,5).join(", ")}${adlar.length>5?` ve ${adlar.length-5} kişi daha`:""}`
+        : "Tüm ailenin ortak odası · aile şifresiyle girenler okur ve yazar";
+    }
+  }
+  if(!msgs.length){ container.innerHTML=`<div style="color:var(--muted);font-size:13px;text-align:center;padding:24px;line-height:1.5">
+    Henüz mesaj yok — ilk yazan sen ol.<br>Yazdıkların aile şifresiyle giren herkese görünür.</div>`; return; }
   container.innerHTML="";
   msgs.forEach(m=>{
-    const mine = m.yazan_id===kimlikId();
+    const mine = !!ben && m.yazan_id===ben;
     const wrap=document.createElement("div");
     wrap.style.cssText=`display:flex;flex-direction:column;gap:2px;max-width:85%;
       ${mine?"align-self:flex-end;align-items:flex-end":"align-self:flex-start"}`;
     const meta=document.createElement("div");
     meta.style.cssText="font-size:11px;color:var(--muted);display:flex;gap:6px;align-items:center";
-    meta.innerHTML=`<span style="color:var(--text-soft);font-weight:600">${escapeHtml(m.yazan_ad||"Biri")}</span>
+    meta.innerHTML=`<span style="color:var(--text-soft);font-weight:600">${mine?"Sen":escapeHtml(yazan(m))}</span>
       <span>${fmtChatTime(m.zaman)}</span>`;
     const bubble=document.createElement("div");
     bubble.style.cssText=`font-size:14px;line-height:1.4;padding:8px 12px;border-radius:12px;
@@ -5791,8 +5829,8 @@ function renderChat(msgs, container, kapsam){
       border:1px solid ${mine?"var(--accent)":"var(--line)"};word-break:break-word`;
     bubble.textContent=m.mesaj;
     wrap.appendChild(meta); wrap.appendChild(bubble);
-    // silme (admin ya da sahibi)
-    if(isAdmin || mine){
+    // silme: sunucu yalnızca yöneticiye izin veriyor (api/sohbet.js → sil)
+    if(isAdmin){
       const del=document.createElement("button"); del.textContent="sil";
       del.style.cssText="font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0";
       del.onclick=()=>chatDelete(m.id, kapsam, container);
@@ -5817,7 +5855,7 @@ async function chatSend(kapsam, input, container){
   const ad = kid ? dispName((byId[kid]||{}).name||"")
                  : (isAdmin ? "Yönetici" : "Aile üyesi");
     const r=await fetch("/api/sohbet?adim=yaz",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({kapsam, mesaj, jeton:sessionToken||"", yazan_ad:ad})});
+      body:JSON.stringify({kapsam, mesaj, jeton:sessionToken||"", yazan_ad:ad, kisi_id:kid||""})});
     const j=await r.json();
     if(j.ok) chatLoad(kapsam, container);
     else toast(j.hata||"Gönderilemedi");
@@ -5844,7 +5882,9 @@ async function chatDelete(id, kapsam, container){
     const s=sifreModu();
     input.disabled=false; send.disabled=false;
     input.type = s ? "password" : "text";
-    input.placeholder = s ? "Yazmak için aile şifresi" : "Mesaj yaz…";
+    const kim=kimlikId();
+    input.placeholder = s ? "Yazmak için aile şifresi"
+      : `Tüm aileye yaz${kim&&byId[kim]?` (${dispName(byId[kim].name)} olarak)`:""}…`;
     send.textContent = s ? "Giriş" : "Gönder";
   };
   const gonder=async()=>{
@@ -5855,10 +5895,56 @@ async function chatDelete(id, kapsam, container){
     if(!j.ok){ toast(j.hata); return; }
     input.value=""; kutuyuAyarla(); input.focus();
   };
+  // süre ayardan (api/_lib/ayar.js → SOHBET); ayar gelmediyse 0 → otomatik yenileme yok
+  const sn=k=>((typeof AYAR!=="undefined" && AYAR && AYAR.SOHBET && AYAR.SOHBET[k]) || 0)*1000;
   const open=()=>{ pnl.style.display="flex"; document.body.classList.add("sohbet-acik"); chatLoad("genel", msgs);
-    kutuyuAyarla();
-    poll=setInterval(()=>{ if(pnl.style.display!=="none" && !document.hidden) chatLoad("genel", msgs); }, 15000);
+    kutuyuAyarla(); rozet(0);
+    if(sn("acikYoklamaSn")) poll=setInterval(()=>{ if(pnl.style.display!=="none" && !document.hidden) chatLoad("genel", msgs); }, sn("acikYoklamaSn"));
   };
+  window.sohbetAc=()=>{ chatShowBtn(); if(pnl.style.display==="none") open(); };
+
+  // DAVET: aileye sohbeti doğrudan açan bağlantı gönder (şifre bağlantıya yazılmaz)
+  const davet=document.getElementById("chatDavet");
+  if(davet) davet.onclick=async()=>{
+    const url=location.origin+"/?sohbet=1";
+    const kim=kimlikId(), ad=kim&&byId[kim]?dispName(byId[kim].name):"";
+    const metin=`${ad?ad+" seni":"Seni"} Abdurrahman Oğullarının soy evrenindeki Aile Sohbeti'ne çağırıyor 🌳 `+
+      `Bağlantıya dokun, adını seç ve aile şifresiyle gir (şifreyi bana sor): ${url}`;
+    try{ if(navigator.share){ await navigator.share({title:"Aile Sohbeti", text:metin}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
+    try{ await navigator.clipboard.writeText(metin); toast("Davet metni kopyalandı — WhatsApp'a yapıştırabilirsin"); }catch(e){}
+    window.open("https://wa.me/?text="+encodeURIComponent(metin),"_blank","noopener");
+  };
+
+  // ROZET + BİLDİRİM: panel kapalıyken yeni mesajları say (son görülen id'den sonrası)
+  const rozetEl=document.getElementById("chatRozet");
+  function rozet(n){ if(!rozetEl) return; rozetEl.textContent=n>9?"9+":String(n); rozetEl.style.display=n>0?"block":"none";
+    btn.title = n>0 ? `Aile sohbeti — ${n} yeni mesaj` : "Aile sohbeti"; }
+  let bildirilen=0;
+  async function yeniYokla(){
+    if(!CLOUD.on || document.hidden || pnl.style.display!=="none") return;
+    const son=sohbetSonGorulen();
+    try{
+      const r=await fetch("/api/sohbet?adim=yeni",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({kapsam:"genel", son:son||0})});
+      const j=await r.json(); if(!j.ok) return;
+      // ilk ziyaret: eski mesajlar "yeni" sayılmasın — bugünden itibaren say
+      if(son===null){ sohbetGoruldu(j.sonId); rozet(0); return; }
+      const ben=kimlikId();
+      const baskasi=j.yazanlar.filter(y=>!(ben && y.yazan_id===ben));
+      rozet(baskasi.length);
+      // ilk kez gelen yeni mesajlar için kısa bildirim (aynı mesaj için bir kez)
+      if(baskasi.length && j.sonId>bildirilen){
+        bildirilen=j.sonId;
+        const adlar=[...new Set(baskasi.map(y=>byId[y.yazan_id]?dispName(byId[y.yazan_id].name):(y.yazan_ad||"Biri")))];
+        showHint(`💬 ${adlar.slice(0,2).join(", ")}${adlar.length>2?" ve diğerleri":""} Aile Sohbeti'ne yazdı · aç`, ()=>window.sohbetAc());
+      }
+    }catch(e){}
+  }
+  // ayar yüklenince yoklamayı başlat (süre ayardan)
+  let basladi=false;
+  function baslat(){ if(basladi || !sn("yoklamaSn")) return; basladi=true; yeniYokla(); setInterval(yeniYokla, sn("yoklamaSn")); }
+  baslat(); addEventListener("kok-ayar-hazir", baslat);
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) yeniYokla(); });
   const close=()=>{ pnl.style.display="none"; document.body.classList.remove("sohbet-acik"); if(poll)clearInterval(poll); };
   btn.onclick=()=>{ if(pnl.style.display==="none") open(); else close(); };
   document.getElementById("chatClose").onclick=close;

@@ -62,6 +62,9 @@ export const DEPOLAMA = { kotaBayt: 10 * 1024 ** 3, onEk: 'ses/' };
 // — Panel: katkı sıralaması (1 eklenen kişi = bu kadar saniyelik hikâye ağırlığında)
 export const KATKI = { kisiAgirlikSn: 60 };
 
+// Aile sohbeti: yeni mesaj yoklaması (rozet + bildirim) ve panel açıkken yenileme
+export const SOHBET = { yoklamaSn: 45, acikYoklamaSn: 15, yeniMax: 50 };
+
 // — Yazılı anı (mevcut istemci sınırı) —
 export const YAZILI_ANI_MAX_CHARS = 1000;
 
@@ -74,6 +77,7 @@ export function kamuAyar() {
     SES: { mime: SES.mime, mimeYedek: SES.mimeYedek, bitHizi: SES.bitHizi, parcaSn: SES.parcaSn,
       parcaMaxMb: SES.parcaMaxMb, maxKayitDk: SES.maxKayitDk },
     DEPOLAMA: { kotaBayt: DEPOLAMA.kotaBayt },
+    SOHBET,
     ASISTAN: { ad: ASISTAN.ad, mesajMaxKarakter: ASISTAN.mesajMaxKarakter, gecmisTur: ASISTAN.gecmisTur },
   };
 }
