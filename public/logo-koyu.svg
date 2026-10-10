@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 72" width="352" height="72"><g transform="translate(4,4)" style="color:#ffc94a"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+    <path d="M10.1 29.9 A23 23 0 0 1 53.9 29.9" stroke-width="1.8" opacity=".45"/>
+    <path d="M32 44 C28.715 41.9 11.852 35.9 10.1 29.9"/><path d="M32 44 C29.975 30.4 19.58 24.4 18.5 18.4"/><path d="M32 44 C32.0 26.0 32.0 20.0 32.0 14.0"/><path d="M32 44 C34.025 30.4 44.42 24.4 45.5 18.4"/><path d="M32 44 C35.285 41.9 52.147999999999996 35.9 53.9 29.9"/>
+    <path d="M32 44 V56"/>
+    <path d="M32 56 C29 58 25 59 21 59 M32 56 C35 58 39 59 43 59"/>
+  </g>
+  <g fill="currentColor"><circle cx="10.1" cy="29.9" r="4.3"/><circle cx="18.5" cy="18.4" r="4.3"/><circle cx="32.0" cy="14.0" r="4.3"/><circle cx="45.5" cy="18.4" r="4.3"/><circle cx="53.9" cy="29.9" r="4.3"/><circle cx="32" cy="56.5" r="3.6"/></g></g>
+  <text x="78" y="44" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="30" font-weight="700" letter-spacing="-0.6" fill="#f4f6fb">soyevrenim<tspan fill="#8a94a8" font-weight="500">.com</tspan></text>
+  <text x="79" y="62" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="9.5" letter-spacing="2.4" fill="#8a94a8">ABDURRAHMAN OĞULLARI · 1615</text></svg>

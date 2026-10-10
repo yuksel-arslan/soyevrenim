@@ -40,6 +40,28 @@ Genel **Aile Sohbeti** ve kişi kartındaki **Yorumlar** tek uçtan, tek tabloda
 - Son görülen mesaj `localStorage.kok_sohbet_son`; ilk ziyarette eski mesajlar "yeni" sayılmaz.
 - Süreler `api/_lib/ayar.js → SOHBET` (`yoklamaSn`, `acikYoklamaSn`, `yeniMax`); istemciye `kamuAyar` ile.
 
+## Push bildirimleri (telefon kilitliyken de)
+
+Bağımlılıksız Web Push: `api/_lib/push.js` (Node `crypto`).
+
+| Parça | Ne yapar |
+|---|---|
+| `public/sw.js` | Service worker: şifreli yükü açar, "💬 Fahri · Aile Sohbeti" bildirimini gösterir; dokununca sohbeti açar. Sayfa açık ve görünürse göstermez (sayfa kendi rozetini gösterir). Önbellek yok. |
+| `public/manifest.webmanifest` + `simge-192/512.png` | Ana ekrana eklenebilir uygulama. **iPhone'da push yalnızca ana ekrana eklenmiş sitede çalışır** (iOS 16.4+). |
+| `adim=vapid` | Açık VAPID anahtarı. Anahtar `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` ortam değişkenlerinden; yoksa ilk kullanımda üretilip `bildirim_anahtar` tablosuna yazılır (elle anahtar taşımak gerekmez). |
+| `adim=abone` | `{jeton, kisi_id, abonelik}` — giriş gerekir. Aynı tarayıcı tekrar abone olursa güncellenir (`endpoint` benzersiz). |
+| `adim=birak` | `{endpoint}` — aboneliği siler. |
+| `adim=yaz` (genel) | Mesaj kaydedilince **yazan hariç** tüm abonelere gönderir; yanıtta `bildirim: {gonderilen, silinen}`. 404/410 dönen (geçersiz) abonelik silinir. Gönderim hatası mesajı bozmaz. |
+
+- Şifreleme RFC 8291 (aes128gcm), imza RFC 8292 (VAPID, ES256). Ayarlar `api/_lib/ayar.js → BILDIRIM`
+  (`ttlSn`, `jwtSureSn`, `zamanAsimiMs`, `kayitBoyu`, `metinMax`, `enCokAlici`, `konu`).
+- Arayüz: sohbet başlığında **🔕 Bildirim al / 🔔 Bildirim açık**. iPhone'da (ana ekrana eklenmemişse)
+  dokununca "Paylaş → Ana Ekrana Ekle" yönergesi; izin reddedildiyse tarayıcı ayarı yönergesi.
+- Açılışta abonelik varsa sunucudaki kayıt tazelenir (kişi değiştiyse `kisi_id` güncellenir).
+- Tablolar: `bildirim_abonelik`, `bildirim_anahtar` (`schema.sql`; tek başına `sql/bildirim.sql`).
+- Test: `test/push.test.mjs` — şifreli yük bağımsız çözücüyle açılır, JWT açık anahtarla doğrulanır,
+  uçtan uca (taklit push servisi) yazana gitmediği ve 410'un silindiği denetlenir.
+
 ## Giriş (istemci)
 
 Şifre kutusu artık üç yerde, hepsi `sifreyleGir()` ortak fonksiyonunu kullanır:
@@ -54,3 +76,4 @@ Mobilde sohbet açıkken mikrofon düğmesi gizlenir (`body.sohbet-acik`).
 ## Ortam değişkenleri
 
 `DATABASE_URL`, `OTURUM_GIZLI` (jeton imzası), `AILE_SIFRESI`, `ADMIN_SIFRESI` (giriş, `api/giris.js`).
+İsteğe bağlı: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (yoksa anahtar veritabanında üretilir).

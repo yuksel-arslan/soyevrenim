@@ -632,3 +632,12 @@ dokunma olayları denenmedi. Şunlar **gözle test edilmedi**:
 8. Dağıtım: Vercel'in GitHub webhook'u bu projede güvenilmez davrandı;
    `vercel deploy --prod --yes` ile elle dağıtıp `curl` ile yayında olduğunu
    teyit et.
+
+
+## Marka ve logo
+
+- Site adı her yerde **soyevrenim.com**; ailenin adı ve slogan alt satırda ("Abdurrahman Oğulları · 1615'ten beri").
+- İşaret: **çınar** — gövdeden halkaya uzanan dallar ve düğümler (soy grafiğinin kendisi), kökte tek düğüm (ilk ata).
+  Sayfa içinde satır içi SVG, rengi `var(--spine)` (üç temada da token'dan).
+- Dosyalar: `public/favicon.svg` (sekme simgesi), `public/logo.svg` (açık zemin), `public/logo-koyu.svg`
+  (koyu zemin), `public/simge-192.png` / `simge-512.png` (ana ekran / bildirim simgesi), `public/manifest.webmanifest`.
