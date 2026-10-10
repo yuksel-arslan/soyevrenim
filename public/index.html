@@ -445,7 +445,7 @@ body:has(.inspector.show) #activeCard{display:none !important}
   <button id="physBtn" class="on" title="Fizik aç/kapa"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><ellipse cx="12" cy="12" rx="10" ry="4.4"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.4" transform="rotate(120 12 12)"/></svg></button>
   <button id="reparentBtn" title="Ebeveyn bağı değiştir"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
   <div class="sep"></div>
-  <button id="rehberBtn" title="Rehber — ne yapabilirim?"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.4 9a2.7 2.7 0 0 1 5.2.9c0 1.8-2.6 2.1-2.6 4"/><circle cx="12" cy="17.5" r="1" fill="currentColor" stroke="none"/></svg></button>
+  <button id="rehberBtn" title="Çınar — soyumuz, bölgemiz ve site hakkında sor"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.4 9a2.7 2.7 0 0 1 5.2.9c0 1.8-2.6 2.1-2.6 4"/><circle cx="12" cy="17.5" r="1" fill="currentColor" stroke="none"/></svg></button>
   <button id="duzBtn" title="Düzlem / Koni görünümü"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9.5" ry="4"/><ellipse cx="12" cy="12" rx="4.5" ry="1.9"/><circle cx="12" cy="12" r="1"/></svg></button>
   <button id="kafesBtn" class="on" title="Koni yüzeyi (tel örgü) aç/kapa"><svg viewBox="0 0 24 24"><path d="M12 3l8 15H4z"/><path d="M7.4 12h9.2M9.7 7.5h4.6"/><path d="M12 3v15"/></svg></button>
   <button id="pathBtn" title="Yol bul — iki kişi arasındaki akrabalık"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v4a3 3 0 0 0 3 3h3a3 3 0 0 1 3 3"/></svg></button>
@@ -566,7 +566,7 @@ body:has(.inspector.show) #activeCard{display:none !important}
   border-radius:14px;box-shadow:0 16px 50px var(--shadow);overflow:hidden">
   <div style="display:flex;align-items:center;gap:8px;padding:12px 14px 8px">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;
-      text-transform:uppercase;color:var(--spine);flex:1"><span id="rehberAd">Rehber</span></div>
+      text-transform:uppercase;color:var(--spine);flex:1"><span id="rehberAd">Çınar · Asistan</span></div>
     <button id="rehberKapat" title="Kapat" style="background:none;border:none;color:var(--muted);
       font-size:16px;line-height:1;cursor:pointer;padding:2px 6px">✕</button>
   </div>
@@ -3121,13 +3121,13 @@ function applyEditPermission(n){
     const inp=banner.querySelector("#permSifre"), btn=banner.querySelector("#permGir");
     const gir=async()=>{ btn.disabled=true; const j=await sifreyleGir(inp.value); btn.disabled=false;
       if(!j.ok){ toast(j.hata); return; }
-      if(!kimlikId() && !isAdmin) toast("Giriş tamam — kim olduğunu Rehber'e “Ben …” diye yaz");
+      if(!kimlikId() && !isAdmin) toast(`Giriş tamam — kim olduğunu ${asistanaYaz()} “Ben …” diye yaz`);
       openInspector(n); };   // yetkiyle yeniden çiz
     btn.onclick=gir; inp.addEventListener("keydown",e=>{ if(e.key==="Enter") gir(); });
   } else {
     banner.style.background="rgba(140,156,180,.12)"; banner.style.color=getVar("--text-soft");
     banner.textContent=editorId ? "👁 Sadece görüntüleme — bu kişi senin dalında değil"
-      : "👁 Sadece görüntüleme — Rehber'e “Ben …” yazarak kim olduğunu söyle";
+      : `👁 Sadece görüntüleme — ${asistanaYaz()} “Ben …” yazarak kim olduğunu söyle`;
   }
 }
 
@@ -3166,7 +3166,7 @@ function renderProfileSections(n){
   const isOpts = ["", "Çalışıyor", "Emekli", "Öğrenci", "Ev hanımı", "Çalışmıyor"];
   const infoSec = document.createElement("div");
   infoSec.innerHTML = `<div class="section-title">Kişisel bilgiler</div>
-    <div class="field"><label>Doğum yılı</label><input id="piDogum" inputmode="numeric" maxlength="10" value="${escapeHtml(info.dogum||"")}" placeholder="örn. 1938 — Rehber'in adı ailenin en büyüğünden gelir"></div>
+    <div class="field"><label>Doğum yılı</label><input id="piDogum" inputmode="numeric" maxlength="10" value="${escapeHtml(info.dogum||"")}" placeholder="örn. 1938"></div>
     <div class="field"><label>Meslek</label><input id="piJob" value="${escapeHtml(info.job||"")}" placeholder="örn. öğretmen, mühendis…"></div>
     <div class="field"><label>Eğitim</label><input id="piEdu" value="${escapeHtml(info.education||"")}" placeholder="örn. Lise, İstanbul Üniv. İşletme"></div>
     <div class="row2">
@@ -4592,19 +4592,18 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       try{ c=k.calistir(m,t); }catch(e){ yaz("Bunu yapamadım."); return; }
       if(c){ if(typeof c==="object") sonucGoster(c); else { yaz(c); ciplerKur(); } return; }
     }
-    // Hiçbir komut tutmadı: Rehber'in ne yapabildiğini sıcak bir dille anlat
+    // Hiçbir komut tutmadı: neler yapabildiğini sıcak bir dille anlat
     const y = window.Uzmanlik ? window.Uzmanlik.BECERILER.site.konular[0].metin : "";
     yaz((y || "Soyumuz, bölgemiz ve bu site hakkında soruları yanıtlarım.") +
-        "\n\nŞu an akıllı asistan kapalı ya da günlük kotası dolu; bu soruyu tam anlayamadım. Bir isim, bir akrabalık sorusu ya da “Nereden geldik?” gibi bir soruyla dener misin?");
+        "\n\nBu soruyu şu an tam anlayamadım. Bir isim, bir akrabalık sorusu ya da “Nereden geldik?” gibi bir soruyla dener misin?");
   }
 
   function ac(ilkZiyaret){
-    rehberAdiGuncelle();
-    const eb=rehberBuyuk;
-    const kim = eb ? `Ben ${eb.tamAd} Rehberi — adımı ailemizin yaşayan en büyüğü ${ayrilmaEki(eb.ad)} alıyorum. ` : "";
+    asistanAdiGuncelle();
+    const ad=asistanAdi();
     yaz(ilkZiyaret
-      ? `Hoş geldin! ${kim}Bu, Abdurrahman Oğullarının soy evreni — Fahri Arslan'ın 1956'da elle çizdiği ağacın yaşayan hâli. Soyumuz hakkında ne sorarsan sorabilirsin: nereden geldiğimizi, kimin kimin nesi olduğunu, büyüklerimizin anılarını…`
-      : `Tekrar hoş geldin! ${kim}Soyumuz hakkında ne merak ediyorsun?`);
+      ? `Merhaba, ben ${ad}. Abdurrahman Oğullarının soy ağacını bilirim; ailemizi, bölgemizi ve bu siteyi sorabilirsin. Bu evren, Fahri Arslan'ın 1956'da elle çizdiği ağacın yaşayan hâli: nereden geldiğimizi, kimin kimin nesi olduğunu, büyüklerimizin anılarını birlikte konuşalım.`
+      : `Tekrar hoş geldin! Ben ${ad}. Soyumuz hakkında ne merak ediyorsun?`);
     ciplerKur();
     panel.style.display="block";
     if(typeof kotaTazele==="function") kotaTazele();
@@ -4729,8 +4728,8 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     if(!kisi){
       calistirKomut(t);
       notYaz((sessionToken||isAdmin)
-        ? "Asistan için kim olduğunu yaz: “Ben Yüksel” gibi — şimdilik ücretsiz Rehber yanıtladı."
-        : "Asistan için aile şifresiyle giriş yap — şimdilik ücretsiz Rehber yanıtladı.");
+        ? "Her soruyu anlayabilmem için kim olduğunu yaz: “Ben Yüksel” gibi — şimdilik hazır bilgilerimle yanıtladım."
+        : "Her soruyu anlayabilmem için aile şifresiyle giriş yap — şimdilik hazır bilgilerimle yanıtladım.");
       if(!(sessionToken||isAdmin)) girisDugmesi();
       return;
     }
@@ -4740,14 +4739,14 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
         body:JSON.stringify({ jeton:sessionToken||"", kisi_id:kisi, mesaj:t, gecmis:gecmis.slice(-((AYAR&&AYAR.ASISTAN.gecmisTur)||0)) })});
       const j=await r.json();
       if(j.kota) kotaGoster(j.kota);
-      if(!j.ok){ calistirKomut(t); notYaz(j.mesaj||"Asistan şu an yanıt veremedi, ücretsiz Rehber yanıtladı."); return; }
+      if(!j.ok){ calistirKomut(t); notYaz(j.mesaj||"Şu an tam yanıt veremedim; hazır bilgilerimle yanıtladım."); return; }
       gecmis.push({rol:"kullanici",metin:t},{rol:"asistan",metin:j.yanit});
       yaz(j.yanit);
       const g=j.gorsel||{};
       if(g.yol && typeof yolBul==="function") yolBul(g.yol[0], g.yol[1]);
       else if(g.kisi && byId[g.kisi]){ selectNode(byId[g.kisi]); if(typeof merkezeAl==="function") merkezeAl(byId[g.kisi]); }
       if(j.oneriler && j.oneriler.length) notYaz("✓ Öneri yönetici onayına gitti: "+j.oneriler.map(o=>o.ozet).join(" · "));
-    }catch(e){ calistirKomut(t); notYaz("Asistana ulaşılamadı, ücretsiz Rehber yanıtladı."); }
+    }catch(e){ calistirKomut(t); notYaz("Bağlantı kurulamadı; hazır bilgilerimle yanıtladım."); }
     finally{ mesgul=false; }
   }
   window.__rehberGonder=rehberGonder;
@@ -4787,29 +4786,20 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   });
 })();
 
-// ============================ REHBERİN ADI ============================
-// Rehber, ailenin yaşayan en büyüğünün adını taşır (doğum yılı girilmişse en eski
-// doğumlu, yoksa en eski nesildeki yaşayan). Hesap public/lib/agac.js → enBuyukYasayan
-// (sunucudaki asistanla aynı kod). Rehber o kişi değildir; adı saygı ifadesidir.
-let rehberBuyuk=null;
-// Türkçe ayrılma eki: Naziye'den, Hasan'dan, Zeki'den, Ahmet'ten, Yusuf'tan
-function ayrilmaEki(ad){
-  const k=String(ad||"").toLocaleLowerCase("tr");
-  const unluler=k.match(/[aeıioöuü]/g)||[]; const son=unluler[unluler.length-1]||"e";
-  const ince="eiöü".includes(son);
-  const sert="fstkçşhp".includes(k.slice(-1));
-  return `${ad}'${sert?"t":"d"}${ince?"en":"an"}`;
+// ============================ ASİSTANIN ADI ============================
+// Tek asistan: hazır bilgiler (yerel komutlar) ve yapay zekâ aynı kutuda, talebe göre
+// uygun olan yanıtlar. Adı api/_lib/ayar.js → ASISTAN.ad (istemciye /api/kullanim?adim=ayar).
+// Eskiden ailenin yaşayan en büyüğünün adını taşıyordu; bu fikirden vazgeçildi.
+const ASISTAN_YEDEK_AD="Çınar";   // ayar gelmeden önce / çevrimdışı
+function asistanAdi(){ return (typeof AYAR!=="undefined" && AYAR && AYAR.ASISTAN && AYAR.ASISTAN.ad) || ASISTAN_YEDEK_AD; }
+function asistanAdiGuncelle(){
+  const ad=asistanAdi();
+  const el=document.getElementById("rehberAd"); if(el) el.textContent=`${ad} · Asistan`;
+  const b=document.getElementById("rehberBtn"); if(b) b.title=`${ad} — soyumuz, bölgemiz ve site hakkında sor`;
 }
-function rehberAdiGuncelle(){
-  if(!window.AgacLib || !nodes.length) return;
-  try{ rehberBuyuk=AgacLib.enBuyukYasayan(currentGraphJSON()); }catch(e){ rehberBuyuk=null; }
-  const el=document.getElementById("rehberAd");
-  if(el){ el.textContent = rehberBuyuk ? `${rehberBuyuk.tamAd} · Rehber` : "Rehber";
-    el.title = rehberBuyuk ? (rehberBuyuk.yontem==="dogum"
-      ? "Adını doğum yılına göre ailenin yaşayan en büyüğünden alır"
-      : "Adını ailenin yaşayan en büyüğünden alır (doğum yılı girilmediği için en eski nesle göre)") : ""; }
-}
-addEventListener("kok-lib-hazir", rehberAdiGuncelle);
+// "Çınar'a" — kullanıcıya yönlendirme metinlerinde
+function asistanaYaz(){ const ad=asistanAdi(); return window.AgacLib&&AgacLib.yonelmeEki ? AgacLib.yonelmeEki(ad) : ad; }
+addEventListener("kok-lib-hazir", asistanAdiGuncelle);
 
 // ============================ KÖKENİMİZİN HİKÂYESİ ============================
 function kokenHikayesiCiz(kap){
@@ -4898,6 +4888,7 @@ var AYAR=null;
 async function ayarYukle(){
   if(AYAR) return AYAR;
   try{ const r=await fetch("/api/kullanim?adim=ayar"); const j=await r.json(); if(j.ok) AYAR=j.ayar; }catch(e){}
+  if(typeof asistanAdiGuncelle==="function") asistanAdiGuncelle();
   return AYAR;
 }
 if(typeof fetch==="function") ayarYukle();
@@ -5497,7 +5488,7 @@ async function cloudLoad(){
       // Sayaçlar açılışta (ağaç henüz boşken) hesaplanıyor; veri gelince tazele.
       // Gömülü GRAPH kaldırılınca bunlar "0 kişi · 0 bağ" olarak takılı kalıyordu.
       updateStatus(); renderStats();
-      if(typeof rehberAdiGuncelle==="function") rehberAdiGuncelle();
+      if(typeof asistanAdiGuncelle==="function") asistanAdiGuncelle();
       showHint("Ortak ağaca bağlandın · düzenlemek için aile şifresiyle giriş yap");
     } else if(j && j.ok){
       // bulut boş → yerel ağaç ekranda kalsın; buluta yazmak admin girişi ister.

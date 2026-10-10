@@ -199,31 +199,9 @@ export function dogumYili(n) {
   return m ? Number(m[1]) : null;
 }
 
-// AİLENİN YAŞAYAN EN BÜYÜĞÜ — Rehber bu kişinin adını taşır.
-// 1) Doğum yılı girilmiş yaşayanlar arasında en eskisi; 2) yoksa en eski nesildeki
-// yaşayan (aynı nesilde kimlik sırası: kayıtlarda büyük kardeş önce gelir).
-// Doğum yılı girilmemişse bu bir yaklaşımdır (yontem: 'nesil').
-export function enBuyukYasayan(veri) {
-  const g = grafKur(veri);
-  const yasayan = (veri.nodes || []).filter((n) => n.alive !== false);
-  let n = null, yontem = null;
-  const yilli = yasayan.filter((x) => dogumYili(x)).sort((a, b) => dogumYili(a) - dogumYili(b));
-  if (yilli.length) { n = yilli[0]; yontem = 'dogum'; }
-  if (!n) {
-    const d = nesilHaritasi(g);
-    const sirali = yasayan.filter((x) => d.has(x.id))
-      .sort((a, b) => d.get(a.id) - d.get(b.id) || String(a.id).localeCompare(String(b.id), 'en', { numeric: true }));
-    if (sirali.length) { n = sirali[0]; yontem = 'nesil'; }
-  }
-  if (!n) return null;
-  const ad = adiGoster(n.name).split(' ')[0];
-  const unvan = n.sex === 'K' ? 'Nine' : 'Dede';
-  return { id: n.id, ad, unvan, tamAd: `${ad} ${unvan}`, yontem };
-}
-
 // ============================ SICAK ANLATIM ============================
 // Akrabalık yolunu "A → B → C" listesi yerine aile büyüğünün anlatacağı gibi anlatır.
-// Kart, Rehber ve asistan aynı metni kullanır.
+// Yol kartı, yerel yanıt ve asistan aynı metni kullanır.
 
 // ---- Türkçe ekler (kesme işaretiyle): Emine'nin, Hamit'in, Aslan'ın, Fahri'ye, Hamit'ten ----
 const UNLU = 'aeıioöuü';

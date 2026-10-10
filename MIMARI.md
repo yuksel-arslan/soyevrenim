@@ -234,7 +234,9 @@ Ayrıntılar:
   (bu veride çoklu eş yok, dal pratikte sınanmadı).
 - Çocuk sayısı = baba hattı + **yalnızca** anne hattından gelenler; çift sayma yok.
 
-## 6c. Rehber (açılış karşılaması + komut çipleri)
+## 6c. Asistan Çınar (açılış karşılaması + komut çipleri)
+
+> Rehber ile yapay zekâ asistanı birleşti: tek panel "Çınar · Asistan"; ayrıntı `docs/asistan.md` → "Tek asistan: Çınar".
 
 Dock'taki **?** düğmesi. Açılışta bir kez kendiliğinden görünür:
 

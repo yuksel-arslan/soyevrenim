@@ -1,6 +1,6 @@
 # Kullanım paneli — "Ailemizin bu ayı" · `/api/kullanim`
 
-Maliyet tablosu değil; ailenin emeğini anlatan sayfa. Rehber panelindeki ince kota çubuğuna tıklayınca açılır.
+Maliyet tablosu değil; ailenin emeğini anlatan sayfa. Asistan (Çınar) panelindeki ince kota çubuğuna tıklayınca açılır.
 Kütüphanesiz, elle SVG; yalnızca tema token'ları (`--spine`, `--accent`, `--line`…) — dark / light / yadigar.
 
 ## Bölümler

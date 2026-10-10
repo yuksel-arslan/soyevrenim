@@ -59,6 +59,6 @@ export async function kullanimKaydet({ kisiId, tur, model, girdi = 0, cikti = 0,
 export const KOTA_MESAJI = {
   sistem: 'Bugünkü ücretsiz asistan kotası doldu, yarın 03:00\'te yenilenir.',
   kisi: `Bugünkü asistan hakkın doldu (${GUNLUK_KISI.mesaj} mesaj), yarın 03:00'te yenilenir.`,
-  saglayici: 'Asistan şu an yoğun, ücretsiz Rehber yanıtladı.',
+  saglayici: 'Şu an çok yoğunum; hazır bilgilerimle yanıtladım.',
 };
 export const STT_MODEL = STT.model;

@@ -68,22 +68,6 @@ test('hikâye: uzun döküm parçalanır, düzenleme sözcük değiştirirse red
   assert.ok(!icerikKorundu('dedem tarlaya gitti sonra eve döndü', 'Büyükbabam bahçeye yürüdü.'));
 });
 
-test('enBuyukYasayan: doğum yılı yoksa en eski nesildeki yaşayan; doğum yılı girilince ona göre', async () => {
-  const { enBuyukYasayan } = await import('../api/_lib/agac.js');
-  const eb = enBuyukYasayan(veri);
-  assert.equal(eb.yontem, 'nesil');
-  assert.ok(eb.tamAd.endsWith(eb.unvan));
-  const v2 = structuredClone(veri);
-  const yuksel = v2.nodes.find((n) => n.id === 'p12222123');
-  yuksel.profile = { info: { dogum: '1901' } };
-  const eb2 = enBuyukYasayan(v2);
-  assert.deepEqual([eb2.id, eb2.tamAd, eb2.yontem], ['p12222123', 'Yüksel Dede', 'dogum']);
-  // vefat edenin doğum yılı dikkate alınmaz
-  const v3 = structuredClone(v2);
-  v3.nodes.find((n) => n.id === 'p12222123').alive = false;
-  assert.notEqual(enBuyukYasayan(v3).id, 'p12222123');
-});
-
 test('soy tarihi: Fahri Arslan notu birebir, her bilgi güven etiketli, kaynaklar geçerli', async () => {
   const T = await import('../api/_lib/soy-tarihi.js');
   assert.match(T.FAHRI_NOTU.metin, /Aşağı Potocur \(Üçırmak\).*UZUNALOĞULLARI.*1615.*DERBENT.*Molla Memiş/);
@@ -104,7 +88,7 @@ test('soy tarihi: Fahri Arslan notu birebir, her bilgi güven etiketli, kaynakla
 test('Rehber becerileri: sorular doğru uzmanlığa gider, Lazca yalnız istenince', async () => {
   const U = await import('../api/_lib/uzmanlik.js');
   const ilk = (q, b) => U.uzmanAra(q, b, 1)[0];
-  assert.equal(ilk('sorulara yanıt verebilir misin?').baslik, 'Rehber ne yapabilir?');
+  assert.equal(ilk('sorulara yanıt verebilir misin?').baslik, 'Neler yapabilirim?');
   assert.equal(ilk('Nasıl kişi eklerim?').beceri, 'site');
   assert.equal(ilk('Fındıklı’nın eski adı ne?').baslik, 'Viçe’den Fındıklı’ya');
   assert.equal(ilk('Lazca teşekkür nasıl denir', 'lazca').baslik, 'Teşekkür');
