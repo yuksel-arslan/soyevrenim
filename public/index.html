@@ -2736,7 +2736,8 @@ function updateHoverCard(n,mx,my){
   const prof = PROFILES[n.id]||null;
   const photo = document.getElementById("hoverPhoto");
   if(prof && prof.photo){
-    photo.style.backgroundImage=`url(${prof.photo})`; photo.textContent="";
+    // kısayol: fotoğrafsız kişi "background"ı sıfırlayınca boyut "auto" kalıyor, foto dev görünüyordu
+    photo.style.background=`center/cover no-repeat url(${prof.photo})`; photo.textContent="";
     photo.style.borderColor=nodeColor(n);
   } else {
     photo.style.backgroundImage="none"; photo.style.background=nodeColor(n);
