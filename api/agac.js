@@ -39,24 +39,29 @@ export default async function handler(req, res) {
       }
       // DOĞRUDAN kaydetme yalnızca admin'e açık. Aile üyeleri /api/oneri kullanır.
       const oturum = jetonDogrula(body.jeton);
-      const adminOk = oturum && oturum.rol === 'admin';
+      // Oturum geçersiz (süresi dolmuş / OTURUM_GIZLI değişmiş) → 401: istemci şifre sorar ve
+      // yeniden dener. Geçerli ama yönetici değil → 403 (öneri yolu).
+      if (!oturum) return res.status(401).json({ ok: false, hata: 'Oturumun süresi dolmuş — yeniden giriş yap' });
+      const adminOk = oturum.rol === 'admin';
       if (!adminOk) {
         return res.status(403).json({ ok: false, hata: 'Doğrudan kayıt sadece yöneticiye açık. Değişikliğini "Onaya gönder" ile ilet.' });
       }
       // ana kaydı güncelle
-      await sql`
+      const [kayit] = await sql`
         update agac
         set veri = ${JSON.stringify(veri)}::jsonb,
             guncelleyen = ${kim},
             guncelleme = now()
         where id = 1
+        returning guncelleme
       `;
       // günlüğe de yaz (geri alma imkânı için)
       await sql`
         insert into gunluk (veri, guncelleyen)
         values (${JSON.stringify(veri)}::jsonb, ${kim})
       `;
-      return res.status(200).json({ ok: true });
+      // güncelleme zamanı: kaydeden cihaz kendi kaydını "başkasından gelen yeni sürüm" sanmasın
+      return res.status(200).json({ ok: true, guncelleme: kayit ? kayit.guncelleme : null });
     }
 
     return res.status(405).json({ ok: false, hata: 'Yöntem desteklenmiyor' });

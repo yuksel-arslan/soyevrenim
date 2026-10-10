@@ -5597,15 +5597,26 @@ function cloudSave(immediate){
   const doSave = async ()=>{
     if(CLOUD.saving) { CLOUD.timer=setTimeout(doSave,800); return; }
     CLOUD.saving = true;
+    // Kayıt hatası artık SESSİZ değil: eskiden oturumu düşmüş yöneticinin değişikliği
+    // yalnızca o cihazda kalıyor, diğer cihazlara hiç gitmiyordu ("mobilde var, bilgisayarda yok").
     try{
       const kim = viewerId ? dispName((byId[viewerId]||{}).name||"") : "Yönetici";
-      const r = await fetch(CLOUD.url, {
+      const r = await yetkiliIstek(()=>fetch(CLOUD.url, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ veri: currentGraphJSON(), guncelleyen: kim,
           jeton: sessionToken||"" })
-      });
-      if(r.ok){ dirty=false; updateStatus(); }
-    }catch(e){}
+      }), "Değişikliğini ağaca kaydetmek için oturumunu yenile (yönetici şifresi).");
+      if(r.ok){
+        const j=await r.json().catch(()=>({}));
+        dirty=false; if(j.guncelleme) CLOUD.lastServer=j.guncelleme;   // kendi kaydımızı "yeni" sanmasın
+        updateStatus();
+      } else if(r.status===403 && !isAdmin){
+        pendingChanges=true; updatePendingBar();   // yönetici değil: öneri yoluna düş
+      } else {
+        const j=await r.json().catch(()=>({}));
+        toast("⚠ Kaydedilemedi: "+(j.hata||("sunucu "+r.status))+" — değişiklik yalnızca bu cihazda");
+      }
+    }catch(e){ toast("⚠ Kaydedilemedi: bağlantı yok — değişiklik yalnızca bu cihazda, bağlantı gelince tekrar dene"); }
     CLOUD.saving = false;
   };
   if(immediate) doSave(); else CLOUD.timer = setTimeout(doSave, 1200);
@@ -5654,7 +5665,7 @@ async function sendForApproval(){
       "Değişikliği göndermek için oturumunu yenile.");
     const j=await r.json();
     if(j.ok){
-      pendingChanges=false; dirty=false; updatePendingBar(); updateStatus();
+      pendingChanges=false; dirty=false; updatePendingBar(); updateStatus();   // eşitleme yeniden başlar
       toast("Aile üyesi olarak gönderdin — yönetici onaylayınca ağaca işlenir ✓");
     } else toast(j.hata||"Gönderilemedi");
   }catch(e){ toast("Bağlantı hatası"); }
@@ -5671,7 +5682,11 @@ touch = function(){ _touch_local(); cloudSave(false); };
 // kimse bakmıyorken bu tamamen boşa gidiyordu. Sekmeye dönülünce hemen bir kez
 // yoklanır, böylece kullanıcı bekletilmez.
 async function bulutYokla(){
-  if(!CLOUD.on || CLOUD.saving || dirty) return;
+  if(!CLOUD.on || CLOUD.saving) return;
+  // Yerelde kaydedilmemiş değişiklik varken buluttaki sürüm üstüne yazılmasın:
+  // yöneticide kayıt bekliyorsa, aile üyesinde gönderilmemiş öneri varsa bekle.
+  // (Eskiden her düzenleme 'dirty' bırakıyordu ve o cihaz bir daha HİÇ eşitlenmiyordu.)
+  if(isAdmin ? dirty : pendingChanges) return;
   if(document.hidden) return;   // arka planda: istek yok
   try{
     const r = await fetch(CLOUD.url, {method:"GET"}); if(!r.ok) return;
@@ -5686,7 +5701,9 @@ async function bulutYokla(){
       CLOUD.lastServer = j.guncelleme;
       CLOUD.bosSunucu = false;
       const keepViewer = viewerId;
+      absorbCloudProfiles(j.veri);   // fotoğraf, bilgi, anılar da gelsin (eskiden yalnız ağaç yapısı)
       loadGraph(j.veri); layoutRadial();
+      dirty=false;
       if(keepViewer && byId[keepViewer]) setViewer(keepViewer);
       updateStatus(); renderStats();
       showHint("Ağaç güncellendi — biri yeni bilgi ekledi");
