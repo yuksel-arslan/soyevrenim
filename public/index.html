@@ -300,6 +300,25 @@ canvas{display:block;position:fixed;inset:0;
   border-radius:9px;padding:8px 11px;font-size:12px;line-height:1.45;box-shadow:0 10px 30px var(--shadow);pointer-events:none}
 .hkKart{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;width:min(440px,100%);box-shadow:0 20px 60px var(--shadow)}
 @media (max-width:640px){ .aaUst{padding:14px 16px} .aaGovde{padding:16px} .aaKart{padding:14px} }
+
+/* Ağaç nasıl okunur? — yalnızca tema token'ları */
+.okuma{position:fixed;left:72px;bottom:14px;z-index:9;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;box-shadow:0 8px 30px var(--shadow);max-width:230px;font-size:12px;color:var(--text-soft);overflow:hidden}
+.okumaBaslik{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;background:none;border:none;
+  color:var(--text);font:600 12px Inter,system-ui,sans-serif;padding:8px 12px;cursor:pointer}
+.okuma.kapali .okumaIcerik{display:none}
+.okuma.kapali #okumaOk{transform:rotate(180deg)}
+.okumaIcerik{padding:0 12px 10px;display:grid;grid-template-columns:1fr 1fr;gap:5px 12px}
+.okumaIcerik div{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.ok-nokta{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 0 1px var(--node-edge) inset}
+.ok-vefat{box-shadow:0 0 0 1px var(--node-edge) inset, 0 0 0 3px var(--dead) inset, 0 0 0 4px var(--node-inner) inset}
+.ok-cizgi{width:18px;height:0;flex:none}
+.ok-not{grid-column:1/-1;display:block !important;white-space:normal !important;color:var(--muted);font-size:11px;margin-top:2px}
+@media (max-width:640px){
+  .okuma{left:10px;bottom:calc(env(safe-area-inset-bottom,0) + 76px);max-width:calc(100vw - 84px)}
+  /* ipucu mobilde üstteki kişi kartının üstüne binmesin: dock'un hemen üstünde */
+  .hint{top:auto;bottom:calc(env(safe-area-inset-bottom,0) + 132px);max-width:calc(100vw - 32px);text-align:center;white-space:normal}
+}
 </style>
 </head>
 <body>
@@ -521,6 +540,21 @@ canvas{display:block;position:fixed;inset:0;
   <div style="height:1px;background:var(--line);margin:8px 4px"></div>
   <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 6px 6px">Kolu göster</div>
   <div id="branchFilterList"></div>
+</div>
+<!-- AĞAÇ NASIL OKUNUR — varsayılan katmanda küçük, katlanabilir açıklama -->
+<div id="okuma" class="okuma" style="display:none">
+  <button id="okumaBaslik" class="okumaBaslik" aria-expanded="true">
+    <span>Ağaç nasıl okunur?</span><span id="okumaOk" aria-hidden="true">⌄</span></button>
+  <div id="okumaIcerik" class="okumaIcerik">
+    <div><i class="ok-nokta" style="background:var(--male)"></i>Erkek</div>
+    <div><i class="ok-nokta" style="background:var(--female)"></i>Kadın</div>
+    <div><i class="ok-nokta ok-vefat" style="background:var(--dead)"></i>Rahmetli</div>
+    <div><i class="ok-nokta" style="background:var(--you)"></i>Sen</div>
+    <div><i class="ok-cizgi" style="border-top:2.5px solid var(--spine)"></i>Senin soy hattın</div>
+    <div><i class="ok-cizgi" style="border-top:2px dashed var(--marriage)"></i>Evlilik</div>
+    <div><i class="ok-cizgi" style="border-top:2px dotted var(--accent)"></i>Anne bağı</div>
+    <div class="ok-not">Her halka bir nesil · kök en altta</div>
+  </div>
 </div>
 <!-- lens göstergesi (legend) -->
 <div id="lensLegend" style="position:fixed;left:16px;bottom:56px;z-index:9;min-width:170px;
@@ -1200,27 +1234,40 @@ function s2w(sx,sy){
   return { x: rx*c - rz*s, y: rx*s + rz*c };
 }
 
+// KADRAJ: ağacın EKRANDAKİ gerçek izdüşümünü (koni yüksekliği + perspektif + eğim
+// dahil) arayüz şeritleri dışında kalan alana ortalar. Eskiden dünya koordinatlarından
+// kaba bir tahmin yapılıyordu; koni masaüstünde altta kesiliyor, mobilde sola kayıp
+// üstte büyük bir boşluk bırakıyordu.
+const KADRAJ_PAY = {
+  masa:  { sol:76, sag:28, ust:76, alt:52, doluluk:0.94, maxOlcek:{koni:1.1, duz:1.3} },
+  mobil: { sol:10, sag:10, ust:104, alt:92, doluluk:0.96, maxOlcek:{koni:1.1, duz:1.3} },
+};
 function fit(){
   if(!nodes.length)return;
   // Yalnızca görünür düğümleri kadraja al: nesil aralığı daraltıldığında ya da
   // kademeli açılımda ekran boş alana zoomlanmasın.
   const kadraj = (typeof nodeVisible==="function") ? nodes.filter(nodeVisible) : nodes;
   const kume = kadraj.length ? kadraj : nodes;
-  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
-  kume.forEach(n=>{minX=Math.min(minX,n.x);maxX=Math.max(maxX,n.x);
-    minY=Math.min(minY,n.y);maxY=Math.max(maxY,n.y);});
-  const w=maxX-minX+200, hFlat=maxY-minY+200;
-  if(coneMode){
-    // koni: yatay çap + dikey (nesil yüksekliği toplamı) kadrajı
-    const coneHeight = (MAXDEPTH*CONE_H)*TILT + hFlat*TILT + 200;
-    scale=Math.min(innerWidth/w, innerHeight/coneHeight, 1.2)*0.85;
-    ox=-(minX+maxX)/2*scale;
-    // koniyi dikeyde ortala: Molla Memiş altta, üst nesiller yukarıda
-    oy = (MAXDEPTH*CONE_H*0.5)*scale;   // merkezi yukarı kaydır ki taban alta gelsin
-  } else {
-    scale=Math.min(innerWidth/w,innerHeight/hFlat,1.4)*0.9;
-    ox=-(minX+maxX)/2*scale; oy=-(minY+maxY)/2*scale;
+  const P = innerWidth<=640 ? KADRAJ_PAY.mobil : KADRAJ_PAY.masa;
+  const alanW=Math.max(160, innerWidth-P.sol-P.sag), alanH=Math.max(160, innerHeight-P.ust-P.alt);
+  const kutu=()=>{ let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+    for(const n of kume){ const p=project(n.x,n.y,nodeHeight(n));
+      if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x; if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y; }
+    return {x0,x1,y0,y1}; };
+  // Salınım (±yaw) kadrajı oynatmasın: dinlenme açısında ölç
+  const yawSakla=yaw; yaw=yawRest;
+  ox=0; oy=0; scale=1;
+  const maxS = coneMode ? P.maxOlcek.koni : P.maxOlcek.duz;
+  // perspektif ölçeğe bağlı → birkaç adımda yakınsar
+  for(let i=0;i<4;i++){
+    const k=kutu();
+    const f=Math.min(alanW/Math.max(1,k.x1-k.x0), alanH/Math.max(1,k.y1-k.y0))*P.doluluk;
+    scale=Math.max(0.05, Math.min(maxS, scale*f));
   }
+  const k=kutu();
+  ox = P.sol + alanW/2 - (k.x0+k.x1)/2;
+  oy = P.ust + alanH/2 - (k.y0+k.y1)/2;
+  yaw=yawSakla;
 }
 
 // ============================ BLOOM ÖZELLİKLERİ ============================
@@ -1573,7 +1620,17 @@ const WORK_COLORS = {
   "Ev hanımı": "#d96a9a",
   "Çalışmıyor":"#8794a8"
 };
-function getVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+// Tema token'ları kare başına yüzlerce kez okunuyor; getComputedStyle her çağrıda
+// stil hesaplattığı için telefonda kareyi yavaşlatıyordu. Değerler önbellekte
+// tutulur, tema (data-theme) değişince önbellek boşaltılır.
+const _tokenOnbellek=new Map();
+function getVar(v){
+  let x=_tokenOnbellek.get(v);
+  if(x===undefined){ x=getComputedStyle(document.documentElement).getPropertyValue(v).trim(); _tokenOnbellek.set(v,x); }
+  return x;
+}
+new MutationObserver(()=>_tokenOnbellek.clear())
+  .observe(document.documentElement,{attributes:true,attributeFilter:["data-theme","style","class"]});
 function dispName(s){return String(s).replace("★","").replace(/\s*\d+$/,"").trim();}
 // Adaşları ayırt etmek için kimlik satırı. Bu ağaçta 37 tam ad tekrarlıyor
 // (Fatma x11, Osman x9, Ayşe x8…), iki Yüksel var; aramada nesil numarası tek
@@ -1820,65 +1877,81 @@ function draw(){
       ctx.stroke();
     }
     ctx.globalAlpha=1;
-    // 2) nesil halkaları
+    // 2) nesil halkaları + okunur nesil etiketleri
+    // Etiket, halkanın EKRANDA en solda kalan noktasına konur (dönünce de halkayla
+    // gider) ve küçük bir zemin üzerinde yazılır. Alt nesillerde halkalar sıkışınca
+    // birbirine binen etiketler atlanır.
+    const etiketY=[];
     for(let d=dMin; d<=dMax; d++){
-      const rr=ringRadius(d);   // dünya yarıçapı
-      const rh=coneMode? d*CONE_H : 0;   // bu neslin koni yüksekliği
-      // halkayı world uzayında bir daire olarak, project'ten geçirerek çiz (yaw ile döner)
+      const rr=ringRadius(d);
+      const rh=coneMode? d*CONE_H : 0;
       ctx.beginPath();
       const STEPS=72;
+      let sol=null;
       for(let i=0;i<=STEPS;i++){
         const a=(i/STEPS)*Math.PI*2;
         const pp=project(Math.cos(a)*rr, Math.sin(a)*rr, rh);
         if(i===0) ctx.moveTo(pp.x,pp.y); else ctx.lineTo(pp.x,pp.y);
+        if(!sol || pp.x<sol.x) sol=pp;
       }
       ctx.strokeStyle=getVar("--line2"); ctx.globalAlpha=telAlpha; ctx.lineWidth=1+zoomOut*0.6; ctx.stroke();
       ctx.globalAlpha=1;
-      // nesil etiketi — halkanın sol-üst noktasında (project ile döner)
-      if(scale>0.22){
-        ctx.font=`600 ${10+2*zoomOut}px 'IBM Plex Mono', monospace`;
-        ctx.fillStyle=getVar("--muted");
-        ctx.globalAlpha=(0.3 + 0.5*zoomOut);
-        ctx.textAlign="right"; ctx.textBaseline="middle";
-        const ang=Math.PI*1.18;
-        const ep=project(Math.cos(ang)*rr, Math.sin(ang)*rr, rh);
-        ctx.fillText(`${d}. nesil`, ep.x-4, ep.y);
+      ctx.font=`600 10.5px 'IBM Plex Mono', monospace`;
+      const yazi=`${d}. nesil`, etW=ctx.measureText(yazi).width+12;
+      // Halkanın solunda yer yoksa (dar ekran) etiket düğümlerin üstüne binmesin: atla
+      if(scale>0.18 && sol && sol.x-etW-6>=4 && !etiketY.some(y=>Math.abs(y-sol.y)<NESIL_ETIKET_ARA)){
+        etiketY.push(sol.y);
+        const h=17, w=etW;
+        const x=sol.x-w-6, y=sol.y-h/2;
+        ctx.globalAlpha=0.78; ctx.fillStyle=getVar("--bg"); roundRect(ctx,x,y,w,h,h/2); ctx.fill();
+        ctx.globalAlpha=0.9; ctx.fillStyle=getVar("--text-soft");
+        ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(yazi,x+6,y+h/2+0.5);
         ctx.globalAlpha=1;
       }
     }
   }
 
-  // kenarlar — network: tek renk (nötr); seçili/highlight vurgulu;
-  // kol filtresi aktifken filtre İÇİ kenarlar altın (kolun ağı öne çıksın)
-  ctx.lineWidth=1.2;
+  // kenarlar — ağaç dili: GÖVDEDEN DALA. Eski nesillerin bağları kalın (gövde),
+  // genç nesillere doğru incelir (dal). Düz çizgi yerine ebeveynden yukarı çıkıp
+  // çocuğa kıvrılan yumuşak eğri: el çizimi soy ağacındaki dallar gibi okunur.
+  // Bakan kişinin köke inen soy hattı her zaman altın bir iz olarak öne çıkar.
   const filterActive = (typeof branchFilter!=="undefined" && branchFilter!=null);
+  const enDerin=Math.max(1,MAXDEPTH);
+  const kalinlik=k=>{ const d=(k&&k._depth)||0; return 1+1.3*Math.max(0,enDerin-d)/enDerin; };
+  const soyIzi=[];
   edges.forEach(e=>{ const a=byId[e.from],b=byId[e.to]; if(!a||!b)return;
     if(!nodeVisible(a) || !nodeVisible(b)) return;   // iki ucu da görünür olmalı
     const pa=w2sn(a), pb=w2sn(b);
     const lit=highlightSet.has(a.id)&&highlightSet.has(b.id);
     const inF = inBranchFilter(a) && inBranchFilter(b);
-    if(edgeOnPath(a.id,b.id)){
-      // YOL BULMA: akrabalık yolu her şeyin üstünde, altın ve kalın
-      ctx.strokeStyle=getVar("--edge-lit"); ctx.globalAlpha=1; ctx.lineWidth=3.2;
-    } else if(BLOOM.pathIds || BLOOM.focusIds){
+    const gv=kalinlik(a);
+    if(edgeOnPath(a.id,b.id)){ soyIzi.push({pa,pb,tur:"yol",gv}); return; }
+    if(!BLOOM.pathIds && !BLOOM.focusIds && !filterActive && viewerSpine.has(a.id) && viewerSpine.has(b.id)){
+      soyIzi.push({pa,pb,tur:"soy",gv}); return;
+    }
+    if(BLOOM.pathIds || BLOOM.focusIds){
       // yol/odak aktifken ilgisiz kenarlar geri çekilir
       const ua=nodeAlpha(a), ub=nodeAlpha(b);
-      ctx.strokeStyle=getVar("--edge"); ctx.globalAlpha=Math.min(ua,ub)*0.5; ctx.lineWidth=1.2;
+      ctx.strokeStyle=getVar("--edge"); ctx.globalAlpha=Math.min(ua,ub)*0.5; ctx.lineWidth=1.1*gv;
     } else if(filterActive){
-      if(inF){
-        // seçili kolun kenarı: altın, belirgin
-        ctx.strokeStyle=getVar("--edge-lit"); ctx.globalAlpha=0.9; ctx.lineWidth=1.8;
-      } else {
-        // filtre dışı: çok sönük
-        ctx.strokeStyle=getVar("--edge"); ctx.globalAlpha=0.10; ctx.lineWidth=1.2;
-      }
+      if(inF){ ctx.strokeStyle=getVar("--edge-lit"); ctx.globalAlpha=0.9; ctx.lineWidth=1.6*gv; }
+      else { ctx.strokeStyle=getVar("--edge"); ctx.globalAlpha=0.10; ctx.lineWidth=1.1*gv; }
     } else {
       ctx.strokeStyle=lit?getVar("--edge-lit"):getVar("--edge");
-      ctx.globalAlpha=lit?0.95:0.45; ctx.lineWidth=lit?1.6:1.2;
+      ctx.globalAlpha=lit?0.95:0.5; ctx.lineWidth=(lit?1.5:1.05)*gv;
     }
-    ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
+    ctx.beginPath(); dalCiz(pa,pb); ctx.stroke();
   });
-  ctx.lineWidth=1.2; ctx.globalAlpha=1;
+  // soy hattı / akrabalık yolu en üstte: önce yumuşak ışıltı, sonra net çizgi
+  ctx.lineCap="round";
+  soyIzi.forEach(({pa,pb,tur,gv})=>{
+    ctx.strokeStyle=getVar(tur==="yol"?"--edge-lit":"--spine");
+    ctx.globalAlpha=0.18; ctx.lineWidth=(tur==="yol"?7:6)*Math.min(gv,1.6);
+    ctx.beginPath(); dalCiz(pa,pb); ctx.stroke();
+    ctx.globalAlpha=tur==="yol"?1:0.9; ctx.lineWidth=(tur==="yol"?2.8:2.1)*Math.min(gv,1.6);
+    ctx.beginPath(); dalCiz(pa,pb); ctx.stroke();
+  });
+  ctx.lineCap="butt"; ctx.lineWidth=1.2; ctx.globalAlpha=1;
 
   // anne bağları (baba hattından ayrı). Sadece seçiliyle ilgili olan belirgin.
   motherEdges.forEach(m=>{ const a=byId[m.from],b=byId[m.to]; if(!a||!b)return;
@@ -1888,7 +1961,7 @@ function draw(){
     const pa=w2sn(a), pb=w2sn(b);
     ctx.strokeStyle=getVar("--accent"); ctx.globalAlpha=rel?0.85:0.14;
     ctx.setLineDash([2,4]); ctx.lineWidth=rel?2:1;
-    ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y); ctx.stroke();
+    ctx.beginPath(); dalCiz(pa,pb); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha=1;
   });
   // evlilik bağları — hepsi kesikli çizgi (dashline)
@@ -1915,7 +1988,8 @@ function draw(){
   }
 
   // düğümler — derinliğe göre sırala (arkadakiler önce, öndekiler üstte)
-  const drawnLabels=[];   // çizilmiş isim kutuları (çakışma önleme)
+  const etiketAdaylari=[];
+  const yakinKume=yakinlariGetir();
   const ordered = nodes.filter(nodeVisible)   // kademeli açılım ∩ nesil aralığı
                        .map(n=>{ const pr=project(n.x,n.y,nodeHeight(n)); return {n, pr}; })
                        .sort((a,b)=> a.pr.z - b.pr.z);   // z küçük=uzak, önce çiz
@@ -2001,78 +2075,23 @@ function draw(){
       if(n.alive===false){ ctx.beginPath(); ctx.arc(p.x,p.y,r*0.45,0,6.283);
         ctx.lineWidth=1; ctx.strokeStyle=getVar("--node-inner"); ctx.stroke(); }
     }
-    // etiket
+    // etiket adayı — isimler düğümlerden SONRA, öncelik sırasıyla yerleştirilir
+    // (aşağıda isimleriYerlestir). Böylece hiçbir düğüm bir ismin üstüne binmez.
     const isFounder=!!FOUNDERS[n.id];
-    // Kurucuların (Molla Memiş, Abdurrahman) isimleri artık SÜREKLİ yazılmıyor:
-    // merkezde sabit duran iki etiket ağacın dibini kapatıyordu ve üzerine
-    // gelince ya da seçilince zaten görünüyorlar. Boyut vurgusu (FOUNDERS
-    // yarıçapı) korunuyor — kim oldukları büyüklüklerinden okunuyor.
-    const alwaysShow = isViewer||sel||hov;
-    // aktif düğüm (merkeze alınan) — ismi aktif blokta büyük yazılıyor, burada atla
-    const isActive = (n===activeNode && (n._grow||0)>0.3);
-    // KADEMELİ İSİM GÖSTERME (uzakta gizli, yakınlaştıkça belirir):
-    //  scale < 0.5  → sadece alwaysShow (seçili/hover/merkeze alınan)
-    //  0.5 – 0.9    → + soy hattı (omurga)
-    //  scale > 0.9  → tüm isimler
-    let showLabel = alwaysShow;
-    if(!showLabel){
-      if(scale > 0.9) showLabel = true;              // yakın: herkes
-      else if(scale > 0.5 && onSpine) showLabel = true;  // orta: omurga
-      // uzak: hiçbiri (sadece alwaysShow)
-    }
-    showLabel = showLabel && !isActive;
-    // "important" — çakışma önlemeden muaf tutulacaklar
-    const important = alwaysShow || onSpine;
-    if(showLabel){
-      const t=dispName(n.name);
-      // font boyutu derinliğe göre ölçeklenir (uzak küçük, yakın büyük) ama makul sınırda
-      const baseFs = isFounder?15:isViewer?14:onSpine?13:11.5;
-      const fs = Math.max(9, Math.min(20, Math.round(baseFs*depthK)));
-      const weight = onSpine||isViewer||isFounder?700:500;
-      ctx.font=`${weight} ${fs}px Inter, system-ui, sans-serif`;
-      const onBackbone = onSpine || isViewer || isFounder;
-      const tw=ctx.measureText(t).width;
-      let lx, ly, box;
-      if(onBackbone){
-        ctx.textAlign="left"; ctx.textBaseline="middle";
-        lx=p.x+r+6; ly=p.y;
-        box={x:lx-3, y:ly-fs*0.65, w:tw+6, h:fs*1.3};
-      } else {
-        ctx.textAlign="center"; ctx.textBaseline="middle";
-        lx=p.x; ly=p.y+r+fs*0.85;
-        box={x:lx-tw/2-3, y:ly-fs*0.65, w:tw+6, h:fs*1.3};
-      }
-      let clash=false;
-      if(!important){
-        for(const b of drawnLabels){
-          if(box.x < b.x+b.w && box.x+box.w > b.x && box.y < b.y+b.h && box.y+box.h > b.y){ clash=true; break; }
-        }
-      }
-      if(!clash){
-        drawnLabels.push(box);
-        const dimmed=(highlightSet.size&&!hl&&!isFounder);
-        const isDead=n.alive===false;
-        // arka plan şeridi: metni her modda korur — daha opak, önemli düğümlerde tam opak
-        const bg=getVar("--bg");
-        const bgAlpha=(important?0.9:0.72)*Math.max(0.5,depthAlpha);
-        ctx.globalAlpha=bgAlpha;
-        ctx.fillStyle=bg;
-        roundRect(ctx, box.x, box.y, box.w, box.h, fs*0.35); ctx.fill();
-        // ince çerçeve (kontrastı netleştirir, halkalardan ayırır)
-        ctx.globalAlpha=bgAlpha*0.5; ctx.strokeStyle=getVar("--line");
-        ctx.lineWidth=1; roundRect(ctx, box.x, box.y, box.w, box.h, fs*0.35); ctx.stroke();
-        ctx.globalAlpha=1;
-        let col;
-        if(isFounder) col=getVar("--spine");
-        else if(dimmed) col=getVar("--muted");
-        else if(isDead) col=getVar("--dead");
-        else col=getVar("--text");
-        ctx.globalAlpha=(isDead&&!isViewer&&!sel&&!hov&&!isFounder?0.72:1)*Math.max(0.6,depthAlpha);
-        ctx.fillStyle=col; ctx.fillText(t,lx,ly);
-        ctx.globalAlpha=1;
-      }
+    const isActive = (n===activeNode && (n._grow||0)>0.3);   // ismi aktif blokta yazılıyor
+    if(!isActive){
+      // ÖNCELİK: 0 bakan/seçili/üzerinde · 1 soy hattı (köke kadar) · 2 bakanın yakınları · 3 diğerleri
+      const oncelik = (isViewer||sel||hov) ? 0
+                    : (viewerId && onSpine) || (!viewerId && isFounder) ? 1
+                    : yakinKume.has(n.id) ? 2 : 3;
+      // Uzakta yalnızca hikâyeyi anlatan isimler; yakınlaştıkça herkes.
+      const goster = oncelik===0 || oncelik===1
+                  || (oncelik===2 && scale>ETIKET_ESIK.yakin)
+                  || (oncelik===3 && scale>ETIKET_ESIK.herkes);
+      if(goster) etiketAdaylari.push({n,p,r,depthK,depthAlpha,oncelik,isViewer,sel,hov,hl,onSpine,isFounder});
     }
   });
+  isimleriYerlestir(etiketAdaylari);
 
   // ——— AKTİF DÜĞÜM: genişleme + fotoğraf + detay halkası (Bloom tarzı) ———
   nodes.forEach(n=>{ // grow animasyonu
@@ -2082,7 +2101,10 @@ function draw(){
   });
   if(activeNode && (activeNode._grow||0)>0.05){
     const n=activeNode, g=n._grow;
-    const p=w2s(n.x,n.y); const r=radius(n)*zoomK();
+    // Koni yüksekliği DAHİL izdüşüm. Eskiden w2s (yüksekliksiz) kullanılıyordu:
+    // vurgu halkası ve isim düğümün çok altında/üstünde, boşlukta çiziliyordu.
+    const apr=project(n.x,n.y,nodeHeight(n));
+    const p={x:apr.x, y:apr.y}; const r=radius(n)*zoomK()*apr.k;
     // koni üzerinde SADECE vurgu: dış parlama + halka (detaylar sağ üst kartta)
     ctx.beginPath(); ctx.arc(p.x,p.y,r+9*g,0,6.283);
     ctx.fillStyle="rgba(92,200,216,"+(0.14*g)+")"; ctx.fill();
@@ -2104,6 +2126,66 @@ function draw(){
   }
 
   requestAnimationFrame(loop);
+}
+// İsim gösterme eşikleri (zoom): bakanın yakınları orta yakınlıkta, herkes yakında.
+const ETIKET_ESIK={ yakin:0.3, herkes:0.9 };
+const NESIL_ETIKET_ARA=16;   // px — daha yakın nesil etiketleri çizilmez
+// Bakanın yakın ailesi (anne-baba, kardeş, eş, çocuk) — kare başına bir kez hesaplanır
+let _yakinAnahtar="", _yakinSet=new Set();
+function yakinlariGetir(){
+  const anahtar=`${viewerId}|${nodes.length}|${edges.length}|${(motherEdges||[]).length}|${(marriages||[]).length}`;
+  if(anahtar!==_yakinAnahtar){
+    _yakinAnahtar=anahtar;
+    _yakinSet = viewerId && typeof relativesOf==="function" ? relativesOf(viewerId) : new Set();
+  }
+  return _yakinSet;
+}
+// İsim etiketleri: öncelik sırasıyla, çakışmasız yerleşim. Her isim için dört
+// konum denenir (sağ, sol, alt, üst); hiçbiri boş değilse o isim bu karede çizilmez.
+// Öncelik 0 (bakan, seçili, üzerinde gezilen) her zaman çizilir.
+function isimleriYerlestir(adaylar){
+  adaylar.sort((a,b)=> a.oncelik-b.oncelik || b.depthK-a.depthK);
+  const yerlesen=[];
+  const cakisir=k=>yerlesen.some(b=>k.x<b.x+b.w && k.x+k.w>b.x && k.y<b.y+b.h && k.y+k.h>b.y);
+  const bg=getVar("--panel"), cizgi=getVar("--line"), soy=getVar("--spine");
+  for(const c of adaylar){
+    const {n,p,r,depthK,depthAlpha,oncelik,isViewer,sel,hov,hl,onSpine,isFounder}=c;
+    const t=dispName(n.name);
+    const temelFs = isViewer?14.5 : isFounder?14 : onSpine?13 : oncelik===2?12.5 : 11.5;
+    const fs = Math.max(10, Math.min(19, Math.round(temelFs*Math.max(0.85,depthK))));
+    const kalin = isViewer||onSpine||isFounder||sel||hov ? 700 : 500;
+    ctx.font=`${kalin} ${fs}px Inter, system-ui, sans-serif`;
+    const tw=ctx.measureText(t).width, padX=fs*0.5, h=fs*1.45, w=tw+padX*2, ara=r+5;
+    const konumlar=[
+      {x:p.x+ara,       y:p.y-h/2},          // sağ
+      {x:p.x-ara-w,     y:p.y-h/2},          // sol
+      {x:p.x-w/2,       y:p.y+ara},          // alt
+      {x:p.x-w/2,       y:p.y-ara-h},        // üst
+    ];
+    let kutu=null;
+    for(const k of konumlar){ const aday={x:k.x,y:k.y,w,h}; if(oncelik===0 || !cakisir(aday)){ kutu=aday; break; } }
+    if(!kutu) continue;
+    yerlesen.push(kutu);
+    const dimmed=(highlightSet.size&&!hl&&!isFounder);
+    const isDead=n.alive===false;
+    const opak=Math.max(0.55,depthAlpha);
+    // sıcak, sade etiket: panel zemini + ince çerçeve; soy hattında altın çerçeve
+    ctx.globalAlpha=(oncelik<=1?0.94:0.84)*opak;
+    ctx.fillStyle=bg; roundRect(ctx,kutu.x,kutu.y,w,h,h/2); ctx.fill();
+    ctx.globalAlpha=(onSpine||isViewer?0.9:0.6)*opak; ctx.lineWidth=onSpine||isViewer?1.3:1;
+    ctx.strokeStyle=onSpine||isViewer?soy:cizgi; roundRect(ctx,kutu.x,kutu.y,w,h,h/2); ctx.stroke();
+    ctx.globalAlpha=(isDead&&!isViewer&&!sel&&!hov?0.78:1)*opak;
+    ctx.fillStyle = dimmed ? getVar("--muted") : isDead ? getVar("--text-soft") : getVar("--text");
+    ctx.textAlign="left"; ctx.textBaseline="middle";
+    ctx.fillText(t, kutu.x+padX, kutu.y+h/2+0.5);
+    ctx.globalAlpha=1;
+  }
+}
+// Ebeveynden çocuğa dal eğrisi: ebeveynden çocuğun yüksekliğine doğru çıkar,
+// sonra çocuğa kıvrılır (aktif path'e ekler; beginPath/stroke çağıran yapar).
+function dalCiz(pa,pb){
+  ctx.moveTo(pa.x,pa.y);
+  ctx.quadraticCurveTo(pa.x+(pb.x-pa.x)*0.15, pa.y+(pb.y-pa.y)*0.85, pb.x, pb.y);
 }
 function roundRect(ctx,x,y,w,h,r){ ctx.beginPath();
   ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
@@ -3068,8 +3150,13 @@ function focus(n){
   // kişi zaten ekranda rahat görünüyorsa kamerayı OYNATMA (koni sabit kalsın).
   // sadece kişi ekran dışında/kenardaysa yumuşakça görünür alana çek.
   const cur = project(n.x, n.y, nodeHeight(n));
-  const margin = 90;
-  const cardZone = (cur.x > innerWidth-300 && cur.y < 300); // sağ üst kart bölgesi
+  const margin = innerWidth<=640 ? 40 : 90;
+  // Sağ üst kişi kartının GERÇEK alanı (mobilde kompakt kart). Eskiden sabit 300×300
+  // varsayılıyordu; dar ekranda neredeyse her düğüm "kartın altında" sayılıp kamera
+  // kaydırılıyor, ortalanmış ağaç sola kayıyordu.
+  const kartEl=document.getElementById("activeCard");
+  const kr = kartEl && kartEl.style.display!=="none" ? kartEl.getBoundingClientRect() : null;
+  const cardZone = !!kr && kr.width>0 && cur.x>kr.left-12 && cur.x<kr.right+12 && cur.y>kr.top-12 && cur.y<kr.bottom+12;
   const offscreen = cur.x<margin || cur.x>innerWidth-margin || cur.y<margin || cur.y>innerHeight-margin;
   if(!offscreen && !cardZone) return;   // görünür ve kartla çakışmıyor → dokunma
 
@@ -4482,6 +4569,27 @@ async function bekleyenHikayeler(n, kap){
   }catch(e){}
 }
 
+
+// ============================ AĞAÇ NASIL OKUNUR ============================
+// Varsayılan katmanda görünür (diğer katmanların kendi göstergesi var). İlk ziyarette
+// açık gelir; kullanıcı katlarsa tercih hatırlanır.
+const OKUMA_KEY="kok_okuma_kapali";
+function okumaGuncelle(){
+  const el=document.getElementById("okuma"); if(!el) return;
+  const acikEkran = !document.getElementById("welcome") || document.getElementById("welcome").style.opacity==="0";
+  el.style.display = (activeLens==="default" && acikEkran && nodes.length) ? "block" : "none";
+}
+(function okumaKur(){
+  const el=document.getElementById("okuma"), bas=document.getElementById("okumaBaslik"); if(!el||!bas) return;
+  let kayit=null; try{ kayit=localStorage.getItem(OKUMA_KEY); }catch(e){}
+  // mobilde ekran dar: tercih yoksa katlı başlar
+  let kapali = kayit===null ? innerWidth<=640 : kayit==="1";
+  const uygula=()=>{ el.classList.toggle("kapali",kapali); bas.setAttribute("aria-expanded",String(!kapali)); };
+  uygula();
+  bas.onclick=()=>{ kapali=!kapali; uygula(); try{ localStorage.setItem(OKUMA_KEY,kapali?"1":"0"); }catch(e){} };
+  const t=setInterval(()=>{ okumaGuncelle(); if(!document.getElementById("welcome")) clearInterval(t); },700);
+})();
+
 // ============================ LENS SEÇİCİ ============================
 let branchFilter=null;   // null=tümü, ya da kol kök id → sadece o kol vurgulu
 (function bindLens(){
@@ -4540,6 +4648,7 @@ let branchFilter=null;   // null=tümü, ya da kol kök id → sadece o kol vurg
     });
   }
   function updateLensUI(){
+    if(typeof okumaGuncelle==="function") okumaGuncelle();
     // renklendirme lensi seçili vurgusu
     panel.querySelectorAll(".lensOpt").forEach(o=>{
       o.style.background = o.dataset.lens===activeLens ? "var(--bg2)" : "none";

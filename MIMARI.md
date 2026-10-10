@@ -112,6 +112,32 @@ istenen his kayboldu. İstenen görünüm: **"belli bir açıyla yukarıdan gün
 sistemine bakmak"**. Bu yüzden eğim ve perspektif her iki modda da uygulanır ve
 düzlem modunda da yatay sürükleme diski döndürür (yaw) — o his kasten korunuyor.
 
+### 3b. Kadraj ve okunurluk (görselleştirme dili)
+
+- **Kadraj (`fit`)**: ağacın *ekrandaki* gerçek izdüşümü (koni yüksekliği + perspektif
+  + eğim) ölçülür ve arayüz şeritleri dışında kalan alana (`KADRAJ_PAY.masa/mobil`)
+  ortalanır. Perspektif ölçeğe bağlı olduğu için ölçek birkaç adımda yakınsatılır.
+  Dünya koordinatından tahmin yapmak koniyi masaüstünde kesiyor, mobilde kaydırıyordu.
+- **Odak (`focus`)**: kamera yalnızca düğüm ekran dışındaysa ya da sağ üst kişi
+  kartının *gerçek* alanının altındaysa oynar (sabit 300×300 varsayımı mobilde
+  ortalanmış ağacı kaydırıyordu).
+- **Kenarlar — gövdeden dala**: ebeveyn→çocuk bağı `dalCiz()` ile yumuşak eğri;
+  kalınlık eski nesilden genç nesile incelir. Bakanın köke inen soy hattı her zaman
+  altın iz (`--spine`, ışıltı + net çizgi); akrabalık yolu `--edge-lit`.
+- **İsimler (`isimleriYerlestir`)**: düğümlerden sonra, öncelikle yerleşir —
+  0 bakan/seçili/üzerinde · 1 soy hattı · 2 bakanın yakınları (`ETIKET_ESIK.yakin`)
+  · 3 herkes (`ETIKET_ESIK.herkes`). Her isim için sağ/sol/alt/üst denenir;
+  çakışan düşük öncelikli isim o karede çizilmez.
+- **Nesil etiketleri**: halkanın ekranda en sol noktasında küçük zemin üzerinde;
+  yer yoksa (dar ekran) ya da bir öncekine `NESIL_ETIKET_ARA`'dan yakınsa atlanır.
+- **"Ağaç nasıl okunur?"**: varsayılan katmanda katlanabilir açıklama (renkler,
+  çizgi türleri); mobilde katlı başlar, tercih `kok_okuma_kapali` ile hatırlanır.
+- **Performans**: `getVar()` tema token'larını önbellekte tutar; `data-theme`
+  değişince `MutationObserver` önbelleği boşaltır (kare başına yüzlerce
+  `getComputedStyle` çağrısı kalktı).
+- **Hata düzeltmesi**: seçili/aktif düğüm vurgusu yüksekliksiz `w2s` ile çiziliyordu;
+  halka ve isim düğümden uzakta, boşlukta görünüyordu. Artık `project(…, nodeHeight)`.
+
 ---
 
 ## 4. `zoomK()` tabanı neden 0.28
