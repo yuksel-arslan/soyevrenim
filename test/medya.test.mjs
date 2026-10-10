@@ -54,7 +54,14 @@ test('medya yedek yol: sunucu küçük dosyayı R2\'ye kendisi yükler (CORS ger
   const { MEDYA } = await import('../api/_lib/ayar.js');
   const buyuk = Buffer.alloc(MEDYA.vekilMaxMb * 1024 * 1024 + 1);
   assert.equal((await cagir(medya, { query: { adim: 'yukle', jeton, tip: 'image/jpeg' }, body: buyuk })).statusCode, 413);
-  globalThis.__SOY_TEST.r2Fetch = async () => ({ ok: false, status: 403 });
-  assert.equal((await cagir(medya, { query: { adim: 'yukle', jeton, tip: 'image/jpeg' }, body: veri })).statusCode, 502);
+  globalThis.__SOY_TEST.r2Fetch = async () => ({ ok: false, status: 403,
+    text: async () => '<?xml version="1.0"?><Error><Code>AccessDenied</Code><Message>Access Denied</Message></Error>' });
+  const red = await cagir(medya, { query: { adim: 'yukle', jeton, tip: 'image/jpeg' }, body: veri });
+  assert.equal(red.statusCode, 502);
+  assert.equal(red.govde.kod, 'AccessDenied');
+  assert.match(red.govde.hata, /YAZMA izni/);
+  globalThis.__SOY_TEST.r2Fetch = async () => ({ ok: false, status: 403,
+    text: async () => '<Error><Code>SignatureDoesNotMatch</Code></Error>' });
+  assert.match((await cagir(medya, { query: { adim: 'yukle', jeton, tip: 'image/jpeg' }, body: veri })).govde.hata, /R2_SECRET_ACCESS_KEY/);
   delete globalThis.__SOY_TEST.r2Fetch;
 });

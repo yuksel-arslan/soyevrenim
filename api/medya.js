@@ -15,7 +15,7 @@ import crypto from 'node:crypto';
 import { cors, govde } from './_lib/db.js';
 import { MEDYA } from './_lib/ayar.js';
 import { jetonDogrula } from './giris.js';
-import { r2Url } from './_lib/r2.js';
+import { r2Url, r2Hatasi } from './_lib/r2.js';
 
 export function medyaAnahtariGecerli(anahtar) {
   return new RegExp(`^${MEDYA.onEk}\\d{6}/[\\w-]{1,60}\\.(${Object.values(MEDYA.turler).join('|')})$`).test(String(anahtar || ''));
@@ -57,7 +57,10 @@ export default async function handler(req, res) {
       const anahtar = yeniAnahtar(uz);
       const f = globalThis.__SOY_TEST?.r2Fetch || fetch;
       const r = await f(r2Url('PUT', anahtar, MEDYA.imzaSureSn), { method: 'PUT', headers: { 'Content-Type': tip }, body: veri });
-      if (!r.ok) return res.status(502).json({ ok: false, hata: `Depo yüklemeyi reddetti (${r.status})` });
+      if (!r.ok) {
+        const h = await r2Hatasi(r);
+        return res.status(502).json({ ok: false, kod: h.kod, hata: `Depo yüklemeyi reddetti (${h.durum}${h.kod ? ' ' + h.kod : ''}): ${h.ipucu}` });
+      }
       return res.status(200).json({ ok: true, anahtar, okuUrl: `/api/medya?adim=oku&anahtar=${encodeURIComponent(anahtar)}` });
     }
     if (adim === 'oku' && req.method === 'GET') {

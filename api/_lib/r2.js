@@ -58,6 +58,23 @@ export async function r2Boyut(anahtar, sureSn) {
   return Number(r.headers.get('content-length')) || 0;
 }
 
+// R2 (S3) hata yanıtından kodu çıkar ve yöneticinin ne yapacağını söyle.
+// Değerler asla gösterilmez; yalnızca hangi ortam değişkenine/ayara bakılacağı.
+const R2_IPUCU = {
+  AccessDenied: 'R2 API anahtarının bu kovaya YAZMA izni yok — Cloudflare → R2 → Manage API tokens: "Object Read & Write" ve doğru kova seçili olmalı',
+  SignatureDoesNotMatch: 'R2_SECRET_ACCESS_KEY yanlış ya da eksik kopyalanmış',
+  InvalidAccessKeyId: 'R2_ACCESS_KEY_ID yanlış (ya da anahtar silinmiş)',
+  NoSuchBucket: 'R2_BUCKET adı yanlış (kova adı birebir aynı olmalı)',
+  InvalidBucketName: 'R2_BUCKET adı geçersiz',
+  Unauthorized: 'R2 anahtarı yetkisiz — R2_ACCOUNT_ID ile anahtar aynı hesaba ait olmalı',
+};
+export async function r2Hatasi(yanit) {
+  let kod = '';
+  try { kod = (/<Code>([^<]+)<\/Code>/.exec(await yanit.text()) || [])[1] || ''; } catch { kod = ''; }
+  const ipucu = R2_IPUCU[kod] || (yanit.status === 403 ? R2_IPUCU.AccessDenied : 'R2 isteği reddetti');
+  return { durum: yanit.status, kod, ipucu };
+}
+
 // ses/<kisi_id>/<dosya> — kisiId verilirse o kişiye ait olmalı
 export function sesAnahtariGecerli(anahtar, kisiId) {
   const m = /^ses\/([\w-]{1,40})\/[\w.-]{1,80}$/.exec(String(anahtar || ''));
