@@ -12,7 +12,10 @@ onayından geçer.
 - **Onay sistemi** — kimse ana ağacı doğrudan değiştiremez; değişiklikler admin onayından geçer
 - **Foto & video** — Vercel Blob'da ortak saklanır, herkes görür
 - **Fotoğraflı avatarlar, iletişim, sosyal medya, anılar**
-- **Mobil uyumlu, dark/light**
+- **Mobil uyumlu, dark/light/yadigâr**
+- **Asistan** — soru yanıtlar, konuşarak kişi ekleme önerir (Groq, ücretsiz katman) · [docs/asistan.md](docs/asistan.md)
+- **Sesli hikâye** — kendi sesinle anlat; saklanır, yazıya çevrilir, anı olarak onaya gider · [docs/hikaye.md](docs/hikaye.md)
+- **Ailemizin bu ayı** — kota, katkılar, hikâye şeridi · [docs/kullanim.md](docs/kullanim.md)
 
 ## Teknoloji
 
@@ -42,7 +45,14 @@ api/giris.js        → aile/admin şifresiyle giriş, oturum jetonu üretir
 api/oneri.js        → onay kuyruğu (öneri gönder/listele/karar)
 api/medya.js        → foto/video yükleme (Blob)
 api/sohbet.js       → aile sohbeti / kişi yorumları
+api/asistan.js      → LLM asistanı (araç döngüsü, kota, öneri)
+api/ses.js          → R2 imzalı ses yükleme / okuma
+api/hikaye.js       → sesli hikâye: yazıya çevirme, kuyruk, gece cron'u
+api/kullanim.js     → kota durumu, "Ailemizin bu ayı"
+api/_lib/ayar.js    → model / kota / limit — tek kaynak
+api/_lib/agac.js    → yol bulma, ortak ata, kişi arama (public/lib/agac.js'e kopyalanır: npm run build)
 schema.sql          → Neon tabloları
+test/               → npm test (DB testleri: TEST_DATABASE_URL + npm i --no-save pg)
 ```
 
 ## Not
