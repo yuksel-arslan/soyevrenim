@@ -260,8 +260,18 @@ export function ataTerimi(kadin, k) {
 const torunTerimi = (kadin, k) => (k === 1 ? (kadin ? 'kızı' : 'oğlu') : k === 2 ? 'torunu' : `${k} kuşak sonraki torunu`);
 
 export function akrabalikAnlatisi(g, aId, bId) {
-  const ad = (id) => adiGoster(g.byId[id]?.name) || '?';
+  const yalin = (id) => adiGoster(g.byId[id]?.name) || '?';
   const kadin = (id) => g.byId[id]?.sex === 'K';
+  // Adaşlar ("Yüksel ile Yüksel") karışmasın: ikisini de baba/anne adıyla niteler
+  const nitelik = new Map();
+  if (aId !== bId && yalin(aId) === yalin(bId)) {
+    for (const id of [aId, bId]) {
+      const P = [...(g.PARENTS.get(id) || [])].map((p) => g.byId[p]).filter(Boolean);
+      const e = P.find((p) => p.sex !== 'K') || P[0];
+      if (e) nitelik.set(id, `${adiGoster(e.name)} ${kadin(id) ? 'kızı' : 'oğlu'} ${yalin(id)}`);
+    }
+  }
+  const ad = (id) => nitelik.get(id) || yalin(id);
   const A = ad(aId), B = ad(bId);
   if (aId === bId) return { baslik: 'Aynı kişi', ozet: `${A} kendisi.`, cumleler: [] };
   const y = yolBul(g, aId, bId);

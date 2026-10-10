@@ -90,6 +90,25 @@ Yanıt (her zaman HTTP 200):
 { "ok": false, "yedek": true, "sebep": "sistem|kisi|saglayici|hata", "mesaj": "Bugünkü ücretsiz asistan kotası doldu, yarın 03:00'te yenilenir." }
 ```
 
+## Rehber'de kişi sorusu: önce ne istendiğini sorar
+
+Rehber'e yalnızca bir ad yazılınca ("Yüksel", "Hamit kim?", "Yüksel'i göster", en fazla üç sözcük)
+soru asistana gitmez, Rehber yerelde yanıtlar:
+
+1. **Adaş varsa** önce hangisi olduğunu sorar: "Fahri oğlu Yüksel · 7. nesil | Hasan oğlu Yüksel · 6. nesil".
+2. Kişiyi kısaca tanıtır: "Yüksel — Fahri oğlu, 7. nesil, hayatta. Onun hakkında ne öğrenmek istersin?"
+3. Seçenek çipleri sunar; seçilen türde ayrıntı verir:
+   - 👪 **Ailesi:** anne, baba, eşler, çocuklar, kardeşler; aile ağaçta odaklanır.
+   - 🌳 **Soy zinciri:** köke kaç kuşak olduğu ve aradaki atalar; hat ağaçta yanar.
+   - 🔗 **Benimle akrabalığı:** `akrabalikAnlatisi(ben, kişi)`; yol çizilir. Kim olduğu bilinmiyorsa "Ben …" ister.
+   - 📋 **Bilgileri:** doğum, meslek, eğitim, medeni durum, çalışma.
+   - 📖 **Anıları:** ilk üç anı (tarih, başlık, kısa metin).
+   - 🗂 **Ayrıntı kartı:** kişinin ayrıntı panelini açar.
+   - ↩ **Diğer sorular:** genel örnek sorulara döner.
+
+Seçenekler kota harcamaz. Komutlar `{metin, secenekler:[{etiket, eylem}]}` döndürebilir
+(`kisiTanit`, `kisiSecenekleri`, `secenekleriKur`).
+
 ## Akrabalık anlatısı (`akrabalikAnlatisi`)
 
 `api/_lib/agac.js` (istemciye `public/lib/agac.js` olarak kopyalanır). Yol kartı, Rehber ve
@@ -102,6 +121,7 @@ aile büyüğünün anlatacağı gibi:
 - **Soy cümleleri:** "Soy, Molla Memiş'ten Abdurrahman, Mehmet Yazıcı ve Hamit üzerinden Fahri'ye iniyor."
 - Ölçü (N. dereceden kuzen, kuşak farkı) en sonda; adım adım yol kartta katlanmış.
 - Türkçe ekler `ilgiEki` / `yonelmeEki` / `ayrilmaEki` (ünlü uyumu, kesme işareti).
+- Adaşlar baba adıyla ayrılır: "Fahri oğlu Yüksel ile Hasan oğlu Yüksel …".
 - Model kuralı 6: yanıtı `anlati` üzerine kur, liste ve "N adım" gibi mekanik ifade kullanma.
 
 ## Araçlar (sunucuda çalışır)

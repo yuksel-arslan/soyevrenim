@@ -270,6 +270,8 @@ body:has(.inspector.show) #activeCard{display:none !important}
   #rehberCipler::-webkit-scrollbar{display:none}
   #rehberCipler button{font-size:13px !important;padding:9px 12px !important;flex:none;white-space:nowrap}
   #rehberGiris{font-size:16px !important} /* iOS yakınlaştırma engeli */
+  /* Akrabalık kartı mobilde Rehber panelinin üstüne binmesin: kısa tut, içi kaysın */
+  #pathCard{max-height:30vh;overflow-y:auto}
   /* Aile Sohbeti açıkken mikrofon "Gönder" düğmesinin üstüne binmesin */
   body.sohbet-acik #rehberMic{display:none !important}
   #lensLegend{left:12px !important;right:auto;bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;font-size:11px;max-width:60vw}
@@ -4331,28 +4333,91 @@ const KOMUTLAR=[
     } },
   { ad:"kisi",   desen:/.*/,   // en genel: isim araması
     calistir:(m,metin)=>{
-      const temiz=metin.replace(/['’]?[ıiu]?\s*(göster|getir|bul|aç|nerede|kim)\b/gi,"").trim();
+      const temiz=metin.replace(/['’]?[ıiu]?\s*(göster|getir|bul|aç|nerede|kim|kimdir|hakkında)\b/gi,"").replace(/\?/g,"").trim();
       const liste=rehberKisiAra(temiz||metin);
       // Uzun bir cümle (soru) isim değildir: "kimseyi bulamadım" demek yerine yardım mesajına bırak
       const sozcuk=(temiz||metin).trim().split(/\s+/).length;
       // Yalnızca tek sözcük (bir ad) yazıldıysa "bulamadım" de; cümleler yardım mesajına kalsın
       if(!liste.length) return sozcuk>1 || /\?$/.test(metin.trim()) ? null : `“${(temiz||metin).trim()}” için kimseyi bulamadım.`;
-      const k=liste[0];
-      selectNode(k); if(typeof merkezeAl==="function") merkezeAl(k);
-      const kim=(typeof kimlikSatiri==="function") ? kimlikSatiri(k) : "";
-      const ek=(typeof esCocukCumlesi==="function") ? esCocukCumlesi(k) : "";
-      let c=`${kim?kim+" ":""}${dispName(k.name)} getirildi — ${chainOf(k).length-1}. nesil${ek?" · "+ek:""}.`;
-      // Adaş varsa sessizce seçme; hangilerinin olduğunu söyle (37 tekrarlı ad var)
+      // Adaş varsa önce HANGİSİ olduğunu sor (37 tekrarlı ad var)
       if(liste.length>1){
-        const digerleri=liste.slice(1,4).map(n=>{
-          const s=(typeof kimlikSatiri==="function")?kimlikSatiri(n):"";
-          return `${s?s+" ":""}${dispName(n.name)} (${chainOf(n).length-1}. nesil)`;
-        }).join(", ");
-        c+=` Bu adda ${liste.length} kişi var; diğerleri: ${digerleri}${liste.length>4?"…":""}.`;
+        return { metin:`Bu adda ${liste.length} kişi var. Hangisini soruyorsun?`,
+          secenekler: liste.slice(0,8).map(n=>({ etiket:`${kimlikSatiri(n)} ${dispName(n.name)} · ${chainOf(n).length-1}. nesil`,
+            eylem:()=>kisiTanit(n) })) };
       }
-      return c;
+      return kisiTanit(liste[0]);
     } },
 ];
+
+// ---- REHBER: kişi sorulunca önce NE öğrenilmek istendiğini sor ----
+// Kişiyi kısaca tanıtır ve seçenek sunar; seçilen türde ayrıntı verir.
+// (Seçenekler yerel çalışır: kota harcamaz, asistan kapalıyken de çalışır.)
+function kisiTanit(k){
+  selectNode(k); if(typeof merkezeAl==="function") merkezeAl(k);
+  const ks=kimlikSatiri(k), nesil=chainOf(k).length-1;
+  const durum = k.alive===false ? "rahmetli" : "hayatta";
+  return { metin:`${dispName(k.name)} — ${ks && ks!=="kök" ? ks+", " : ""}${nesil}. nesil, ${durum}. Onun hakkında ne öğrenmek istersin?`,
+    secenekler:kisiSecenekleri(k) };
+}
+function kisiSecenekleri(k){
+  const ad=dispName(k.name), L=window.AgacLib;
+  const ilgi=x=>L&&L.ilgiEki?L.ilgiEki(x):x+"'in";
+  const adi=id=>byId[id]?dispName(byId[id].name):"?";
+  const isimler=ids=>ids.map(id=>adi(id)+(byId[id]&&byId[id].alive===false?" (rahmetli)":""));
+  const listele=a=>a.length<2?a.join(""):`${a.slice(0,-1).join(", ")} ve ${a[a.length-1]}`;
+  const sec=[
+    { etiket:"👪 Ailesi", eylem:()=>{
+      const y=L?L.yakinlar(agacGraf(),k.id):{ebeveynler:[],esler:[],cocuklar:[],kardesler:[]};
+      const P=y.ebeveynler.map(id=>byId[id]).filter(Boolean);
+      const baba=P.find(p=>p.sex!=="K"), anne=P.find(p=>p.sex==="K");
+      const c=[];
+      if(baba||anne) c.push(`${ilgi(ad)} ${[baba?`babası ${adi(baba.id)}`:"", anne?`annesi ${adi(anne.id)}`:""].filter(Boolean).join(", ")}.`);
+      else c.push(`${ilgi(ad)} anne-babası ağaçta kayıtlı değil.`);
+      if(y.esler.length) c.push(`${y.esler.length>1?"Eşleri":"Eşi"}: ${listele(isimler(y.esler))}.`);
+      if(y.cocuklar.length) c.push(`${y.cocuklar.length} çocuğu var: ${listele(isimler(y.cocuklar))}.`);
+      if(y.kardesler.length) c.push(`${y.kardesler.length} kardeşi var: ${listele(isimler(y.kardesler))}.`);
+      if(typeof odakAc==="function") odakAc(k.id);
+      return c.join("\n")+"\n\nAilesini ağaçta öne çıkardım.";
+    } },
+    { etiket:"🌳 Soy zinciri", eylem:()=>{
+      const z=chainOf(k).map(n=>dispName(n.name));
+      if(z.length<2) return `${ad}, soyumuzun kökü.`;
+      const ara=z.slice(1,-1).reverse();
+      if(typeof highlightFor==="function") highlightFor(k);
+      const koke = L&&L.yonelmeEki ? L.yonelmeEki(z[0]) : z[0];
+      return `${ad}, ${z.length-1} kuşak yukarıda ${koke} bağlanıyor.`
+        + (ara.length ? `\nYukarı doğru: ${listele(ara)}.` : "")
+        + `\nSoy hattını ağaçta yaktım.`;
+    } },
+    { etiket:"🔗 Benimle akrabalığı", eylem:()=>{
+      const ben=kimlikId();
+      if(!ben) return "Önce kim olduğunu söyle: “Ben Fahri oğlu Yüksel” gibi yaz; sonra akrabalığınızı anlatırım.";
+      if(ben===k.id) return "Bu sensin 🙂";
+      const an=akrabalikAnlatisi(ben,k.id);
+      if(typeof yolBul==="function") yolBul(ben,k.id);
+      return an ? [an.ozet, ...an.cumleler].join("\n") : "Akrabalığı hesaplayamadım.";
+    } },
+    { etiket:"📋 Bilgileri", eylem:()=>{
+      const info=(getProfile(k.id).info)||{};
+      const c=[];
+      if(info.dogum) c.push(`Doğum: ${info.dogum}`);
+      if(info.job) c.push(`Meslek: ${info.job}`);
+      if(info.education) c.push(`Eğitim: ${info.education}`);
+      if(info.marital) c.push(`Medeni durum: ${info.marital}`);
+      if(info.work) c.push(`Çalışma: ${info.work}`);
+      return c.length ? `${ad}:\n${c.join("\n")}`
+        : `${ad} için henüz kişisel bilgi girilmemiş. Biliyorsan ayrıntı kartından ekleyebilirsin (uzun bas).`;
+    } },
+    { etiket:"📖 Anıları", eylem:()=>{
+      const a=(getProfile(k.id).memories)||[];
+      if(!a.length) return `${ad} için henüz anı yok. Bir anın varsa ayrıntı kartında “Anı ekle” ya da “🎙 Hikâye anlat” ile paylaşabilirsin.`;
+      const ozet=a.slice(0,3).map(m=>`• ${m.date?m.date+" — ":""}${m.baslik?m.baslik+": ":""}${String(m.text||"").slice(0,140)}${String(m.text||"").length>140?"…":""}`);
+      return `${ad} hakkında ${a.length} anı var:\n${ozet.join("\n")}${a.length>3?"\n…tamamı ayrıntı kartında.":""}`;
+    } },
+    { etiket:"🗂 Ayrıntı kartı", eylem:()=>{ openPanel(k); return `${ilgi(ad)} ayrıntı kartını açtım.`; } },
+  ];
+  return sec;
+}
 
 // Levenshtein uzaklığı — ses kaynaklı yazım hatalarına tolerans için.
 // (Tek yerde tanımlı; hem kişi hem kol aramasında kullanılıyor.)
@@ -4485,6 +4550,30 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     });
   }
   function yaz(t){ mesaj.textContent=t; }
+  // Bağlama göre seçenek çipleri (ör. kişi sorulunca "Ailesi / Soy zinciri / …").
+  // Seçenek yerel bir eylemdir; sonucu yazılır, seçenekler yerinde kalır.
+  // "↩ Diğer sorular" genel örneklere döner.
+  function secenekleriKur(liste){
+    cipler.innerHTML="";
+    liste.forEach(o=>{
+      const b=document.createElement("button");
+      b.textContent=o.etiket;
+      b.style.cssText="background:var(--panel2);border:1px solid var(--spine);color:var(--text);"+
+        "font-size:12px;padding:7px 11px;border-radius:16px;cursor:pointer";
+      b.onclick=()=>{ notYaz(""); let c=null; try{ c=o.eylem(); }catch(e){ c="Bunu yapamadım."; } sonucGoster(c); };
+      cipler.appendChild(b);
+    });
+    const geri=document.createElement("button");
+    geri.textContent="↩ Diğer sorular";
+    geri.style.cssText="background:none;border:1px dashed var(--line2);color:var(--muted);"+
+      "font-size:12px;padding:7px 11px;border-radius:16px;cursor:pointer";
+    geri.onclick=()=>ciplerKur();
+    cipler.appendChild(geri);
+  }
+  function sonucGoster(c){
+    if(c && typeof c==="object"){ yaz(c.metin||""); if(c.secenekler&&c.secenekler.length) secenekleriKur(c.secenekler); }
+    else if(c) yaz(c);
+  }
 
   // JS düzenli ifadelerinde /i bayrağı Türkçe "İ"yi "i" saymaz ("İstatistikleri aç"
   // /istatistik/i ile eşleşmez). Önce olduğu gibi, olmazsa Türkçe küçük harfle dene.
@@ -4501,7 +4590,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       if(!m) continue;
       let c=null;
       try{ c=k.calistir(m,t); }catch(e){ yaz("Bunu yapamadım."); return; }
-      if(c){ yaz(c); return; }
+      if(c){ if(typeof c==="object") sonucGoster(c); else { yaz(c); ciplerKur(); } return; }
     }
     // Hiçbir komut tutmadı: Rehber'in ne yapabildiğini sıcak bir dille anlat
     const y = window.Uzmanlik ? window.Uzmanlik.BECERILER.site.konular[0].metin : "";
@@ -4591,7 +4680,12 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   function yerelArayuzMu(t){
     for(const k of KOMUTLAR){
       if(k.ad==="uzman") continue;   // bilgi becerisi arayüz komutu değil: asistan önce denesin
-      if(k.ad==="kol") return typeof kolBul==="function" && !!kolBul(t);
+      if(k.ad==="kol" && typeof kolBul==="function" && kolBul(t)) return true;
+      if(k.ad==="kisi"){   // yalnızca bir ad (≤3 sözcük) → Rehber önce ne istendiğini sorar
+        const temiz=t.replace(/['’]?[ıiu]?\s*(göster|getir|bul|aç|nerede|kim|kimdir|hakkında)\b/gi,"").replace(/\?/g,"").trim();
+        return temiz.split(/\s+/).length<=3 && rehberKisiAra(temiz).length>0;
+      }
+      if(k.ad==="kol") continue;
       if(!komutEslesir(t,k.desen)) continue;
       if(k.ad==="ben"){ const m=komutEslesir(t,k.desen); if(benAdaylari(m[1]).length) return true; continue; }
       if(YEREL.has(k.ad)) return true;
