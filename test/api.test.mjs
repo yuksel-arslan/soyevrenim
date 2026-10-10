@@ -233,3 +233,18 @@ test('agac kaydet: oturumsuz 401 (yeniden giriş), aile 403 (öneri yolu), yöne
   const g = await cagir(agac, { method: 'GET' });
   assert.equal(String(g.govde.guncelleme), String(r.govde.guncelleme));
 });
+
+test('agac kaydet: eski sürümün üstüne yazılmaz (409 + güncel veri), güncel sürümle kabul edilir', { skip: atla }, async () => {
+  const { default: agac } = await import('../api/agac.js');
+  const ilk = (await cagir(agac, { method: 'GET' })).govde;
+  const kaydet = (veri, onceki) => cagir(agac, { method: 'POST', body: { veri, onceki, guncelleyen: 'Test', jeton: adminJeton } });
+  const a = await kaydet(ilk.veri, new Date(ilk.guncelleme).toISOString());   // cihaz A: güncel sürümden
+  assert.equal(a.govde.ok, true);
+  const b = await kaydet(ilk.veri, new Date(ilk.guncelleme).toISOString());   // cihaz B: ESKİ sürümden
+  assert.equal(b.statusCode, 409);
+  assert.equal(b.govde.cakisma, true);
+  assert.ok(Array.isArray(b.govde.veri.nodes));
+  const c = await kaydet(ilk.veri, new Date(b.govde.guncelleme).toISOString()); // B birleştirip güncel sürümle
+  assert.equal(c.govde.ok, true);
+  assert.equal((await kaydet(ilk.veri, undefined)).govde.ok, true, 'onceki göndermeyen eski istemci koşulsuz');
+});

@@ -46,15 +46,29 @@ export default async function handler(req, res) {
       if (!adminOk) {
         return res.status(403).json({ ok: false, hata: 'Doğrudan kayıt sadece yöneticiye açık. Değişikliğini "Onaya gönder" ile ilet.' });
       }
-      // ana kaydı güncelle
-      const [kayit] = await sql`
-        update agac
-        set veri = ${JSON.stringify(veri)}::jsonb,
-            guncelleyen = ${kim},
-            guncelleme = now()
-        where id = 1
-        returning guncelleme
-      `;
+      // ÇAKIŞMA DENETİMİ: ağaç bütün olarak kaydedilir. İstemci hangi sürümün üstüne yazdığını
+      // (`onceki` = elindeki guncelleme) söyler; arada başka cihaz kaydettiyse ÜSTÜNE YAZILMAZ,
+      // 409 + güncel veri döner — istemci kendi değişikliklerini güncel sürüme işleyip yeniden
+      // kaydeder. (Eskiden son kaydeden kazanıyordu: eski kopyası açık duran cihaz, başka
+      // cihazda yüklenen fotoğrafı geri alıyordu.) `onceki` gönderilmezse koşulsuz (eski istemci).
+      const kosullu = typeof body.onceki === 'string' && body.onceki;
+      const [kayit] = kosullu
+        ? await sql`
+            update agac
+            set veri = ${JSON.stringify(veri)}::jsonb, guncelleyen = ${kim}, guncelleme = now()
+            where id = 1
+              and date_trunc('milliseconds', guncelleme) = date_trunc('milliseconds', ${body.onceki}::timestamptz)
+            returning guncelleme`
+        : await sql`
+            update agac
+            set veri = ${JSON.stringify(veri)}::jsonb, guncelleyen = ${kim}, guncelleme = now()
+            where id = 1
+            returning guncelleme`;
+      if (!kayit) {
+        const [simdi] = await sql`select veri, guncelleme, guncelleyen from agac where id = 1`;
+        return res.status(409).json({ ok: false, cakisma: true, hata: 'Ağaç başka bir cihazda değişti',
+          veri: simdi ? simdi.veri : null, guncelleme: simdi ? simdi.guncelleme : null, guncelleyen: simdi ? simdi.guncelleyen : null });
+      }
       // günlüğe de yaz (geri alma imkânı için)
       await sql`
         insert into gunluk (veri, guncelleyen)

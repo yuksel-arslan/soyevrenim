@@ -8,7 +8,7 @@ tek JSON olarak `agac` tablosunda (id = 1). Her kayıt `gunluk` tablosuna da yaz
 | İstek | Yetki | Yanıt |
 |---|---|---|
 | `GET /api/agac` | herkes | `{ok, veri, guncelleme, guncelleyen}` |
-| `POST /api/agac` `{veri, guncelleyen, jeton}` | yalnız **yönetici** | `{ok, guncelleme}` · oturum geçersiz `401` · aile üyesi `403` (öneri yolu: `api/oneri`) |
+| `POST /api/agac` `{veri, onceki, guncelleyen, jeton}` | yalnız **yönetici** | `{ok, guncelleme}` · oturum geçersiz `401` · aile üyesi `403` (öneri yolu) · **`409` çakışma** + `{veri, guncelleme, guncelleyen}` |
 
 ## Cihazlar arası eşitleme (istemci)
 
@@ -24,6 +24,21 @@ tek JSON olarak `agac` tablosunda (id = 1). Her kayıt `gunluk` tablosuna da yaz
 - Yoklama yalnızca yerelde kaydedilmemiş iş varken bekler: yöneticide kayıt sürerken, aile üyesinde
   gönderilmemiş öneri varken. Eskiden her düzenleme `dirty` bırakıyordu ve o cihaz bir daha hiç
   eşitlenmiyordu.
+
+## Çakışma: iki cihaz aynı anda düzenleyince
+
+Ağaç bütün olarak kaydedildiği için eskiden **son kaydeden kazanıyordu**: eski kopyası açık duran
+cihaz (ör. bilgisayar), başka cihazda (mobil) yüklenen fotoğrafı geri alıyordu.
+
+- İstemci kaydederken elindeki sürümü (`onceki` = son `guncelleme`) gönderir. Sunucu yalnızca sürüm
+  tutuyorsa yazar (`date_trunc('milliseconds', guncelleme) = onceki`); değilse **409** + güncel veri.
+- İstemci **üç yönlü birleştirir** (`agacBirlestir(taban, yerel, sunucu)`, `api/_lib/agac.js`):
+  taban = son eşitlenen sunucu sürümü (`CLOUD.taban`), yerel = kendi ekranı, sunucu = güncel.
+  Yalnızca yerelde tabana göre **değişen** alanlar sunucunun üstüne işlenir — her derinlikte
+  (kişi → profil → bilgi). Listeler (anılar, galeri) küme olarak birleşir: iki cihazın eklediği de kalır.
+  Boş değerler ("", {}, []) "yok" sayılır (varsayılan boş profil gerçek fotoğrafı silmez).
+- Birleşmiş hâl ekrana uygulanır, en çok 3 deneme ile yeniden kaydedilir; kullanıcıya
+  "iki değişiklik birleştirildi" denir. `onceki` göndermeyen eski istemci koşulsuz yazar.
 
 ## Kimlik
 
