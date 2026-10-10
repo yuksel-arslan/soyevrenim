@@ -138,7 +138,10 @@ canvas{display:block;position:fixed;inset:0;
 .tbtn.primary:hover{filter:brightness(1.08)}
 
 /* sol araç kolonu */
-.dock{position:fixed;left:16px;top:64px;z-index:9;display:flex;flex-direction:column;gap:6px}
+.dock{position:fixed;left:16px;top:64px;z-index:9;display:flex;flex-direction:column;gap:6px;
+  /* kısa ekranda simgeler alttan taşmasın: menü kendi içinde kayar */
+  max-height:calc(100vh - 80px);overflow-y:auto;scrollbar-width:none}
+.dock::-webkit-scrollbar{display:none}
 .dock button{width:40px;height:40px;border-radius:8px;background:var(--panel);border:1px solid var(--line);
   color:var(--text);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s}
 .dock button:hover{background:var(--panel2);border-color:var(--line2)}
@@ -188,7 +191,7 @@ body:has(.inspector.show) #activeCard{display:none !important}
 .tbtn.danger:hover{background:rgba(224,100,90,.12);border-color:var(--danger)}
 
 /* alt durum çubuğu */
-.statusbar{position:fixed;left:16px;bottom:14px;z-index:9;font-family:"IBM Plex Mono",monospace;
+.statusbar{position:fixed;left:72px;bottom:14px;z-index:9;   /* menünün (dock) sağında: simgeleri örtmesin */font-family:"IBM Plex Mono",monospace;
   font-size:11px;color:var(--muted);background:var(--panel);padding:6px 12px;border-radius:6px;
   border:1px solid var(--line);backdrop-filter:blur(6px);opacity:.92}
 .statusbar b{color:var(--text-soft)}
@@ -236,7 +239,9 @@ body:has(.inspector.show) #activeCard{display:none !important}
     width:40px;height:4px;border-radius:2px;background:var(--line2)}
 
   /* alt durum çubuğu: dock ile çakışmasın */
-  .statusbar{bottom:auto;top:calc(env(safe-area-inset-top,0) + 56px);left:12px;font-size:10px;padding:5px 9px}
+  .statusbar{bottom:auto;top:calc(env(safe-area-inset-top,0) + 56px);left:12px;font-size:10px;padding:5px 9px;
+    /* sağ üstteki kişi kartının altına girmesin: kart genişliği kadar dar, gerekirse iki satır */
+    max-width:calc(100vw - 34px - var(--kart-gen, 0px));white-space:normal;line-height:1.5}
 
   /* istatistik/hover kartları taşmasın */
   #statsPanel{left:12px !important;right:12px;top:64px !important;width:auto !important;max-width:none}
@@ -2087,6 +2092,7 @@ async function tryAdminLogin(){
       if(typeof refreshApprovals==="function") refreshApprovals();
       if(typeof chatShowBtn==="function") chatShowBtn();
       toast("Yönetici modu açık — her şeyi düzenleyebilirsin");
+      if(typeof updateStatus==="function") updateStatus();
       tohumla();
       if(selNode) openInspector(selNode);
     } else toast("Şifre yanlış");
@@ -2803,7 +2809,10 @@ function focusCenter(n){
 // SAĞ ÜST kart — seçili kişinin detayı (koniyi kapatmaz)
 function showActiveCard(n){
   const card=document.getElementById("activeCard"); if(!card) return;
-  if(!n){ card.style.display="none"; return; }
+  // Mobilde durum satırı kartın soluna sığsın: kartın gerçek genişliğini CSS'e ver
+  const kartGen=()=>requestAnimationFrame(()=>document.documentElement.style.setProperty("--kart-gen",
+    card.style.display==="none" ? "0px" : card.offsetWidth+"px"));
+  if(!n){ card.style.display="none"; kartGen(); return; }
   const prof=PROFILES[n.id]||{};
   const gen=chainOf(n).length-1;
   // foto
@@ -2827,6 +2836,7 @@ function showActiveCard(n){
   card.style.display="block";
   // Mobilde kart her yeni seçimde kapalı başlar (ağacı kapatmasın).
   card.classList.remove("acOpen");
+  kartGen();
 }
 // mobil kompakt kartın aç/kapa oku
 (function acToggleKur(){
@@ -3845,7 +3855,10 @@ function updateStatus(){
   const kisi = filtreli
     ? `<b>${gorunur.length}</b> / ${nodes.length} kişi`
     : `<b>${nodes.length}</b> kişi`;
-  el.innerHTML = `${kisi} · <b>${bag}</b> bağ`
+  // Rol her zaman görünsün: aile üyesinin değişikliği onaya gider, yöneticininki doğrudan kaydedilir
+  const rol = isAdmin ? `<span style="color:var(--spine);font-weight:600">🔓 Yönetici</span> · `
+    : sessionToken ? `<span style="color:var(--text-soft)">👤 Aile üyesi</span> · ` : "";
+  el.innerHTML = `${rol}${kisi} · <b>${bag}</b> bağ`
     + (filtreli?` · <span style="color:var(--accent)">filtreli</span>`:"")
     + (dirty?` · <span style="color:var(--ok)">düzenlendi</span>`:"");
   if(document.getElementById("statsPanel")?.style.display==="block") renderStats();
@@ -5604,11 +5617,20 @@ function updatePendingBar(){
       bottom:calc(env(safe-area-inset-bottom,0) + 74px);z-index:20;display:flex;gap:8px;align-items:center;
       background:var(--panel);border:1px solid var(--spine);border-radius:12px;padding:8px 10px 8px 14px;
       box-shadow:0 12px 40px var(--shadow);font-size:13px`;
-    bar.innerHTML=`<span style="color:var(--text-soft)">Kaydedilmemiş değişikliklerin var</span>
+    bar.style.flexWrap="wrap"; bar.style.maxWidth="calc(100vw - 24px)";
+    bar.innerHTML=`<span style="color:var(--text-soft);line-height:1.4">Aile üyesi olarak düzenledin —<br>değişiklik yöneticinin onayına gider</span>
       <button id="sendApprovalBtn" style="background:var(--spine);color:var(--on-accent);border:none;
-        border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Onaya gönder</button>`;
+        border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Onaya gönder</button>
+      <button id="adminOlarakBtn" title="Yöneticiysen onaysız, doğrudan kaydet" style="background:none;border:1px solid var(--line2);
+        border-radius:8px;padding:8px 10px;color:var(--text-soft);cursor:pointer;font-size:12.5px">🔓 Yöneticiyim</button>`;
     document.body.appendChild(bar);
     document.getElementById("sendApprovalBtn").onclick=sendForApproval;
+    document.getElementById("adminOlarakBtn").onclick=async()=>{
+      if(!await girisPenceresi("Yönetici şifreni gir: değişikliklerin onaysız, doğrudan ağaca kaydedilir.")) return;
+      if(!isAdmin){ toast("Bu şifre aile şifresi — yönetici şifresi gerekiyor"); return; }
+      pendingChanges=false; updatePendingBar(); cloudSave(true);
+      toast("Yönetici olarak girildi — değişikliklerin doğrudan kaydedildi ✓");
+    };
   }
   bar.style.display="flex";
 }
@@ -5626,7 +5648,7 @@ async function sendForApproval(){
     const j=await r.json();
     if(j.ok){
       pendingChanges=false; dirty=false; updatePendingBar(); updateStatus();
-      toast("Değişikliğin yöneticiye onaya gönderildi ✓");
+      toast("Aile üyesi olarak gönderdin — yönetici onaylayınca ağaca işlenir ✓");
     } else toast(j.hata||"Gönderilemedi");
   }catch(e){ toast("Bağlantı hatası"); }
   if(btn){ btn.disabled=false; btn.textContent="Onaya gönder"; }
@@ -5688,6 +5710,7 @@ function oturumKapat(mesaj){
     const ab=document.getElementById("approvalBtn"); if(ab) ab.style.display="none"; }
   try{ localStorage.removeItem("kok_session"); }catch(e){}
   if(selNode && typeof openInspector==="function") openInspector(selNode);
+  if(typeof updateStatus==="function") updateStatus();
   if(mesaj) toast(mesaj);
 }
 async function oturumDogrula(){
@@ -5752,6 +5775,8 @@ async function sifreyleGir(sifre){
   }
   try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:j.rol})); }catch(e){}
   if(typeof chatShowBtn==="function") chatShowBtn();
+  if(typeof updateStatus==="function") updateStatus();
+  if(typeof updatePendingBar==="function") updatePendingBar();
   toast(j.rol==="admin" ? "Yönetici olarak girildi" : "Aile üyesi olarak girildi");
   if(typeof cloudLoad==="function") cloudLoad();
   if(selNode && typeof openInspector==="function") openInspector(selNode);
@@ -5789,6 +5814,7 @@ document.getElementById("adminBtn").onclick=()=>{
   if(isAdmin){ isAdmin=false; sessionToken=null; sessionRol=null; window.__adminRol="";
     try{ localStorage.removeItem("kok_session"); }catch(e){}
     toast("Yönetici modu kapandı");
+    if(typeof updateStatus==="function") updateStatus();
     document.getElementById("approvalBtn").style.display="none";
     document.getElementById("approvalPanel").style.display="none";
     if(selNode)openInspector(selNode); }
