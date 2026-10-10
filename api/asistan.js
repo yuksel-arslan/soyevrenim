@@ -12,7 +12,8 @@ import { LLM, ASISTAN, MESAJ_MAX_TOKEN, tahminiToken } from './_lib/ayar.js';
 import { kimlikCoz, KimlikHatasi } from './_lib/kimlik.js';
 import { kotaDurumu, llmIzin, kullanimKaydet, KOTA_MESAJI } from './_lib/kota.js';
 import { sohbet, SaglayiciKotaHatasi } from './_lib/groq.js';
-import { grafKur, kisiAra, kisiKisa, yakinlar, yolBul, adiGoster, normalize } from './_lib/agac.js';
+import { grafKur, kisiAra, kisiKisa, yakinlar, yolBul, adiGoster, normalize, nesilHaritasi, enBuyukYasayan } from './_lib/agac.js';
+import { soyTarihiOzet } from './_lib/soy-tarihi.js';
 import { oneriEkle, yamaHatasiMi } from './_lib/oneri.js';
 
 const SISTEM = `Sen "Kök" soy ağacının asistanısın (Abdurrahman Oğulları, 1615'ten beri). Türkçe, kısa ve sıcak yaz.
@@ -23,7 +24,9 @@ Kurallar:
 4. Ağaca doğrudan yazamazsın. Kişi ekleme, ilişki kurma, bilgi düzeltme isteğinde oneri_olustur kullan ve değişikliğin yönetici onayına gittiğini söyle.
 5. Yeni kişi eklerken: hedef kişiyi kisi_ara ile kesinleştir; cinsiyeti ifadeden çıkar ("kız kardeşi", "kızı", "annesi" → K); aynı adda bir kişi zaten o ilişkideyse eklemeden önce sor.
 6. Akrabalık sorusunda yol_bul kullan, yolu adım adım anlat (ör. "Emine, Ali'nin kızı; Ali, Fahri'nin kardeşi…").
-7. Kişisel iletişim bilgisi (telefon, adres, e-posta) verme.`;
+7. Soyun kökeni, göçü, tarihi, yerler (Arhavi, Potocur, Derbent), Molla Memiş, kollar ya da ağacın genel sayıları sorulursa soy_tarihi kullan. Fahri Arslan'ın notunu (aile kaydı) kaynaklı bilgiden ayır; "Teyit gerekli" ya da "Yorum" etiketli bilgiyi kesinmiş gibi söyleme.
+8. Kişisel iletişim bilgisi (telefon, adres, e-posta) verme.
+9. Sıcak ve saygılı ol; aile büyüklerinden söz ederken "rahmetli" gibi geleneksel ifadeleri yerinde kullanabilirsin.`;
 
 const ILISKI = ['cocugu', 'esi', 'kardesi', 'babasi', 'annesi'];
 const ARACLAR = [
@@ -35,6 +38,9 @@ const ARACLAR = [
     parameters: { type: 'object', properties: { a_id: { type: 'string' }, b_id: { type: 'string' } }, required: ['a_id', 'b_id'] } } },
   { type: 'function', function: { name: 'ani_ara', description: 'Anılarda sözcük arar (isteğe bağlı tek kişiyle sınırlı).',
     parameters: { type: 'object', properties: { sorgu: { type: 'string' }, kisi_id: { type: 'string' } }, required: ['sorgu'] } } },
+  { type: 'function', function: { name: 'soy_tarihi', description:
+    'Soyun kökeni ve tarihi (Fahri Arslan\'ın 1956 notu, zaman çizelgesi, yerler, kaynaklar ve güven etiketleri) ile ağacın genel sayıları (kişi, nesil, yaşayan, kollar).',
+    parameters: { type: 'object', properties: {} } } },
   { type: 'function', function: { name: 'oneri_olustur', description:
     'Ağaç değişikliğini yönetici onayına öneri olarak gönderir. kisi_ekle: yeni kişi = hedef_id kişisinin <iliski>si. iliski_ekle: mevcut kisi_id = hedef_id kişisinin <iliski>si. bilgi_duzelt: kisi_id kişisinin alanını değiştirir. Aynı öneride yeni eklenen kişiye ref ile ("$1") başvurulabilir.',
     parameters: { type: 'object', properties: {
@@ -106,6 +112,23 @@ function aracCalistirici(ctx) {
       }
       return { sonuc, not: sonuc.length ? undefined : 'anı bulunamadı' };
     },
+    soy_tarihi: () => {
+      const d = nesilHaritasi(g);
+      const nodes = ctx.veri.nodes || [];
+      const kok = nodes.find((n) => !(ctx.veri.edges || []).some((e) => e.to === n.id) && (g.CHILDREN.get(n.id) || new Set()).size);
+      const altSayi = (id) => { let t = 0; const y = [...(g.CHILDREN.get(id) || [])]; const gor = new Set();
+        while (y.length) { const c = y.pop(); if (gor.has(c)) continue; gor.add(c); t++; y.push(...(g.CHILDREN.get(c) || [])); } return t; };
+      return {
+        ...soyTarihiOzet(),
+        agac: {
+          kisi: nodes.length,
+          yasayan: nodes.filter((n) => n.alive !== false).length,
+          nesil: Math.max(0, ...d.values()) + 1,
+          kok: kok ? adi(kok.id) : null,
+          kollar: kok ? [...(g.CHILDREN.get(kok.id) || [])].map((id) => ({ ad: adi(id), soyundan: altSayi(id) })) : [],
+        },
+      };
+    },
     oneri_olustur: async ({ islemler, aciklama }) => {
       if (!Array.isArray(islemler) || !islemler.length) return { hata: 'islemler boş' };
       try {
@@ -163,7 +186,7 @@ export default async function handler(req, res) {
     .map((m) => ({ role: m.rol === 'asistan' ? 'assistant' : 'user', content: m.metin.slice(0, ASISTAN.mesajMaxKarakter), gecmis: true }));
   const messages = [
     { role: 'system', content: SISTEM },
-    { role: 'system', content: `Konuşan kişi: ${kim.ad} (kisi_id: ${kim.kisiId}). "ben", "babam" gibi ifadeler bu kişiye göredir.` },
+    { role: 'system', content: rehberKimligi(kim) },
     ...gecmis,
     { role: 'user', content: mesaj },
   ];
@@ -185,7 +208,8 @@ export default async function handler(req, res) {
           const args = JSON.parse(c.function?.arguments || '{}');
           sonuc = fn ? await fn(args) : { hata: 'bilinmeyen araç' };
         } catch (e) { sonuc = { hata: 'araç hatası: ' + String(e.message || e).slice(0, 200) }; }
-        messages.push({ role: 'tool', tool_call_id: c.id, content: kirp(JSON.stringify(sonuc), ASISTAN.aracSonucMaxKarakter) });
+        const sinir = c.function?.name === 'soy_tarihi' ? ASISTAN.soyTarihiMaxKarakter : ASISTAN.aracSonucMaxKarakter;
+        messages.push({ role: 'tool', tool_call_id: c.id, content: kirp(JSON.stringify(sonuc), sinir) });
       }
     }
   } catch (e) {
@@ -197,6 +221,16 @@ export default async function handler(req, res) {
   if (!yanit) yanit = ctx.oneriler.length ? `Önerin yönetici onayına gönderildi: ${ctx.oneriler.map((o) => o.ozet).join(' · ')}` : 'Bunu yanıtlayamadım, biraz daha açar mısın?';
   const yeniKota = await kotaDurumu(kim.kisiId);
   return res.status(200).json({ ok: true, yanit, gorsel: ctx.gorsel, oneriler: ctx.oneriler, kota: yeniKota });
+}
+
+// Rehber, ailenin yaşayan en büyüğünün adını taşır — ama o kişi DEĞİLDİR.
+// Gerçek bir aile büyüğünün ağzından konuşmak, onun söylemediği sözleri ona
+// söyletmek olur; bu yüzden adı yalnızca bir saygı ifadesi olarak kullanılır.
+function rehberKimligi(kim) {
+  const eb = enBuyukYasayan(kim.veri);
+  const ad = eb ? `${eb.tamAd} Rehberi` : 'Kök Rehberi';
+  return `Adın "${ad}". Adını ailenin yaşayan en büyüğünden${eb ? ` (${eb.ad})` : ''} alıyorsun; ama sen o kişi değilsin: onun ağzından konuşma, onun adına anı ya da söz uydurma. `
+    + `Konuşan kişi: ${kim.ad} (kisi_id: ${kim.kisiId}). "ben", "babam" gibi ifadeler bu kişiye göredir.`;
 }
 
 async function kayit(ctx, t) {

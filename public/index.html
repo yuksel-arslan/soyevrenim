@@ -319,6 +319,38 @@ canvas{display:block;position:fixed;inset:0;
   /* ipucu mobilde üstteki kişi kartının üstüne binmesin: dock'un hemen üstünde */
   .hint{top:auto;bottom:calc(env(safe-area-inset-bottom,0) + 132px);max-width:calc(100vw - 32px);text-align:center;white-space:normal}
 }
+
+/* Kökenimizin hikâyesi — yalnızca tema token'ları */
+.kokHikaye{position:absolute;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--panel);border-left:1px solid var(--line);
+  box-shadow:-12px 0 40px var(--shadow);transform:translateX(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);
+  overflow-y:auto;overflow-x:hidden;z-index:2}
+.kokHikaye.acik{transform:none}
+.khIc{padding:22px 22px 40px;color:var(--text);font-size:13.5px;line-height:1.6}
+.khUst{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--spine);margin-bottom:12px}
+.khNot{margin:0 0 12px;padding:16px 18px;background:var(--bg2);border-left:3px solid var(--spine);border-radius:10px}
+.khNot p{margin:0;font-family:Georgia,"Times New Roman",serif;font-size:15.5px;line-height:1.65;color:var(--text)}
+.khNot footer{margin-top:10px;font-size:12px;color:var(--text-soft)}
+.khNot footer span{color:var(--muted)}
+.khAcik{color:var(--text-soft);font-size:12.5px;margin:8px 0 4px}
+.khIc h4{margin:20px 0 10px;font-size:11.5px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-soft)}
+.khZaman{list-style:none;margin:0;padding:0 0 0 14px;border-left:2px solid var(--line2)}
+.khZaman li{position:relative;margin:0 0 12px;padding-left:12px}
+.khZaman li::before{content:"";position:absolute;left:-21px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--spine);border:2px solid var(--panel)}
+.khYil{display:block;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--spine);font-weight:600;margin-bottom:4px}
+.khKart{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.khKart p{margin:4px 0 0;color:var(--text)}
+.khKartUst{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.khKaynak{margin-top:6px;font-size:11.5px;color:var(--muted)}
+.khKaynak a{color:var(--accent);text-decoration:none}
+.khKaynak a:hover{text-decoration:underline}
+.khEtiket{flex:none;font-size:10px;font-weight:600;letter-spacing:.3px;border-radius:9px;padding:1px 7px;border:1px solid var(--line2);color:var(--text-soft)}
+.kh-aile{border-color:var(--spine);color:var(--spine)}
+.kh-kaynak{border-color:var(--ok);color:var(--ok)}
+.kh-belirsiz{border-color:var(--danger);color:var(--danger)}
+.khOneri{margin:0;padding-left:18px;color:var(--text-soft)}
+.khBos{padding:30px;color:var(--muted)}
+@media (max-width:640px){ .kokHikaye{width:100%;top:auto;height:82%;border-left:none;border-top:1px solid var(--line);
+  border-radius:16px 16px 0 0;transform:translateY(105%)} .kokHikaye.acik{transform:none} .khIc{padding:18px 16px 40px} }
 </style>
 </head>
 <body>
@@ -457,16 +489,21 @@ canvas{display:block;position:fixed;inset:0;
       <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:3px;
         text-transform:uppercase;color:var(--spine);margin-bottom:6px">Kökenimiz</div>
       <div style="font-weight:700;font-size:20px;color:var(--text)">Abdurrahman Oğullarının Soy Ağacı</div>
-      <div style="font-size:13px;color:#9aa8bd;margin-top:6px;line-height:1.6;max-width:640px">
+      <div style="font-size:13px;color:var(--text-soft);margin-top:6px;line-height:1.6;max-width:640px">
         Bu evrenin başladığı yer: babam <b style="color:var(--text)">Fahri Arslan</b>'ın 1956'da,
         elleriyle çizdiği soy ağacı. Aşağıdaki her dal, her yaprak, onun sabrıyla ve sevgisiyle
         kâğıda geçti. Bugün ekranda dönen bu görsel şölen, onun o eserinin yaşayan devamıdır.
         <span style="color:var(--spine)">Saygıyla anıyoruz.</span>
       </div>
     </div>
-    <button id="kokenClose" style="background:var(--panel);border:1px solid var(--line);
-      color:var(--text);font-size:14px;cursor:pointer;padding:9px 16px;border-radius:9px;flex:none">✕ Kapat</button>
+    <div style="display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end">
+      <button id="kokenHikayeBtn" class="tbtn primary" aria-expanded="false">📜 Kökenimizin hikâyesi</button>
+      <button id="kokenClose" style="background:var(--panel);border:1px solid var(--line);
+        color:var(--text);font-size:14px;cursor:pointer;padding:9px 16px;border-radius:9px;flex:none">✕ Kapat</button>
+    </div>
   </div>
+  <!-- Kökenimizin hikâyesi: Fahri Arslan'ın notu + kaynaklı bağlam (public/lib/soy-tarihi.js) -->
+  <aside id="kokenHikaye" class="kokHikaye" aria-label="Kökenimizin hikâyesi"></aside>
   <!-- Görsel görüntüleyici: yakınlaştırılabilir + kaydırılabilir.
        overflow:hidden + touch-action:none — tarayıcının kendi kaydırma/zoom'unu
        devre dışı bırakıp hareketi biz yönetiyoruz (canvas ile aynı yaklaşım). -->
@@ -498,7 +535,7 @@ canvas{display:block;position:fixed;inset:0;
   border-radius:14px;box-shadow:0 16px 50px var(--shadow);overflow:hidden">
   <div style="display:flex;align-items:center;gap:8px;padding:12px 14px 8px">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;
-      text-transform:uppercase;color:var(--spine);flex:1">Rehber</div>
+      text-transform:uppercase;color:var(--spine);flex:1"><span id="rehberAd">Rehber</span></div>
     <button id="rehberKapat" title="Kapat" style="background:none;border:none;color:var(--muted);
       font-size:16px;line-height:1;cursor:pointer;padding:2px 6px">✕</button>
   </div>
@@ -647,7 +684,11 @@ canvas{display:block;position:fixed;inset:0;
 </div>
 
 <!-- Ortak ağaç kütüphanesi (yol bulma / ortak ata) — sunucudaki asistanla aynı kod -->
-<script type="module">import * as L from "/lib/agac.js"; window.AgacLib = L;</script>
+<script type="module">
+  import * as L from "/lib/agac.js"; import * as T from "/lib/soy-tarihi.js";
+  window.AgacLib = L; window.SoyTarihi = T;
+  window.dispatchEvent(new Event("kok-lib-hazir"));
+</script>
 <script>
 // Fahri Arslan'ın 1956 el çizimi soy ağacı — ayrı dosya (public/koken.jpg).
 // Eskiden base64 olarak buraya gömülüydü: 556 KB, her ziyarette Köken ekranı
@@ -2918,6 +2959,7 @@ function renderProfileSections(n){
   const isOpts = ["", "Çalışıyor", "Emekli", "Öğrenci", "Ev hanımı", "Çalışmıyor"];
   const infoSec = document.createElement("div");
   infoSec.innerHTML = `<div class="section-title">Kişisel bilgiler</div>
+    <div class="field"><label>Doğum yılı</label><input id="piDogum" inputmode="numeric" maxlength="10" value="${escapeHtml(info.dogum||"")}" placeholder="örn. 1938 — Rehber'in adı ailenin en büyüğünden gelir"></div>
     <div class="field"><label>Meslek</label><input id="piJob" value="${escapeHtml(info.job||"")}" placeholder="örn. öğretmen, mühendis…"></div>
     <div class="field"><label>Eğitim</label><input id="piEdu" value="${escapeHtml(info.education||"")}" placeholder="örn. Lise, İstanbul Üniv. İşletme"></div>
     <div class="row2">
@@ -3059,7 +3101,7 @@ function renderProfileSections(n){
   // olaylar — kaydetme
   const save=(showToast)=>{ const p=getProfile(n.id);
     p.contact={phone:val("pcPhone"),email:val("pcEmail"),address:val("pcAddr")};
-    p.info={ job:val("piJob"), education:val("piEdu"),
+    p.info={ dogum:val("piDogum"), job:val("piJob"), education:val("piEdu"),
       marital:valSel("piMarital"), work:valSel("piWork") };
     p.social=p.social||{};
     wrap.querySelectorAll("input[data-soc]").forEach(inp=>{ p.social[inp.dataset.soc]=inp.value.trim(); });
@@ -3719,6 +3761,14 @@ function renderAnalysis(){
   }
   btn.onclick=()=>{ ensureImg(); screen.style.display="flex"; };
   closeBtn.onclick=()=>{ screen.style.display="none"; };
+  const hBtn=document.getElementById("kokenHikayeBtn"), hPanel=document.getElementById("kokenHikaye");
+  const hikayeGoster=(ac)=>{
+    if(ac && !hPanel.dataset.dolu){ kokenHikayesiCiz(hPanel); }
+    hPanel.classList.toggle("acik", ac); hBtn.setAttribute("aria-expanded", String(ac));
+    hBtn.textContent = ac ? "✕ Hikâyeyi kapat" : "📜 Kökenimizin hikâyesi";
+  };
+  hBtn.onclick=()=>hikayeGoster(!hPanel.classList.contains("acik"));
+  window.__kokenHikayeAc=()=>{ ensureImg(); screen.style.display="flex"; hikayeGoster(true); };
 
   // ---- Görsel görüntüleyici: yakınlaştır / kaydır ----
   // Eskiden tek tık scale(2.2) yapıyor, kaydırma için ebeveynin scroll'una
@@ -3825,6 +3875,12 @@ const REHBER_KEY="kok_rehber_gorildi";
 
 // Komut tablosu: desen → çalıştırıcı. Sıra önemli (özel olan önce).
 const KOMUTLAR=[
+  { ad:"tarih",  desen:/nereden gel|nereli|nereden geliyor|kökenimiz ne|kökenimiz nere|soyumuz|1615|arhavi|potocur|derbent|uzunal|molla memiş kim|ilk ata|atamız|fahri arslan.*(not|yaz)/i,
+    calistir:()=>{
+      const T=window.SoyTarihi; if(!T) return null;
+      setTimeout(()=>{ if(typeof window.__kokenHikayeAc==="function") window.__kokenHikayeAc(); }, 1200);
+      return `Fahri Arslan'ın 1956 notuna göre: ${T.FAHRI_NOTU.metin}\n\nKökenimizin hikâyesini (zaman çizelgesi, yerler, kaynaklar) açıyorum.`;
+    } },
   { ad:"koken",  desen:/köken|1956|çizim|orijinal|miras/i,
     calistir:()=>{ document.getElementById("kokenBtn")?.click();
       return "Kökenimizi açtım — babanın 1956 çizimi."; } },
@@ -4128,8 +4184,10 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   if(!panel) return;
 
   const ORNEKLER=[
-    "Yüksel'i göster",
+    "Nereden geldik?",
     "Emine ile Fahri nasıl akraba?",
+    "Molla Memiş kimdir?",
+    "Yüksel'i göster",
     "Aslanişi kolunu göster",
     "Kollar neler?",
     "Yaşayanları göster",
@@ -4166,9 +4224,12 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   }
 
   function ac(ilkZiyaret){
+    rehberAdiGuncelle();
+    const eb=rehberBuyuk;
+    const kim = eb ? `Ben ${eb.tamAd} Rehberi — adımı ailemizin yaşayan en büyüğü ${ayrilmaEki(eb.ad)} alıyorum. ` : "";
     yaz(ilkZiyaret
-      ? "Merhaba! Bu, Abdurrahman Oğullarının soy evreni — Fahri Arslan'ın 1956'da elle çizdiği ağacın yaşayan hâli. Bir kişiyi getirebilir, iki kişinin nasıl akraba olduğunu bulabilir ya da ağacı nesillere göre süzebilirim. Ne yapmak istersin?"
-      : "Tekrar hoş geldin! Ne yapmak istersin?");
+      ? `Hoş geldin! ${kim}Bu, Abdurrahman Oğullarının soy evreni — Fahri Arslan'ın 1956'da elle çizdiği ağacın yaşayan hâli. Soyumuz hakkında ne sorarsan sorabilirsin: nereden geldiğimizi, kimin kimin nesi olduğunu, büyüklerimizin anılarını…`
+      : `Tekrar hoş geldin! ${kim}Soyumuz hakkında ne merak ediyorsun?`);
     ciplerKur();
     panel.style.display="block";
     if(typeof kotaTazele==="function") kotaTazele();
@@ -4313,6 +4374,59 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     },{passive:true, once:false});
   });
 })();
+
+// ============================ REHBERİN ADI ============================
+// Rehber, ailenin yaşayan en büyüğünün adını taşır (doğum yılı girilmişse en eski
+// doğumlu, yoksa en eski nesildeki yaşayan). Hesap public/lib/agac.js → enBuyukYasayan
+// (sunucudaki asistanla aynı kod). Rehber o kişi değildir; adı saygı ifadesidir.
+let rehberBuyuk=null;
+// Türkçe ayrılma eki: Naziye'den, Hasan'dan, Zeki'den, Ahmet'ten, Yusuf'tan
+function ayrilmaEki(ad){
+  const k=String(ad||"").toLocaleLowerCase("tr");
+  const unluler=k.match(/[aeıioöuü]/g)||[]; const son=unluler[unluler.length-1]||"e";
+  const ince="eiöü".includes(son);
+  const sert="fstkçşhp".includes(k.slice(-1));
+  return `${ad}'${sert?"t":"d"}${ince?"en":"an"}`;
+}
+function rehberAdiGuncelle(){
+  if(!window.AgacLib || !nodes.length) return;
+  try{ rehberBuyuk=AgacLib.enBuyukYasayan(currentGraphJSON()); }catch(e){ rehberBuyuk=null; }
+  const el=document.getElementById("rehberAd");
+  if(el){ el.textContent = rehberBuyuk ? `${rehberBuyuk.tamAd} · Rehber` : "Rehber";
+    el.title = rehberBuyuk ? (rehberBuyuk.yontem==="dogum"
+      ? "Adını doğum yılına göre ailenin yaşayan en büyüğünden alır"
+      : "Adını ailenin yaşayan en büyüğünden alır (doğum yılı girilmediği için en eski nesle göre)") : ""; }
+}
+addEventListener("kok-lib-hazir", rehberAdiGuncelle);
+
+// ============================ KÖKENİMİZİN HİKÂYESİ ============================
+function kokenHikayesiCiz(kap){
+  const T=window.SoyTarihi;
+  if(!T){ kap.innerHTML=`<div class="khBos">Yükleniyor…</div>`; addEventListener("kok-lib-hazir",()=>kokenHikayesiCiz(kap),{once:true}); return; }
+  const kay=l=>(l||[]).map(k=>T.KAYNAKLAR[k]).filter(Boolean)
+    .map(k=>`<a href="${escapeHtml(k.url)}" target="_blank" rel="noopener">${escapeHtml(k.ad)}</a>`).join(" · ");
+  const etiket=g=>`<span class="khEtiket kh-${g}">${escapeHtml(T.GUVEN_ETIKETI[g]||g)}</span>`;
+  const kart=x=>`<div class="khKart">
+      <div class="khKartUst"><b>${escapeHtml(x.ad||x.baslik)}</b>${etiket(x.guven)}</div>
+      <p>${escapeHtml(x.metin)}</p>${x.kaynak&&x.kaynak.length?`<div class="khKaynak">Kaynak: ${kay(x.kaynak)}</div>`:""}</div>`;
+  kap.innerHTML=`
+    <div class="khIc">
+      <div class="khUst">Kökenimizin hikâyesi</div>
+      <blockquote class="khNot">
+        <p>“${escapeHtml(T.FAHRI_NOTU.metin)}”</p>
+        <footer>${escapeHtml(T.FAHRI_NOTU.imza)} <span>· çizimin sağ alt köşesindeki not</span></footer>
+      </blockquote>
+      <p class="khAcik">${escapeHtml(T.FAHRI_NOTU.aciklama)} Aşağıdaki bilgiler internette yayımlanmış kaynaklardan derlendi; her birinin ne kadar kesin olduğu etiketle belirtildi.</p>
+      <h4>Zaman çizelgesi</h4>
+      <ol class="khZaman">${T.ZAMAN.map(z=>`<li><span class="khYil">${escapeHtml(z.yil)}</span>${kart(z)}</li>`).join("")}</ol>
+      <h4>Yerler</h4>${T.YERLER.map(kart).join("")}
+      <h4>Adlar ve unvanlar</h4>${T.ADLAR.map(kart).join("")}
+      <h4>Daha derine inmek için</h4>
+      <ul class="khOneri">${T.ARASTIRMA_ONERILERI.map(o=>`<li>${escapeHtml(o)}</li>`).join("")}</ul>
+      <p class="khAcik">Aile büyüklerinin bildikleri bu sayfadaki her şeyden değerlidir: bir kişinin kartında <b>🎙 Hikâye anlat</b> ile kaydedebilirsin.</p>
+    </div>`;
+  kap.dataset.dolu="1";
+}
 
 // ============================ ÜCRETSİZ ASİSTAN · SESLİ HİKÂYE · AİLEMİZİN BU AYI ============================
 // Sınırlar/kotalar sunucudaki tek kaynaktan (api/_lib/ayar.js) gelir: /api/kullanim?adim=ayar.
@@ -4920,6 +5034,7 @@ async function cloudLoad(){
       // Sayaçlar açılışta (ağaç henüz boşken) hesaplanıyor; veri gelince tazele.
       // Gömülü GRAPH kaldırılınca bunlar "0 kişi · 0 bağ" olarak takılı kalıyordu.
       updateStatus(); renderStats();
+      if(typeof rehberAdiGuncelle==="function") rehberAdiGuncelle();
       showHint("Ortak ağaca bağlandın · düzenlemek için aile şifresiyle giriş yap");
     } else if(j && j.ok){
       // bulut boş → yerel ağaç ekranda kalsın; buluta yazmak admin girişi ister.

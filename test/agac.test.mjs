@@ -67,3 +67,30 @@ test('hikâye: uzun döküm parçalanır, düzenleme sözcük değiştirirse red
   assert.ok(icerikKorundu('dedem tarlaya gitti sonra eve döndü', 'Dedem tarlaya gitti. Sonra eve döndü.'));
   assert.ok(!icerikKorundu('dedem tarlaya gitti sonra eve döndü', 'Büyükbabam bahçeye yürüdü.'));
 });
+
+test('enBuyukYasayan: doğum yılı yoksa en eski nesildeki yaşayan; doğum yılı girilince ona göre', async () => {
+  const { enBuyukYasayan } = await import('../api/_lib/agac.js');
+  const eb = enBuyukYasayan(veri);
+  assert.equal(eb.yontem, 'nesil');
+  assert.ok(eb.tamAd.endsWith(eb.unvan));
+  const v2 = structuredClone(veri);
+  const yuksel = v2.nodes.find((n) => n.id === 'p12222123');
+  yuksel.profile = { info: { dogum: '1901' } };
+  const eb2 = enBuyukYasayan(v2);
+  assert.deepEqual([eb2.id, eb2.tamAd, eb2.yontem], ['p12222123', 'Yüksel Dede', 'dogum']);
+  // vefat edenin doğum yılı dikkate alınmaz
+  const v3 = structuredClone(v2);
+  v3.nodes.find((n) => n.id === 'p12222123').alive = false;
+  assert.notEqual(enBuyukYasayan(v3).id, 'p12222123');
+});
+
+test('soy tarihi: Fahri Arslan notu birebir, her bilgi güven etiketli, kaynaklar geçerli', async () => {
+  const T = await import('../api/_lib/soy-tarihi.js');
+  assert.match(T.FAHRI_NOTU.metin, /Aşağı Potocur \(Üçırmak\).*UZUNALOĞULLARI.*1615.*DERBENT.*Molla Memiş/);
+  for (const x of [...T.ZAMAN, ...T.YERLER, ...T.ADLAR]) {
+    assert.ok(T.GUVEN_ETIKETI[x.guven], x.ad || x.baslik);
+    for (const k of x.kaynak) assert.ok(T.KAYNAKLAR[k]?.url?.startsWith('https://'), k);
+  }
+  const o = T.soyTarihiOzet();
+  assert.ok(o.fahri_arslan_notu.includes('1956'));
+});

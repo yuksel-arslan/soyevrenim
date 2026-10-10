@@ -22,6 +22,28 @@ Rehber girişi / 🎤 ─► arayüz komutu mu? (köken, istatistik, kol, "3-6 n
 - **Kaynak:** yanıt sonunda `Kaynak: <kişi>'in anısı, <tarih>` ya da `Kaynak: soy ağacı kaydı`.
 - **Görsel:** `yol_bul` çağrıldıysa istemci yolu ağaçta çizer (`gorsel.yol`), tek kişi getirildiyse kişiyi seçer (`gorsel.kisi`).
 
+## Rehberin adı
+
+Rehber, ailenin **yaşayan en büyüğünün** adını taşır (örn. "Naziye Nine · Rehber").
+Hesap `api/_lib/agac.js → enBuyukYasayan()` (istemci aynı kodu `public/lib/agac.js`'ten kullanır):
+
+1. Profilinde **Doğum yılı** girilmiş yaşayanlar arasında en eskisi (`yontem: 'dogum'`);
+2. yoksa en eski nesildeki yaşayan; aynı nesilde kimlik sırası (kayıtlarda büyük kardeş önce) (`yontem: 'nesil'`).
+
+Rehber o kişi **değildir**: sistem istemi modelin o büyüğün ağzından konuşmasını, onun adına
+anı/söz uydurmasını yasaklar; ad yalnızca saygı ifadesidir. Doğum yılı girildikçe seçim kesinleşir.
+
+## Soy tarihi (`soy_tarihi` aracı)
+
+`api/_lib/soy-tarihi.js` (→ `public/lib/soy-tarihi.js`): Fahri Arslan'ın 1956 çizimindeki not
+(birincil kaynak, birebir) + internetten derlenen bağlam. Her bilgi bir güven etiketi taşır:
+**Aile kaydı** · **Kaynakta geçiyor** (bağlantılı) · **Yorum** · **Teyit gerekli**.
+Asistan köken/göç/yer/kol sorularında bu aracı çağırır; araç ayrıca ağacın sayılarını
+(kişi, yaşayan, nesil, kök, kolların soy büyüklüğü) döndürür. Sonuç `ASISTAN.soyTarihiMaxKarakter`
+ile sınırlı, istem yine `MESAJ_MAX_TOKEN` altında. Aynı içerik Köken ekranında
+**📜 Kökenimizin hikâyesi** panelinde gösterilir; kota yokken ücretsiz Rehber `tarih` komutuyla
+Fahri Arslan'ın notunu söyler ve paneli açar.
+
 ## Uç
 
 `POST /api/asistan`
@@ -49,6 +71,7 @@ Yanıt (her zaman HTTP 200):
 | `kisi_getir {kisi_id}` | Profil: ebeveyn, eş, çocuk, kardeş, meslek, eğitim, anılar (iletişim bilgisi **verilmez**) |
 | `yol_bul {a_id, b_id}` | En kısa akrabalık yolu, adım ilişkileri, ortak ata, derece (istemcideki "Yol bul" ile aynı kod) |
 | `ani_ara {sorgu, kisi_id?}` | Anı metni/başlık/tarih içinde arama |
+| `soy_tarihi {}` | Fahri Arslan notu, zaman çizelgesi, yerler, adlar (güven etiketli, kaynaklı) + ağaç sayıları |
 | `oneri_olustur {islemler, aciklama}` | `kisi_ekle`, `iliski_ekle`, `bilgi_duzelt` yaması → onay kuyruğu |
 
 Yama işlemleri (`api/_lib/oneri.js`):
