@@ -3914,7 +3914,10 @@ function uzmanYaniti(metin){
   const U=window.Uzmanlik; if(!U) return null;
   const lazca = /laz(ca|uri)/i.test(metin) || U.lazcaMi(metin);
   const l = lazca ? U.uzmanAra(metin,"lazca",1) : U.uzmanAra(metin,null,2).filter(k=>k.beceri!=="lazca");
-  const k=l[0]; if(!k || k.puan<UZMAN_ESIK) return null;
+  const k=l[0];
+  // Lazca istendi ama belirli bir konu yok ("Lazca konuşalım", "Lazca biliyor musun?") → Lazca karşılama
+  if((!k || k.puan<UZMAN_ESIK) && lazca) return U.BECERILER.lazca.karsilama;
+  if(!k || k.puan<UZMAN_ESIK) return null;
   const kay=(k.kaynak||[]).map(x=>U.BECERI_KAYNAKLARI[x]?.ad).filter(Boolean).join(" · ");
   const selam = U.lazcaMi(metin) ? "Xelaǩaoba! (Merhaba!) " : "";
   return `${selam}${k.metin}${kay?`\n\nKaynak: ${kay}`:""}`;
@@ -4137,7 +4140,8 @@ const KOMUTLAR=[
       const liste=rehberKisiAra(temiz||metin);
       // Uzun bir cümle (soru) isim değildir: "kimseyi bulamadım" demek yerine yardım mesajına bırak
       const sozcuk=(temiz||metin).trim().split(/\s+/).length;
-      if(!liste.length) return sozcuk>2 || /\?$/.test(metin.trim()) ? null : `“${(temiz||metin).trim()}” için kimseyi bulamadım.`;
+      // Yalnızca tek sözcük (bir ad) yazıldıysa "bulamadım" de; cümleler yardım mesajına kalsın
+      if(!liste.length) return sozcuk>1 || /\?$/.test(metin.trim()) ? null : `“${(temiz||metin).trim()}” için kimseyi bulamadım.`;
       const k=liste[0];
       selectNode(k); if(typeof merkezeAl==="function") merkezeAl(k);
       const kim=(typeof kimlikSatiri==="function") ? kimlikSatiri(k) : "";
@@ -4277,13 +4281,18 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   }
   function yaz(t){ mesaj.textContent=t; }
 
+  // JS düzenli ifadelerinde /i bayrağı Türkçe "İ"yi "i" saymaz ("İstatistikleri aç"
+  // /istatistik/i ile eşleşmez). Önce olduğu gibi, olmazsa Türkçe küçük harfle dene.
+  function komutEslesir(t,desen){
+    return t.match(desen) || t.toLocaleLowerCase("tr").match(desen);
+  }
   function calistirKomut(metin){
     const t=String(metin||"").trim();
     if(!t) return;
     // Bir komut null döndürürse "ben bakmadım" demektir → sıradakine geçilir.
     // (Kol komutu böyle çalışıyor: metin kol adı değilse kişi aramasına düşsün.)
     for(const k of KOMUTLAR){
-      const m=t.match(k.desen);
+      const m=komutEslesir(t,k.desen);
       if(!m) continue;
       let c=null;
       try{ c=k.calistir(m,t); }catch(e){ yaz("Bunu yapamadım."); return; }
@@ -4378,7 +4387,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     for(const k of KOMUTLAR){
       if(k.ad==="uzman") continue;   // bilgi becerisi arayüz komutu değil: asistan önce denesin
       if(k.ad==="kol") return typeof kolBul==="function" && !!kolBul(t);
-      if(!k.desen.test(t)) continue;
+      if(!komutEslesir(t,k.desen)) continue;
       if(YEREL.has(k.ad)) return true;
       if(k.ad==="nesil" && /(\d+)\D+(\d+)/.test(t)) return true;
       return false;
