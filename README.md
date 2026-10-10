@@ -10,7 +10,7 @@ onayından geçer.
 - **Herkes kendi bakışının merkezinde** — kim bakıyorsa onun soyu aydınlanır
 - **Aile şifresiyle giriş** — ortak şifre girilir, imzalı oturum jetonu verilir (SMS/telefon yok)
 - **Onay sistemi** — kimse ana ağacı doğrudan değiştiremez; değişiklikler admin onayından geçer
-- **Foto & video** — Vercel Blob'da ortak saklanır, herkes görür
+- **Foto & video** — Cloudflare R2'de (sesli hikâyelerle aynı depo) ortak saklanır, herkes görür
 - **Fotoğraflı avatarlar, iletişim, sosyal medya, anılar**
 - **Mobil uyumlu, dark/light/yadigâr**
 - **Asistan** — soru yanıtlar, konuşarak kişi ekleme önerir (Groq, ücretsiz katman) · [docs/asistan.md](docs/asistan.md)
@@ -23,7 +23,7 @@ onayından geçer.
 - Frontend: tek dosya (`public/index.html`) — kütüphane bağımlılığı yok, saf Canvas
 - Backend: Vercel Serverless Functions (`api/`)
 - Veritabanı: Neon (PostgreSQL)
-- Medya: Vercel Blob
+- Medya: Cloudflare R2 (imzalı yükleme, doğrudan tarayıcıdan)
 - Giriş: aile/admin şifresi + HMAC imzalı oturum jetonu (harici servis yok)
 
 ## Kurulum

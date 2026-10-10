@@ -19,7 +19,7 @@ kok-canli/
 │   ├── agac.js           ← veritabanına oku/yaz (Vercel fonksiyonu)
 │   ├── giris.js          ← aile/admin şifresiyle giriş, oturum jetonu
 │   ├── oneri.js          ← onay kuyruğu (öneri gönder/listele/karar)
-│   ├── medya.js          ← foto/video yükleme (Vercel Blob)
+│   ├── medya.js          ← foto/video yükleme (Cloudflare R2)
 │   └── sohbet.js         ← aile sohbeti / kişi yorumları
 ├── schema.sql            ← Neon'da bir kez çalıştırılacak tablo kurulumu
 ├── package.json          ← bağımlılık (@neondatabase/serverless)
@@ -119,22 +119,23 @@ Giriş yapmayanlar okur ama yazamaz. Herkes kendi mesajını silebilir; admin he
 
 ---
 
-## Fotoğraf & Video — Vercel Blob
+## Fotoğraf & Video — Cloudflare R2
 
-Foto ve videolar artık **ortak** saklanır (herkes görür), Vercel Blob'da. Kurulumu:
+Foto ve videolar **ortak** saklanır (herkes görür), sesli hikâyelerle **aynı R2 kovasında**
+(`medya/` klasörü). Ayrı bir depo kurmak gerekmez; R2 ortam değişkenleri yeter
+(`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`).
 
-1. Vercel'de projene gir → üstten **Storage** → **Create Database** → **Blob** seç → oluştur.
-2. Vercel otomatik olarak `BLOB_READ_WRITE_TOKEN` değişkenini projene ekler — ekstra iş yok.
-3. `package.json`'da `@vercel/blob` zaten var; deploy edince kurulur.
+Dosya tarayıcıdan **doğrudan R2'ye** yüklenir (Vercel'den geçmez, 4,5 MB sınırı yok).
+Bunun için R2 kovasının **CORS** ayarında sitenin adresine `PUT` ve `GET` izni olmalı:
+Cloudflare → R2 → kova → Settings → CORS Policy:
 
-Artık bir kişinin panelinden fotoğraf ya da video eklediğinde Blob'a yüklenir,
-herkes görür. Video için "Fotoğraf / Video ekle" düğmesini kullan (aynı yerden).
+```json
+[{ "AllowedOrigins": ["https://soyevrenim.com"], "AllowedMethods": ["GET", "PUT"],
+   "AllowedHeaders": ["content-type"], "MaxAgeSeconds": 3600 }]
+```
 
-**Sınırlar / maliyet:**
-- Bu sürümde dosya başına **50 MB** sınırı var (kısa videolar için ideal; ayarlanabilir).
-- Vercel Blob ücretsiz katman: belli bir depolama + trafik ücretsiz, sonrası cüzi.
-  Aile fotoğrafları/kısa videolar için başlangıçta ücretsiz katman yeter.
-- Uzun/çok sayıda video biriktikçe ücretli katmana geçebilirsin — panelden takip edilir.
+**Sınırlar:** fotoğraf (küçültüldükten sonra) 15 MB, video 200 MB — `api/_lib/ayar.js → MEDYA`.
+R2 ücretsiz katmanı 10 GB depolama; ses + foto birlikte sayılır. Ayrıntı: `docs/medya.md`.
 
 > Not: Fotoğraflar yüklenmeden önce otomatik küçültülür (hızlı yüklensin, yer kaplamasın).
 > Videolar olduğu gibi yüklenir.
@@ -214,7 +215,6 @@ Vercel'de projene gir → **Settings → Environment Variables** → şunları e
 | `AILE_SIFRESI` | Ailenin ortak şifresi — bunu aile üyelerine verirsin |
 | `ADMIN_SIFRESI` | Senin yönetici şifren — kimseyle paylaşma |
 | `OTURUM_GIZLI` | En az 40 karakter rastgele metin (jeton imzası için) |
-| `BLOB_READ_WRITE_TOKEN` | **Otomatik** — Blob deposu oluşturunca Vercel kendi ekler |
 
 Kaydet, sonra **Deployments → en üstteki → ⋯ → Redeploy** (değişkenlerin geçerli olması için).
 
@@ -251,7 +251,7 @@ Fazlasıyla. Neon 0.5 GB (metin ağacı bunun binde birini bile doldurmaz), Verc
 aylık 100 GB trafik. Bir aile için yıllarca sorun çıkmaz.
 
 **Fotoğraflar ortak mı?**
-Evet. Vercel Blob'da saklanır, ekleyen kim olursa olsun herkes görür
+Evet. Cloudflare R2'de saklanır, ekleyen kim olursa olsun herkes görür
 (yukarıdaki "Fotoğraf & Video" bölümüne bak).
 
 **Biri yanlışlıkla bozarsa?**
