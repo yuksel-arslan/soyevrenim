@@ -208,6 +208,30 @@ body:has(.inspector.show) #activeCard{display:none !important}
   color:var(--on-accent);font-size:12px;font-weight:600;padding:7px 14px;border-radius:20px;opacity:0;
   transition:opacity .3s;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .hint.show{opacity:1}
+/* Köken başlığı: metin ORTADA (çizimle aynı eksende), düğmeler sağda — üç sütunlu ızgara,
+   dar ekranda bile düğmelerle çakışmaz */
+.kokenBas{display:grid !important;grid-template-columns:1fr minmax(0,680px) 1fr;align-items:start}
+.kokenBas .kokenMetin{grid-column:2;max-width:none !important;text-align:center}
+.kokenBas .kokenAciklama{margin-left:auto;margin-right:auto}
+.kokenBas .kokenDugmeler{grid-column:3;justify-self:end;flex-wrap:nowrap !important}
+#kokenScreen{overflow:hidden}   /* kapalı hikâye paneli (sağdan kayar) yana taşma yaratmasın */
+/* Tam ekran: yalnızca çizim (başlık, hikâye paneli, alt yazı gizli); denetimler kalır */
+#kokenScreen.tamEkran{background:#000}
+#kokenScreen.tamEkran .kokenBas,#kokenScreen.tamEkran #kokenHikaye,#kokenScreen.tamEkran .kokenAltYazi{display:none !important}
+#kokenScreen.tamEkran #kokenWrap{padding:0 !important}
+#kokenScreen.tamEkran #kokenImg{border-radius:0;box-shadow:none}
+/* Köken ekranı mobil: düğmeler üstte tek satır (Kapat hep görünür), başlık altta tam genişlik,
+   uzun açıklama 3 satır — dokununca açılır (çizime yer kalsın) */
+@media (max-width:640px){
+  .kokenBas{display:flex !important;flex-direction:column-reverse;padding:calc(env(safe-area-inset-top,0) + 12px) 14px 10px !important;gap:10px !important}
+  .kokenMetin{max-width:100% !important}
+  .kokenMetin > div:nth-child(2){font-size:18px !important}
+  .kokenDugmeler{width:100%;flex-wrap:nowrap !important;justify-content:space-between !important}
+  .kokenDugmeler #kokenHikayeBtn{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kokenAciklama{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+  .kokenAciklama.acik{display:block;-webkit-line-clamp:unset}
+  #kokenWrap{padding:0 12px 12px !important}
+}
 .hint.show.tikla{pointer-events:auto;cursor:pointer}   /* eylemli ipucu: dokununca açar */
 
 /* toast */
@@ -553,25 +577,26 @@ body:has(.inspector.show) #activeCard{display:none !important}
 <!-- KÖKEN / MİRAS — babanın 1956 çizimi -->
 <div id="kokenScreen" style="position:fixed;inset:0;z-index:60;background:var(--overlay);
   display:none;flex-direction:column;backdrop-filter:blur(4px)">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:20px 24px;flex:none">
-    <div style="max-width:70%">
+  <div class="kokenBas" style="display:flex;justify-content:space-between;align-items:flex-start;padding:20px 24px;flex:none;gap:12px">
+    <div class="kokenMetin" style="max-width:70%">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:3px;
         text-transform:uppercase;color:var(--spine);margin-bottom:6px">Kökenimiz</div>
       <div style="font-weight:700;font-size:20px;color:var(--text)">Abdurrahman Oğullarının Soy Ağacı</div>
-      <div style="font-size:13px;color:var(--text-soft);margin-top:6px;line-height:1.6;max-width:640px">
+      <div class="kokenAciklama" title="Tamamını okumak için dokun" style="font-size:13px;color:var(--text-soft);margin-top:6px;line-height:1.6;max-width:640px">
         Bu evrenin başladığı yer: babam <b style="color:var(--text)">Fahri Arslan</b>'ın 1956'da,
         elleriyle çizdiği soy ağacı. Aşağıdaki her dal, her yaprak, onun sabrıyla ve sevgisiyle
         kâğıda geçti. Bugün ekranda dönen bu görsel şölen, onun o eserinin yaşayan devamıdır.
         <span style="color:var(--spine)">Saygıyla anıyoruz.</span>
       </div>
     </div>
-    <div style="display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end">
+    <div class="kokenDugmeler" style="display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end">
       <button id="kokenHikayeBtn" class="tbtn primary" aria-expanded="false">📜 Kökenimizin hikâyesi</button>
       <button id="kokenClose" style="background:var(--panel);border:1px solid var(--line);
         color:var(--text);font-size:14px;cursor:pointer;padding:9px 16px;border-radius:9px;flex:none">✕ Kapat</button>
     </div>
   </div>
   <!-- Kökenimizin hikâyesi: Fahri Arslan'ın notu + kaynaklı bağlam (public/lib/soy-tarihi.js) -->
+  <script>document.querySelector(".kokenAciklama").addEventListener("click",e=>e.currentTarget.classList.toggle("acik"));</script>
   <aside id="kokenHikaye" class="kokHikaye" aria-label="Kökenimizin hikâyesi"></aside>
   <!-- Görsel görüntüleyici: yakınlaştırılabilir + kaydırılabilir.
        overflow:hidden + touch-action:none — tarayıcının kendi kaydırma/zoom'unu
@@ -586,13 +611,14 @@ body:has(.inspector.show) #activeCard{display:none !important}
     <div style="position:absolute;right:18px;bottom:34px;display:flex;flex-direction:column;gap:6px">
       <button id="kokenZin"  title="Yakınlaştır" style="width:38px;height:38px;font-size:18px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;cursor:pointer">＋</button>
       <button id="kokenZout" title="Uzaklaştır"  style="width:38px;height:38px;font-size:18px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;cursor:pointer">−</button>
+      <button id="kokenTam"  title="Tam ekran (çizime çift dokunarak da)" style="width:38px;height:38px;font-size:16px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;cursor:pointer">⛶</button>
       <button id="kokenFit"  title="Ekrana sığdır" style="width:38px;height:38px;font-size:15px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;cursor:pointer">⟲</button>
     </div>
     <div id="kokenZoomLbl" style="position:absolute;left:26px;bottom:34px;font-family:'IBM Plex Mono',monospace;
       font-size:11px;color:var(--muted);background:var(--panel);border:1px solid var(--line);
       border-radius:6px;padding:4px 8px">%100</div>
   </div>
-  <div style="flex:none;text-align:center;padding:0 0 18px;font-family:'IBM Plex Mono',monospace;
+  <div class="kokenAltYazi" style="flex:none;text-align:center;padding:0 0 18px;font-family:'IBM Plex Mono',monospace;
     font-size:11px;color:var(--muted);letter-spacing:1px">1956 — Fahri Arslan · Fındıklı, Derbent köyü · Uzunaloğulları soyundan</div>
 </div>
 
@@ -3432,6 +3458,7 @@ function pickPhoto(n){
       const p=getProfile(n.id); p.photo=url; PROFILES[n.id]=p; saveProfile(n.id,p);
       const im=new Image(); im._src=url; im.onload=()=>{ n._img=im; }; im.src=url; n._img=im;
       iDot.style.background=`center/cover url(${url})`; iDot.style.backgroundSize="cover";
+      if(activeNode && activeNode.id===n.id) showActiveCard(activeNode);
       toast("Profil fotoğrafı eklendi");
     }catch(e){ toast("Yükleme başarısız: "+e.message); } };
   inp.click();
@@ -4068,7 +4095,7 @@ function renderAnalysis(){
     if(typeof KOKEN_IMG!=="undefined" && KOKEN_IMG){ img.src=KOKEN_IMG; }
   }
   btn.onclick=()=>{ ensureImg(); screen.style.display="flex"; };
-  closeBtn.onclick=()=>{ screen.style.display="none"; };
+  closeBtn.onclick=()=>{ if(screen.classList.contains("tamEkran")) tamEkran(false); screen.style.display="none"; };
   const hBtn=document.getElementById("kokenHikayeBtn"), hPanel=document.getElementById("kokenHikaye");
   const hikayeGoster=(ac)=>{
     if(ac && !hPanel.dataset.dolu){ kokenHikayesiCiz(hPanel); }
@@ -4160,6 +4187,23 @@ function renderAnalysis(){
   document.getElementById("kokenZin").onclick =()=>olcekle(k*1.4,null,null,true);
   document.getElementById("kokenZout").onclick=()=>olcekle(k/1.4,null,null,true);
   document.getElementById("kokenFit").onclick =sifirla;
+  // TAM EKRAN: tarayıcı destekliyorsa gerçek tam ekran (Fullscreen API), değilse (iPhone Safari)
+  // sayfa içi tam ekran — başlık ve paneller gizlenir, çizim bütün ekranı kaplar.
+  const tamDugme=document.getElementById("kokenTam");
+  function tamEkran(ac){
+    const acik = ac==null ? !screen.classList.contains("tamEkran") : ac;
+    screen.classList.toggle("tamEkran", acik);
+    tamDugme.textContent = acik ? "⤡" : "⛶"; tamDugme.title = acik ? "Tam ekrandan çık" : "Tam ekran (çizime çift dokunarak da)";
+    try{
+      if(acik && screen.requestFullscreen && !document.fullscreenElement) screen.requestFullscreen().catch(()=>{});
+      if(!acik && document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+    }catch(e){}
+    requestAnimationFrame(()=>sifirla());
+  }
+  tamDugme.onclick=()=>tamEkran();
+  img.addEventListener("dblclick", e=>{ e.preventDefault(); tamEkran(); });
+  document.addEventListener("fullscreenchange", ()=>{   // Esc / sistem hareketiyle çıkınca eşitle
+    if(!document.fullscreenElement && screen.classList.contains("tamEkran")) tamEkran(false); });
 
   // ekran her açıldığında sığdırılmış başla
   const eskiAc=btn.onclick;
@@ -4167,7 +4211,7 @@ function renderAnalysis(){
 
   addEventListener("keydown",e=>{
     if(screen.style.display==="none") return;
-    if(e.key==="Escape"){ screen.style.display="none"; }
+    if(e.key==="Escape"){ if(screen.classList.contains("tamEkran")) tamEkran(false); else screen.style.display="none"; }
     else if(e.key==="+"||e.key==="=") olcekle(k*1.4,null,null,true);
     else if(e.key==="-") olcekle(k/1.4,null,null,true);
     else if(e.key==="0") sifirla();
@@ -5626,7 +5670,15 @@ function sunucuSurumunuUygula(veri){
   absorbCloudProfiles(veri);
   loadGraph(veri); layoutRadial();
   if(keepViewer && byId[keepViewer]) setViewer(keepViewer);
-  updateStatus(); if(typeof renderStats==="function") renderStats();
+  updateStatus(); if(typeof renderStats==="function") renderStats(); secimiTazele();
+}
+// Veri yenilenince (eşitleme / yükleme) seçili kişinin kartları da tazelenir: eskiden yalnız
+// düğüm yeni fotoğrafı çiziyordu, sağ üst kart ve düzenleme paneli eski fotoğrafta kalıyordu.
+function secimiTazele(){
+  if(activeNode){ activeNode=byId[activeNode.id]||null; showActiveCard(activeNode); }
+  // Düzenleme paneli yeniden kurulmaz (yazılan alanlar kaybolmasın); yalnız fotoğrafı tazelenir.
+  if(selNode){ selNode=byId[selNode.id]||null; const f=selNode&&(PROFILES[selNode.id]||{}).photo;
+    if(f){ iDot.style.background=`center/cover url(${f})`; iDot.style.backgroundSize="cover"; iDot.textContent=""; } }
 }
 function absorbCloudProfiles(g){
   // bulut ağaç verisindeki profilleri yerel PROFILES'e al (foto/video URL'leri dahil)
@@ -5807,7 +5859,7 @@ async function bulutYokla(){
       CLOUD.taban = j.veri;
       dirty=false;
       if(keepViewer && byId[keepViewer]) setViewer(keepViewer);
-      updateStatus(); renderStats();
+      updateStatus(); renderStats(); secimiTazele();
       showHint("Ağaç güncellendi — biri yeni bilgi ekledi");
     }
   }catch(e){}
