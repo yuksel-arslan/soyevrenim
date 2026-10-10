@@ -3458,6 +3458,7 @@ function pickPhoto(n){
       const p=getProfile(n.id); p.photo=url; PROFILES[n.id]=p; saveProfile(n.id,p);
       const im=new Image(); im._src=url; im.onload=()=>{ n._img=im; }; im.src=url; n._img=im;
       iDot.style.background=`center/cover url(${url})`; iDot.style.backgroundSize="cover";
+      if(activeNode && activeNode.id===n.id) showActiveCard(activeNode);
       toast("Profil fotoğrafı eklendi");
     }catch(e){ toast("Yükleme başarısız: "+e.message); } };
   inp.click();
@@ -5669,7 +5670,15 @@ function sunucuSurumunuUygula(veri){
   absorbCloudProfiles(veri);
   loadGraph(veri); layoutRadial();
   if(keepViewer && byId[keepViewer]) setViewer(keepViewer);
-  updateStatus(); if(typeof renderStats==="function") renderStats();
+  updateStatus(); if(typeof renderStats==="function") renderStats(); secimiTazele();
+}
+// Veri yenilenince (eşitleme / yükleme) seçili kişinin kartları da tazelenir: eskiden yalnız
+// düğüm yeni fotoğrafı çiziyordu, sağ üst kart ve düzenleme paneli eski fotoğrafta kalıyordu.
+function secimiTazele(){
+  if(activeNode){ activeNode=byId[activeNode.id]||null; showActiveCard(activeNode); }
+  // Düzenleme paneli yeniden kurulmaz (yazılan alanlar kaybolmasın); yalnız fotoğrafı tazelenir.
+  if(selNode){ selNode=byId[selNode.id]||null; const f=selNode&&(PROFILES[selNode.id]||{}).photo;
+    if(f){ iDot.style.background=`center/cover url(${f})`; iDot.style.backgroundSize="cover"; iDot.textContent=""; } }
 }
 function absorbCloudProfiles(g){
   // bulut ağaç verisindeki profilleri yerel PROFILES'e al (foto/video URL'leri dahil)
@@ -5850,7 +5859,7 @@ async function bulutYokla(){
       CLOUD.taban = j.veri;
       dirty=false;
       if(keepViewer && byId[keepViewer]) setViewer(keepViewer);
-      updateStatus(); renderStats();
+      updateStatus(); renderStats(); secimiTazele();
       showHint("Ağaç güncellendi — biri yeni bilgi ekledi");
     }
   }catch(e){}
