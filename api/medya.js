@@ -9,9 +9,7 @@
 // Yanıt: { ok:true, url:"https://...blob.vercel-storage.com/..." }
 
 import { put, del } from '@vercel/blob';
-import { neon } from '@neondatabase/serverless';
 import { jetonDogrula } from './giris.js';
-const sql = neon(process.env.DATABASE_URL);
 
 export const config = { api: { bodyParser: false } };  // ham dosya alacağız
 
@@ -55,6 +53,10 @@ export default async function handler(req, res){
 
     return res.status(405).json({ok:false});
   }catch(e){
-    return res.status(500).json({ok:false, hata:String(e.message||e)});
+    const m = String(e.message||e);
+    // Blob deposu bağlı değilse anlaşılır söyle (yönetici ne yapacağını bilsin)
+    if(/BLOB_READ_WRITE_TOKEN|No token found/i.test(m))
+      return res.status(503).json({ok:false, hata:'Fotoğraf deposu kurulmamış (yönetici: Vercel → Storage → Blob → projeye bağla)'});
+    return res.status(500).json({ok:false, hata:m});
   }
 }

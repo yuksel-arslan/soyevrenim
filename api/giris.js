@@ -34,6 +34,14 @@ export function jetonDogrula(jeton){
 export default async function handler(req, res){
   if(req.method !== 'POST'){ res.status(405).json({ok:false, hata:'POST kullanın'}); return; }
   const body = typeof req.body === 'string' ? JSON.parse(req.body||'{}') : (req.body||{});
+  // Oturum doğrula + yenile: istemci açılışta saklı jetonu sorar. Geçerliyse aynı rolle
+  // TAZE jeton döner (kullandıkça süresi uzar); geçersizse (süre doldu / OTURUM_GIZLI
+  // değişti) 401 → istemci "girişli" görünmeyi bırakır ve yeniden giriş ister.
+  if(body.adim === 'dogrula'){
+    const o = jetonDogrula(body.jeton);
+    if(!o){ res.status(401).json({ ok:false, hata:'Oturum geçersiz' }); return; }
+    res.status(200).json({ ok:true, rol:o.rol, jeton: jetonUret(o.rol) }); return;
+  }
   const girilen = String(body.sifre || '').trim();
   if(!girilen){ res.status(400).json({ok:false, hata:'Şifre gerekli'}); return; }
 
