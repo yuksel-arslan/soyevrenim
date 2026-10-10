@@ -111,6 +111,10 @@ canvas{display:block;position:fixed;inset:0;
   padding:12px 16px;background:linear-gradient(180deg,var(--bg),transparent);pointer-events:none}
 .brand{pointer-events:auto;font-weight:700;font-size:16px;letter-spacing:.3px;max-width:52vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .brand #brandName{color:var(--text)}
+.whoR{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--line);font-size:14px;color:var(--text);
+  display:flex;justify-content:space-between;gap:10px}
+.whoR:hover{background:var(--panel2)}
+.whoR small{color:var(--muted);text-align:right}
 /* soyevrenim işareti (çınar): renk tema token'ından */
 .logoIsaret{width:22px;height:22px;color:var(--spine);vertical-align:-4px;margin-right:7px;flex:none}
 .brand .sub{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--text-soft);
@@ -2875,8 +2879,20 @@ async function uploadMedia(file, maxW){
     const j = await r.json().catch(()=>({ ok:false, hata:`Sunucu yanıtı okunamadı (${r.status})` }));
     if(!j.ok) throw new Error(j.hata||"Yükleme başarısız");
     const p = await fetch(j.url,{ method:"PUT", headers:{"Content-Type":tip}, body:blob }).catch(()=>null);
-    if(!p || !p.ok) throw new Error(p ? `Depoya yüklenemedi (${p.status})` : "Depoya ulaşılamadı (R2 CORS ayarını kontrol et)");
-    return { url:j.okuUrl, video:isVideo };
+    if(p && p.ok) return { url:j.okuUrl, video:isVideo };
+    // YEDEK: doğrudan yükleme olmadı (çoğunlukla R2 CORS bu adrese izin vermiyor).
+    // Küçük dosyayı (fotoğraflar küçültülmüş hâliyle) sunucu üzerinden yükle — orada CORS yok.
+    const vekil = (AYAR && AYAR.MEDYA && AYAR.MEDYA.vekilMaxMb) || 0;
+    if(vekil && blob.size <= vekil*1024*1024){
+      const v = await yetkiliIstek(()=>fetch("/api/medya?"+new URLSearchParams({ adim:"yukle", jeton:sessionToken||"", tip }).toString(),
+        { method:"POST", headers:{"Content-Type":"application/octet-stream"}, body:blob }),
+        "Fotoğraf yüklemek için oturumunu yenile: aile ya da yönetici şifreni gir.");
+      const vj = await v.json().catch(()=>({ ok:false, hata:`Sunucu yanıtı okunamadı (${v.status})` }));
+      if(vj.ok) return { url:vj.okuUrl, video:isVideo };
+      throw new Error(vj.hata||"Yükleme başarısız");
+    }
+    throw new Error(p ? `Depoya yüklenemedi (${p.status})`
+      : `Depoya ulaşılamadı — R2 CORS ayarında bu adres izinli olmalı: ${location.origin}`);
   } else {
     // offline: data-uri (video için de, ama büyük olabilir)
     const url = await new Promise((res,rej)=>{
@@ -5409,25 +5425,28 @@ function startAs(id){
                 : "Görüntüleme modu · düzenlemek için aile şifresiyle gir");
   }
 }
-whoInput.addEventListener("input",()=>{
+// Ad arama (karşılama). INP: her harfte 40 satır + satır başına olay kurmak yavaş
+// telefonda ~240 ms takılıyordu. Şimdi: yazma bitince ara (kısa gecikme), en çok
+// WHO_MAX sonuç, tek tıklama dinleyicisi, küçük harfli adlar önbellekte.
+const WHO_MAX=12, WHO_GECIKME_MS=120;
+let whoT=0, whoAdlar=null, whoAdlarN=0;
+function whoAra(){
   const v=whoInput.value.toLocaleLowerCase("tr").replace(/\d+$/,"").trim();
   if(v.length<2){ whoResults.style.display="none"; return; }
+  if(!whoAdlar || whoAdlarN!==nodes.length){   // ağaç değişince tazele
+    whoAdlar=new Map(nodes.map(n=>[n.id, dispName(n.name).toLocaleLowerCase("tr")])); whoAdlarN=nodes.length; }
   // ölüler kendini seçemez — sadece yaşayanlar
-  const hits=nodes.filter(n=>n.alive!==false && dispName(n.name).toLocaleLowerCase("tr").includes(v)).slice(0,40);
-  whoResults.innerHTML=hits.length?hits.map(n=>{
-    const gen=(function(){let c=[],x=n;while(x){c.push(x);x=x._parent;}return c.length-1;})();
-    return `<div class="whoR" data-id="${n.id}" style="padding:10px 14px;cursor:pointer;
-      border-bottom:1px solid var(--line);font-size:14px;color:var(--text);display:flex;justify-content:space-between">
-      <span>${dispName(n.name)}</span><small style="color:var(--muted);text-align:right">${kimlikSatiri(n)}<br>${gen}. nesil</small></div>`;
-  }).join(""):`<div style="padding:10px 14px;color:var(--muted);font-size:13px">yaşayan biri bulunamadı</div>`;
+  const hits=nodes.filter(n=>n.alive!==false && whoAdlar.get(n.id).includes(v)).slice(0,WHO_MAX);
+  whoResults.innerHTML=hits.length?hits.map(n=>`<div class="whoR" data-id="${n.id}">
+      <span>${escapeHtml(dispName(n.name))}</span><small>${escapeHtml(kimlikSatiri(n))}<br>${chainOf(n).length-1}. nesil</small></div>`).join("")
+    :`<div style="padding:10px 14px;color:var(--muted);font-size:13px">yaşayan biri bulunamadı</div>`;
   whoResults.style.display="block";
-  whoResults.querySelectorAll(".whoR[data-id]").forEach(r=>{
-    r.onmouseenter=()=>r.style.background="var(--panel2)"; r.onmouseleave=()=>r.style.background="";
-    r.onclick=()=>startAs(r.dataset.id);
-  });
-});
+}
+whoInput.addEventListener("input",()=>{ clearTimeout(whoT); whoT=setTimeout(whoAra, WHO_GECIKME_MS); });
+whoResults.addEventListener("click",e=>{ const r=e.target.closest(".whoR[data-id]"); if(r) startAs(r.dataset.id); });
 document.getElementById("skipWho").onclick=()=>startAs(null);
 whoInput.addEventListener("keydown",e=>{ if(e.key==="Enter"){
+  clearTimeout(whoT); whoAra();   // Enter'da beklemeden ara
   const first=whoResults.querySelector(".whoR[data-id]"); if(first)startAs(first.dataset.id); }});
 setTimeout(()=>whoInput.focus(),300);
 

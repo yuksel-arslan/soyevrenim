@@ -66,6 +66,7 @@ export const MEDYA = {
   okuOnbellekSn: 600,      // görüntüleme yönlendirmesinin tarayıcı önbelleği (imzadan kısa)
   fotoMaxMb: 15,           // küçültmeden sonra fotoğraf üst sınırı
   videoMaxMb: 200,         // video üst sınırı (doğrudan R2'ye gider)
+  vekilMaxMb: 4,           // doğrudan yükleme olmazsa sunucu üzerinden yedek yol (Vercel gövde sınırı 4,5 MB)
   turler: { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
     'image/heic': 'heic', 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' },
 };
@@ -99,7 +100,7 @@ export function kamuAyar() {
     SES: { mime: SES.mime, mimeYedek: SES.mimeYedek, bitHizi: SES.bitHizi, parcaSn: SES.parcaSn,
       parcaMaxMb: SES.parcaMaxMb, maxKayitDk: SES.maxKayitDk },
     DEPOLAMA: { kotaBayt: DEPOLAMA.kotaBayt },
-    MEDYA: { fotoMaxMb: MEDYA.fotoMaxMb, videoMaxMb: MEDYA.videoMaxMb },
+    MEDYA: { fotoMaxMb: MEDYA.fotoMaxMb, videoMaxMb: MEDYA.videoMaxMb, vekilMaxMb: MEDYA.vekilMaxMb },
     SOHBET,
     ASISTAN: { ad: ASISTAN.ad, mesajMaxKarakter: ASISTAN.mesajMaxKarakter, gecmisTur: ASISTAN.gecmisTur },
   };
