@@ -219,3 +219,121 @@ export function enBuyukYasayan(veri) {
   const unvan = n.sex === 'K' ? 'Nine' : 'Dede';
   return { id: n.id, ad, unvan, tamAd: `${ad} ${unvan}`, yontem };
 }
+
+// ============================ SICAK ANLATIM ============================
+// Akrabalık yolunu "A → B → C" listesi yerine aile büyüğünün anlatacağı gibi anlatır.
+// Kart, Rehber ve asistan aynı metni kullanır.
+
+// ---- Türkçe ekler (kesme işaretiyle): Emine'nin, Hamit'in, Aslan'ın, Fahri'ye, Hamit'ten ----
+const UNLU = 'aeıioöuü';
+const kucuk = (s) => String(s || '').toLocaleLowerCase('tr');
+function sonUnlu(ad) { const k = kucuk(ad); for (let i = k.length - 1; i >= 0; i--) if (UNLU.includes(k[i])) return k[i]; return 'e'; }
+const unluyleBiter = (ad) => UNLU.includes(kucuk(ad).slice(-1));
+const DORTLU = { a: 'ı', ı: 'ı', e: 'i', i: 'i', o: 'u', u: 'u', ö: 'ü', ü: 'ü' };
+const kalin = (ad) => 'aıou'.includes(sonUnlu(ad));
+export const ilgiEki = (ad) => `${ad}'${unluyleBiter(ad) ? 'n' : ''}${DORTLU[sonUnlu(ad)]}n`;
+export const yonelmeEki = (ad) => `${ad}'${unluyleBiter(ad) ? 'y' : ''}${kalin(ad) ? 'a' : 'e'}`;
+export const ayrilmaEki = (ad) => `${ad}'${'fstkçşhp'.includes(kucuk(ad).slice(-1)) ? 't' : 'd'}${kalin(ad) ? 'a' : 'e'}n`;
+// "Ali, Osman ve Asım"
+const de = (ad) => (kalin(ad) ? 'da' : 'de');   // "Fahri Kaan da", "Emine de"
+const liste = (a) => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} ve ${a[a.length - 1]}`);
+
+// Kişiden yukarı, verilen ataya giden ebeveyn zinciri: [kisi, ebeveyn, ..., ata]
+function ataZinciri(g, kisi, ata) {
+  const onceki = new Map([[kisi, null]]); const q = [kisi];
+  while (q.length) {
+    const c = q.shift();
+    if (c === ata) { const z = []; let p = c; while (p !== null) { z.push(p); p = onceki.get(p); } return z.reverse(); }
+    for (const p of (g.PARENTS.get(c) || [])) if (!onceki.has(p)) { onceki.set(p, c); q.push(p); }
+  }
+  return null;
+}
+
+// k kuşak yukarıdaki ata için akrabalık sözcüğü (torunun gözünden)
+export function ataTerimi(kadin, k) {
+  if (k === 1) return kadin ? 'annesi' : 'babası';
+  if (k === 2) return kadin ? 'ninesi' : 'dedesi';
+  if (k === 3) return kadin ? 'büyük ninesi' : 'büyük dedesi';
+  return `${k} kuşak yukarıdaki ${kadin ? 'ninesi' : 'dedesi'}`;
+}
+const torunTerimi = (kadin, k) => (k === 1 ? (kadin ? 'kızı' : 'oğlu') : k === 2 ? 'torunu' : `${k} kuşak sonraki torunu`);
+
+export function akrabalikAnlatisi(g, aId, bId) {
+  const ad = (id) => adiGoster(g.byId[id]?.name) || '?';
+  const kadin = (id) => g.byId[id]?.sex === 'K';
+  const A = ad(aId), B = ad(bId);
+  if (aId === bId) return { baslik: 'Aynı kişi', ozet: `${A} kendisi.`, cumleler: [] };
+  const y = yolBul(g, aId, bId);
+  if (!y) return { baslik: 'Kayıtlı bağ yok', ozet: `${A} ile ${B} arasında ağaçta kayıtlı bir bağ bulamadım. Belki bir halka eksik — bilen bir büyüğümüze sormaya değer.`, cumleler: [] };
+  const o = y.ata;
+  const cumleler = [];
+  let baslik, ozet;
+
+  if (!o && y.adimlar.length === 1) {
+    return { baslik: 'Eşler', ozet: `${B}, ${ilgiEki(A)} eşi.`, cumleler: [], yol: y.yol, ata: null, etiket: y.etiket };
+  }
+  if (!o) {
+    // Kan bağı yok: evlilik üzerinden bağlılar. Adımları akan bir cümleye çevir.
+    const parca = y.adimlar.map((s, i) => (i === 0 ? `${ilgiEki(ad(s.kimden))} ${s.iliski} ${ad(s.kime)}` : `onun ${s.iliski} ${ad(s.kime)}`));
+    baslik = 'Evlilikle akraba';
+    ozet = `Ağaçta ${A} ile ${B} arasında kayıtlı bir kan bağı yok; bağ evlilik üzerinden kuruluyor.`;
+    cumleler.push(`${parca.join(', ')}.`);
+    return { baslik, ozet, cumleler, yol: y.yol, ata: null, etiket: y.etiket };
+  }
+
+  const ataAd = ad(o.id);
+  const zA = ataZinciri(g, aId, o.id) || [aId, o.id];
+  const zB = ataZinciri(g, bId, o.id) || [bId, o.id];
+  // atadan kişiye inen ara kuşaklar (ata ve kişi hariç)
+  const ara = (z) => z.slice(1, -1).reverse().map(ad);
+  // en az `min` ara kuşak varsa "Soy, X'ten A, B ve C üzerinden Y'ye iniyor." (tek ara kişi
+  // zaten özette adıyla geçiyor; tekrar etmesin)
+  const soyCumlesi = (z, kisi, min = 2) => {
+    const a = ara(z);
+    return a.length >= min ? `Soy, ${ayrilmaEki(ataAd)} ${liste(a)} üzerinden ${yonelmeEki(kisi)} iniyor.` : null;
+  };
+
+  if (o.da === 0 || o.db === 0) {
+    // Doğrudan ata–torun hattı
+    const [ata, torun, k, z] = o.da === 0 ? [aId, bId, o.db, zB] : [bId, aId, o.da, zA];
+    baslik = k === 1 ? (kadin(ata) ? 'Anne ile evladı' : 'Baba ile evladı')
+      : k === 2 ? (kadin(ata) ? 'Nine ile torunu' : 'Dede ile torunu') : 'Aynı soy hattı';
+    ozet = `${ad(ata)}, ${ilgiEki(ad(torun))} ${ataTerimi(kadin(ata), k)}; ${ad(torun)} ${de(ad(torun))} onun ${torunTerimi(kadin(torun), k)}.`;
+    const s = soyCumlesi(z, ad(torun), 1); if (s) cumleler.push(s);
+  } else if (o.da === 1 && o.db === 1) {
+    const ortak = [...(g.PARENTS.get(aId) || [])].filter((p) => (g.PARENTS.get(bId) || new Set()).has(p)).map(ad);
+    baslik = 'Kardeş';
+    ozet = `${A} ile ${B} kardeş — ikisi de ${ilgiEki(liste(ortak.length ? ortak : [ataAd]))} çocukları.`;
+  } else if (o.da === 1 || o.db === 1) {
+    // Amca/dayı/hala/teyze — yeğen (ya da daha uzak kuşaktan)
+    const [buyuk, yegen, k, z] = o.da === 1 ? [aId, bId, o.db, zB] : [bId, aId, o.da, zA];
+    const kardesi = z[z.length - 2];               // yeğenin, büyükle kardeş olan atası
+    if (k === 2) {
+      const yoldan = kadin(kardesi) ? 'annesi' : 'babası';
+      const [terim, unvan] = kadin(kardesi) ? (kadin(buyuk) ? ['teyzesi', 'Teyze'] : ['dayısı', 'Dayı'])
+        : (kadin(buyuk) ? ['halası', 'Hala'] : ['amcası', 'Amca']);
+      baslik = `${unvan} ile yeğeni`;
+      ozet = `${ad(buyuk)}, ${ilgiEki(ad(yegen))} ${terim}: ${ilgiEki(ad(yegen))} ${yoldan} ${ad(kardesi)} ile ${ad(buyuk)} kardeş, ikisi de ${ilgiEki(ataAd)} çocukları.`;
+    } else {
+      baslik = 'Büyük kuşaktan akraba';
+      ozet = `${ad(buyuk)}, ${ilgiEki(ad(yegen))} ${ataTerimi(kadin(kardesi), k - 1)} ${ilgiEki(ad(kardesi))} kardeşi; ikisi de ${ilgiEki(ataAd)} çocukları.`;
+    }
+    const s = soyCumlesi(z, ad(yegen)); if (s) cumleler.push(s);
+  } else {
+    // Kuzenler: atanın iki çocuğundan inen iki dal
+    const derece = Math.min(o.da, o.db) - 1, fark = Math.abs(o.da - o.db);
+    const dalA = zA[zA.length - 2], dalB = zB[zB.length - 2];
+    baslik = derece === 1 && !fark ? 'Kuzen' : 'Aynı kökün iki dalı';
+    const terimA = o.da - 1 === 0 ? '' : `${ilgiEki(A)} ${ataTerimi(kadin(dalA), o.da - 1)} `;
+    const terimB = o.db - 1 === 0 ? '' : `${ilgiEki(B)} ${ataTerimi(kadin(dalB), o.db - 1)} `;
+    ozet = derece === 1 && !fark
+      ? `${A} ile ${B} kuzen: ${terimA}${ad(dalA)} ile ${terimB}${ad(dalB)} kardeş, ikisi de ${ilgiEki(ataAd)} çocukları.`
+      : `${A} ile ${B} aynı kökün iki dalı: ortak ataları ${ataAd}. ${terimA}${ad(dalA)} ile ${terimB}${ad(dalB)} kardeşmiş; dallar oradan ayrılıp bugüne uzanmış.`;
+    const sA = soyCumlesi(zA, A), sB = soyCumlesi(zB, B);
+    if (sA) cumleler.push(sA);
+    if (sB) cumleler.push(sB);
+    const genc = o.da > o.db ? A : B;
+    if (derece > 1 || fark) cumleler.push(`Ölçüyle söylersek: ${derece}. dereceden kuzenler${fark ? `; ${genc} ${fark === 1 ? 'bir' : fark} kuşak daha genç` : ''}.`);
+  }
+  return { baslik, ozet, cumleler, yol: y.yol, ata: o, etiket: y.etiket };
+}

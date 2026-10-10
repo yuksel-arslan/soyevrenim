@@ -124,3 +124,20 @@ test('Lazca karşılama: konu içermeyen Lazca isteği için hazır yanıt var',
   assert.match(U.BECERILER.lazca.karsilama, /Xelaǩaoba/);
   assert.match(U.BECERILER.lazca.karsilama, /Merhaba/);
 });
+
+test('Akrabalık anlatısı: Türkçe ekler ve sıcak anlatım', async () => {
+  const L = await import('../api/_lib/agac.js');
+  assert.equal(L.ilgiEki('Emine'), "Emine'nin");
+  assert.equal(L.ilgiEki('Aslan'), "Aslan'ın");
+  assert.equal(L.ilgiEki('Molla Memiş'), "Molla Memiş'in");
+  assert.equal(L.yonelmeEki('Fahri'), "Fahri'ye");
+  assert.equal(L.ayrilmaEki('Hamit'), "Hamit'ten");
+  // Emine (p122221) — Fahri (p12221): amca/hala–yeğen, ortak ata Hamit
+  const an = L.akrabalikAnlatisi(g, 'p122221', 'p12221');
+  assert.match(an.ozet, /Hamit'in çocukları/);
+  assert.ok(!/→/.test(an.ozet + an.cumleler.join(' ')), 'anlatı ok listesi içermemeli');
+  // kardeş, kuzen ve doğrudan hat için de cümle kurulur
+  const kardes = L.akrabalikAnlatisi(g, 'p12', 'p11');
+  assert.ok(kardes.ozet.length > 20);
+  assert.equal(L.akrabalikAnlatisi(g, 'p1', 'p1').baslik, 'Aynı kişi');
+});

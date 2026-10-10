@@ -90,6 +90,20 @@ Yanıt (her zaman HTTP 200):
 { "ok": false, "yedek": true, "sebep": "sistem|kisi|saglayici|hata", "mesaj": "Bugünkü ücretsiz asistan kotası doldu, yarın 03:00'te yenilenir." }
 ```
 
+## Akrabalık anlatısı (`akrabalikAnlatisi`)
+
+`api/_lib/agac.js` (istemciye `public/lib/agac.js` olarak kopyalanır). Yol kartı, Rehber ve
+`yol_bul` aracı (`anlati` alanı) **aynı** metni kullanır. "A → B → C · 12 adım" listesi yerine
+aile büyüğünün anlatacağı gibi:
+
+- **Başlık:** Kardeş · Amca/Dayı/Hala/Teyze ile yeğeni · Kuzen · Aynı kökün iki dalı ·
+  Baba/Anne ile evladı · Dede/Nine ile torunu · Eşler · Evlilikle akraba
+- **Özet:** "Fahri, Emine'nin amcası: Emine'nin babası Ömer ile Fahri kardeş, ikisi de Hamit'in çocukları."
+- **Soy cümleleri:** "Soy, Molla Memiş'ten Abdurrahman, Mehmet Yazıcı ve Hamit üzerinden Fahri'ye iniyor."
+- Ölçü (N. dereceden kuzen, kuşak farkı) en sonda; adım adım yol kartta katlanmış.
+- Türkçe ekler `ilgiEki` / `yonelmeEki` / `ayrilmaEki` (ünlü uyumu, kesme işareti).
+- Model kuralı 6: yanıtı `anlati` üzerine kur, liste ve "N adım" gibi mekanik ifade kullanma.
+
 ## Araçlar (sunucuda çalışır)
 
 | Araç | Ne yapar |

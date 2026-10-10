@@ -1427,11 +1427,19 @@ function edgeOnPath(a,b){ return !!(BLOOM.pathEdges && BLOOM.pathEdges.has(edgeK
 // ---- ÖZELLİK 1: yol bulma ----
 // Algoritmalar ortak kütüphanede: public/lib/agac.js (kaynak api/_lib/agac.js — asistan da
 // aynı kodu kullanır). Burada yalnızca bu sayfanın ADJ/PARENTS haritalarıyla çağrılır.
-const agacGraf=()=>({ADJ, PARENTS, CHILDREN, byId});
+const agacGraf=()=>{
+  // eşler: anlatım "X'in eşi Y" diyebilsin (kütüphanedeki grafKur ile aynı yapı)
+  const SPOUSE=new Map(), ekle=(a,b)=>{ if(!SPOUSE.has(a)) SPOUSE.set(a,new Set()); SPOUSE.get(a).add(b); };
+  (marriages||[]).forEach(m=>{ if(byId[m.from]&&byId[m.to]){ ekle(m.from,m.to); ekle(m.to,m.from); } });
+  return {ADJ, PARENTS, CHILDREN, SPOUSE, byId, veri:{nodes, edges, motherEdges, marriages}};
+};
 function shortestPath(aId,bId){ return window.AgacLib ? AgacLib.enKisaYol(agacGraf(),aId,bId) : null; }
 function ancestorsOf(id){ return window.AgacLib ? AgacLib.atalar(agacGraf(),id) : new Map([[id,0]]); }
 function lcaOf(aId,bId){ return window.AgacLib ? AgacLib.ortakAta(agacGraf(),aId,bId) : null; }
 function akrabalikEtiketi(o){ return window.AgacLib ? AgacLib.akrabalikEtiketi(o) : ""; }
+function akrabalikAnlatisi(aId,bId){
+  return window.AgacLib && AgacLib.akrabalikAnlatisi ? AgacLib.akrabalikAnlatisi(agacGraf(),aId,bId) : null;
+}
 function yolBul(aId,bId){
   const yol=shortestPath(aId,bId);
   if(!yol){ BLOOM.pathIds=null; BLOOM.pathEdges=null; yolKarti(null); toast("Bu iki kişi arasında bağ yok"); return; }
@@ -1632,18 +1640,18 @@ function yolKarti(bilgi){
   if(!kart||!govde) return;
   if(!bilgi){ kart.style.display="none"; return; }
   const ad=id=>byId[id] ? dispName(byId[id].name) : "?";
-  const adim=bilgi.yol.length-1;
-  const ataSatir = bilgi.ata
-    ? `<div style="margin-top:6px">Ortak ata: <b style="color:var(--spine)">${ad(bilgi.ata.id)}</b>
-         <span style="color:var(--muted);font-size:12px">(${bilgi.ata.da} / ${bilgi.ata.db} kuşak)</span></div>`
-    : `<div style="margin-top:6px;color:var(--muted)">Ortak ata bulunamadı (bağ eş üzerinden olabilir)</div>`;
+  // Sıcak anlatım ortak kütüphaneden (asistan ve Rehber de aynı metni kullanır);
+  // adım adım liste yalnızca merak edene, katlanmış olarak.
+  const an = akrabalikAnlatisi(bilgi.a, bilgi.b);
   govde.innerHTML =
-    `<div><b>${ad(bilgi.a)}</b> ↔ <b>${ad(bilgi.b)}</b></div>
-     <div style="margin-top:4px;color:var(--accent);font-weight:600">${akrabalikEtiketi(bilgi.ata)}</div>
-     ${ataSatir}
-     <div style="margin-top:6px;color:var(--muted);font-size:12px">${adim} adım</div>
-     <div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6">
-       ${bilgi.yol.map(id=>ad(id)).join(" → ")}</div>`;
+    `<div style="color:var(--spine);font-weight:600;font-size:15px">${escapeHtml(an ? an.baslik : akrabalikEtiketi(bilgi.ata))}</div>
+     <div style="margin-top:6px;line-height:1.6">${escapeHtml(an ? an.ozet : "")}</div>
+     ${an && an.cumleler.length ? `<div style="margin-top:8px;font-size:13px;color:var(--text-soft);line-height:1.6">
+       ${an.cumleler.map(escapeHtml).join("<br>")}</div>` : ""}
+     <details style="margin-top:10px;font-size:12px;color:var(--muted)">
+       <summary style="cursor:pointer">Adım adım yol (${bilgi.yol.length-1} adım)</summary>
+       <div style="margin-top:6px;line-height:1.6">${bilgi.yol.map(id=>escapeHtml(ad(id))).join(" → ")}</div>
+     </details>`;
   kart.style.display="block";
 }
 
@@ -4161,7 +4169,8 @@ const KOMUTLAR=[
       if(!b) return `“${ikili[2].trim()}” bulunamadı.`;
       if(typeof yolBul!=="function") return "Yol bulma kullanılamıyor.";
       yolBul(a.id,b.id);
-      return `${dispName(a.name)} ile ${dispName(b.name)} arasındaki yolu çizdim.`;
+      const an=akrabalikAnlatisi(a.id,b.id);
+      return an ? [an.ozet, ...an.cumleler].join("\n") : `${dispName(a.name)} ile ${dispName(b.name)} arasındaki yolu çizdim.`;
     } },
   { ad:"tumu",   desen:/tümünü göster|hepsini göster|filtreyi (kaldır|sıfırla)|sıfırla/i,
     calistir:()=>{

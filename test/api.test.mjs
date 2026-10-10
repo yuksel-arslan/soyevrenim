@@ -86,6 +86,8 @@ test('"Emine ile Fahri nasıl akraba?" → yol_bul sonucu modele gider, yanıt k
       const s = JSON.parse(g.messages.at(-1).content);
       assert.equal(s.ortak_ata.ad, 'Hamit');
       assert.ok(s.adimlar.length >= 2);
+      assert.match(s.anlati, /Hamit'in çocukları/);           // sıcak anlatım modele gider
+      assert.ok(!s.adimlar.some((x) => /Emine'in/.test(x)));  // ek doğru: Emine'nin
       return { content: `Emine, Fahri'nin yeğeni. ${s.adimlar.join('; ')}.\nKaynak: soy ağacı kaydı` };
     },
   ]);

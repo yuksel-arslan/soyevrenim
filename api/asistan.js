@@ -12,7 +12,7 @@ import { LLM, ASISTAN, MESAJ_MAX_TOKEN, tahminiToken } from './_lib/ayar.js';
 import { kimlikCoz, KimlikHatasi } from './_lib/kimlik.js';
 import { kotaDurumu, llmIzin, kullanimKaydet, KOTA_MESAJI } from './_lib/kota.js';
 import { sohbet, SaglayiciKotaHatasi } from './_lib/groq.js';
-import { grafKur, kisiAra, kisiKisa, yakinlar, yolBul, adiGoster, normalize, nesilHaritasi, enBuyukYasayan } from './_lib/agac.js';
+import { grafKur, kisiAra, kisiKisa, yakinlar, yolBul, adiGoster, normalize, nesilHaritasi, enBuyukYasayan, akrabalikAnlatisi, ilgiEki } from './_lib/agac.js';
 import { soyTarihiOzet } from './_lib/soy-tarihi.js';
 import { uzmanBilgi, lazcaMi } from './_lib/uzmanlik.js';
 import { oneriEkle, yamaHatasiMi } from './_lib/oneri.js';
@@ -25,7 +25,7 @@ Kurallar:
 3. Yanıtın sonunda kaynak göster: anıdan gelen bilgi için "Kaynak: <kişi>'in anısı, <tarih>"; ağaç kaydından gelen için "Kaynak: soy ağacı kaydı".
 4. Ağaca doğrudan yazamazsın. Kişi ekleme, ilişki kurma, bilgi düzeltme isteğinde oneri_olustur kullan ve değişikliğin yönetici onayına gittiğini söyle.
 5. Yeni kişi eklerken: hedef kişiyi kisi_ara ile kesinleştir; cinsiyeti ifadeden çıkar ("kız kardeşi", "kızı", "annesi" → K); aynı adda bir kişi zaten o ilişkideyse eklemeden önce sor.
-6. Akrabalık sorusunda yol_bul kullan, yolu adım adım anlat (ör. "Emine, Ali'nin kızı; Ali, Fahri'nin kardeşi…").
+6. Akrabalık sorusunda yol_bul kullan. Yanıtı aracın "anlati" alanı üzerine kur: bir aile büyüğünün anlatacağı gibi sıcak ve akıcı anlat (kim kimin nesi, ortak ata kim, dallar nerede ayrılmış); "A → B → C" gibi liste ya da "12 adım" gibi mekanik ifade kullanma.
 7. Soyun kökeni, göçü, tarihi, yerler (Arhavi, Potocur, Derbent), Molla Memiş, kollar ya da ağacın genel sayıları sorulursa soy_tarihi kullan. Fahri Arslan'ın notunu (aile kaydı) kaynaklı bilgiden ayır; "Teyit gerekli" ya da "Yorum" etiketli bilgiyi kesinmiş gibi söyleme.
 8. Bölge tarihi (Lazlar, Osmanlı dönemi, Lazistan, köy adları), site kullanımı (kişi ekleme, öneri, hikâye kaydı, temalar, kota) ya da Lazca sorularında uzman_bilgi kullan (beceri: bolge | site | lazca). Bilgi yoksa uydurma, bilmediğini söyle.
 9. Lazca: kullanıcı Lazca yazarsa ya da isterse kısa Lazca cümleler kur ve her zaman Türkçe karşılığını ver. Emin olmadığın Lazca sözcüğü uydurma; uzman_bilgi(lazca) ifadelerini kullan, gerisini Türkçe söyle.
@@ -97,10 +97,13 @@ function aracCalistirici(ctx) {
       const y = yolBul(g, a_id, b_id);
       if (!y) return { sonuc: 'bu iki kişi arasında kayıtlı bağ yok' };
       ctx.gorsel.yol = [a_id, b_id];
+      const an = akrabalikAnlatisi(g, a_id, b_id);
       return {
         akrabalik: y.etiket,
+        // sıcak anlatım: yanıtı bunun üzerine kur (kart ve Rehber de aynı metni gösterir)
+        anlati: [an.ozet, ...an.cumleler].join(' '),
         ortak_ata: y.ata ? { id: y.ata.id, ad: adi(y.ata.id), kusak: [y.ata.da, y.ata.db] } : null,
-        adimlar: y.adimlar.map((s) => `${adi(s.kime)}, ${adi(s.kimden)}'in ${s.iliski}`),
+        adimlar: y.adimlar.map((s) => `${adi(s.kime)}, ${ilgiEki(adi(s.kimden))} ${s.iliski}`),
       };
     },
     ani_ara: ({ sorgu, kisi_id }) => {
