@@ -167,3 +167,28 @@ test('agacBirlestir: boş varsayılan profil gerçek fotoğrafı silmez; anılar
   assert.equal(p.info.job, 'Mühendis');
   assert.deepEqual(p.memories.map((m) => m.text).sort(), ['bilgisayar anı', 'eski', 'mobil anı']);
 });
+
+test('nesil: eşin kardeşi kişiyle aynı nesil; dünür ebeveyn bir üst, çocuğu bir alt', async () => {
+  const { nesil } = await import('../api/_lib/agac.js');
+  // Ana soy: Kök → Baba → Ben (2. nesil). Eş Nevin'in ailesi ayrı bir baba ağacı (dünür):
+  // Kaya Baba → Nevin, Sevin; Sevin'in çocuğu Can. Dünür kökü önce listelenir (yanlış kök seçilmesin).
+  const v = { nodes: [
+    { id: 'k1', name: 'Kaya Baba', sex: 'E' }, { id: 'nv', name: 'Nevin', sex: 'K' }, { id: 'sv', name: 'Sevin', sex: 'K' },
+    { id: 'cn', name: 'Can', sex: 'E' },
+    { id: 'r', name: 'Kök', sex: 'E' }, { id: 'b', name: 'Baba', sex: 'E' }, { id: 'ben', name: 'Ben', sex: 'E' },
+    { id: 'am', name: 'Amca', sex: 'E' }, { id: 'oc', name: 'Oğul', sex: 'E' },
+  ], edges: [
+    { from: 'k1', to: 'nv' }, { from: 'k1', to: 'sv' }, { from: 'sv', to: 'cn' },
+    { from: 'r', to: 'b' }, { from: 'r', to: 'am' }, { from: 'b', to: 'ben' }, { from: 'ben', to: 'oc' },
+  ], marriages: [{ from: 'ben', to: 'nv' }], motherEdges: [] };
+  const gg = grafKur(v);
+  const n = (id) => nesil(gg, id);
+  assert.equal(n('ben'), 2);
+  assert.equal(n('nv'), 2, 'eş aynı nesil');
+  assert.equal(n('sv'), 2, 'eşin kardeşi aynı nesil (eskiden 1)');
+  assert.equal(n('k1'), 1, 'eşin babası bir üst nesil');
+  assert.equal(n('cn'), 3, 'eşin kardeşinin çocuğu bir alt nesil');
+  // istemci (public/index.html reindex) aynı kuralı izler: kopyalanmış kütüphane de aynı sonucu verir
+  const ist = await import('../public/lib/agac.js');
+  assert.equal(ist.nesil(ist.grafKur(v), 'sv'), 2);
+});

@@ -859,7 +859,10 @@ function reindex(){
   edges.forEach(e=>{ const a=byId[e.from],b=byId[e.to];
     if(a&&b){ a._kids.push(b); b._parent=a; } });
   // nesil derinliği (kök=0) — ana ağaç
-  const root=nodes.find(n=>!n._parent);
+  // Kök: alt ağacı en büyük olan köksüz düğüm. Dünür ailesinin atası (ör. eşin babası) da
+  // köksüz görünür; o kök seçilirse herkesin nesli kayardı.
+  const altSay=n=>1+(n._kids||[]).reduce((t,k)=>t+altSay(k),0);
+  const root=nodes.filter(n=>!n._parent).map(n=>[n,altSay(n)]).sort((a,b)=>b[1]-a[1])[0]?.[0];
   nodes.forEach(n=>{ n._depth=null; });
   if(root){ (function dfs(n,d){ n._depth=d; (n._kids||[]).forEach(k=>dfs(k,d+1)); })(root,0); }
   // ana ağaçta olmayan düğümlerin derinliğini yay: eş=aynı, ebeveyn=-1, çocuk=+1
@@ -2610,7 +2613,7 @@ function relationInfo(edge){
     // edge.from genelde ebeveyn (baba/anne)
     parent=a; child=b;
   }
-  const genA=chainOf(a).length-1, genB=chainOf(b).length-1;
+  const genA=nesilOf(a), genB=nesilOf(b);
   let baslik, aciklama;
   if(type==="marriage"){
     baslik="Evlilik";
@@ -2641,7 +2644,7 @@ function showRelationCard(edge, mx, my){
       "border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 16px 50px var(--shadow);font-size:13px";
     document.body.appendChild(card);
   }
-  const gA=chainOf(info.a).length-1, gB=chainOf(info.b).length-1;
+  const gA=nesilOf(info.a), gB=nesilOf(info.b);
   card.innerHTML=
     `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <span style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--spine);font-weight:700">${info.baslik}</span>
@@ -2746,7 +2749,7 @@ function updateHoverCard(n,mx,my){
   }
   document.getElementById("hoverName").textContent=dispName(n.name);
   // meta: nesil · durum · [meslek] · eş · çocuk
-  const gen=chainOf(n).length-1;
+  const gen=nesilOf(n);
   const inf = (prof && prof.info) || {};
   const parts=[];
   parts.push(`${gen}. nesil`);
@@ -2846,6 +2849,9 @@ addEventListener("orientationchange",()=>setTimeout(resize,200));
 if(window.visualViewport){ visualViewport.addEventListener("resize",resize); }
 
 // ---- seçim + vurgulama (soy zinciri) ----
+// Nesil = ana köke uzaklık; eşler aynı nesil, ebeveyn bir üst, çocuk bir alt (reindex → _depth).
+// Eskiden baba zinciri sayılıyordu: dünürler (eşin kardeşleri) "1. nesil" görünüyordu.
+function nesilOf(n){ return n && n._depth!=null ? n._depth : nesilOf(n); }
 function chainOf(n){ const c=[]; let x=n; while(x){c.unshift(x);x=x._parent;} return c; }
 let activeNode=null;   // merkeze alınıp genişletilen kişi (panel açık olmayabilir)
 
@@ -2873,7 +2879,7 @@ function showActiveCard(n){
     card.style.display==="none" ? "0px" : card.offsetWidth+"px"));
   if(!n){ card.style.display="none"; kartGen(); return; }
   const prof=PROFILES[n.id]||{};
-  const gen=chainOf(n).length-1;
+  const gen=nesilOf(n);
   // foto
   const ph=document.getElementById("acPhoto");
   if(prof.photo){ ph.innerHTML=`<img src="${prof.photo}" style="width:100%;height:100%;object-fit:cover">`; }
@@ -3014,7 +3020,7 @@ function openInspector(n){
   iDot.style.cursor="pointer"; iDot.title="Fotoğraf eklemek/değiştirmek için tıkla";
   iDot.onclick=()=>pickPhoto(n);
   iName.textContent=dispName(n.name);
-  const gen=chainOf(n).length-1;
+  const gen=nesilOf(n);
   iMeta.textContent=`${gen}. nesil · ${byId[n.id]?n.id:""}`;
 
   iBody.innerHTML="";
@@ -3838,7 +3844,7 @@ const norm=s=>s.toLocaleLowerCase("tr").replace(/\d+$/,"").trim();
 q.addEventListener("input",()=>{ const v=norm(q.value); if(v.length<2){res.classList.remove("show");return;}
   const hits=nodes.filter(n=>norm(n.name).includes(v)).slice(0,40);
   res.innerHTML=hits.length?hits.map(n=>`<div class="r" data-id="${n.id}">${dispName(n.name)}
-    <small>${kimlikSatiri(n)} · ${chainOf(n).length-1}. nesil</small></div>`).join("")
+    <small>${kimlikSatiri(n)} · ${nesilOf(n)}. nesil</small></div>`).join("")
     :`<div class="r" style="color:var(--muted)">bulunamadı</div>`;
   res.classList.add("show");
   res.querySelectorAll(".r[data-id]").forEach(r=>r.onclick=()=>{const n=byId[r.dataset.id];
@@ -4429,7 +4435,7 @@ const KOMUTLAR=[
           const et={amca:"amca",dayi:"dayı",hala:"hala",teyze:"teyze"}[tur];
           return l.length ? `${kimlik(k)}'nin ${et}sı: ${say(l)}.` : yok(et); }
         case "nesil":
-          return `${kimlik(k)} — ${chainOf(k).length-1}. nesil.`;
+          return `${kimlik(k)} — ${nesilOf(k)}. nesil.`;
       }
       return null;
     } },
@@ -4482,7 +4488,7 @@ const KOMUTLAR=[
       // Adaş varsa önce HANGİSİ olduğunu sor (37 tekrarlı ad var)
       if(liste.length>1){
         return { metin:`Bu adda ${liste.length} kişi var. Hangisini soruyorsun?`,
-          secenekler: liste.slice(0,8).map(n=>({ etiket:`${kimlikSatiri(n)} ${dispName(n.name)} · ${chainOf(n).length-1}. nesil`,
+          secenekler: liste.slice(0,8).map(n=>({ etiket:`${kimlikSatiri(n)} ${dispName(n.name)} · ${nesilOf(n)}. nesil`,
             eylem:()=>kisiTanit(n) })) };
       }
       return kisiTanit(liste[0]);
@@ -4494,7 +4500,7 @@ const KOMUTLAR=[
 // (Seçenekler yerel çalışır: kota harcamaz, asistan kapalıyken de çalışır.)
 function kisiTanit(k){
   selectNode(k); if(typeof merkezeAl==="function") merkezeAl(k);
-  const ks=kimlikSatiri(k), nesil=chainOf(k).length-1;
+  const ks=kimlikSatiri(k), nesil=nesilOf(k);
   const durum = k.alive===false ? "rahmetli" : "hayatta";
   return { metin:`${dispName(k.name)} — ${ks && ks!=="kök" ? ks+", " : ""}${nesil}. nesil, ${durum}. Onun hakkında ne öğrenmek istersin?`,
     secenekler:kisiSecenekleri(k) };
@@ -5578,7 +5584,7 @@ function whoAra(){
   // ölüler kendini seçemez — sadece yaşayanlar
   const hits=nodes.filter(n=>n.alive!==false && whoAdlar.get(n.id).includes(v)).slice(0,WHO_MAX);
   whoResults.innerHTML=hits.length?hits.map(n=>`<div class="whoR" data-id="${n.id}">
-      <span>${escapeHtml(dispName(n.name))}</span><small>${escapeHtml(kimlikSatiri(n))}<br>${chainOf(n).length-1}. nesil</small></div>`).join("")
+      <span>${escapeHtml(dispName(n.name))}</span><small>${escapeHtml(kimlikSatiri(n))}<br>${nesilOf(n)}. nesil</small></div>`).join("")
     :`<div style="padding:10px 14px;color:var(--muted);font-size:13px">yaşayan biri bulunamadı</div>`;
   whoResults.style.display="block";
 }

@@ -45,6 +45,17 @@ cihaz (ör. bilgisayar), başka cihazda (mobil) yüklenen fotoğrafı geri alıy
 Ağaçtaki her kişinin kalıcı bir **id**'si var (örn. `p12222123`; kişi kartında görünür). Giriş ise
 ortak aile/yönetici şifresiyledir; "ben kimim" (`kok_ben`) her cihazda bir kez seçilir (bkz. `docs/giris.md`).
 
+## Nesil
+
+Nesil = ana köke (Molla Memiş, 0) uzaklık. Kök, alt ağacı **en büyük** köksüz kişidir (eşin
+babası gibi dünür ataları da köksüz görünür). Ana soydan sonra yayılım: **eş aynı nesil**,
+ebeveyn bir üst, çocuk bir alt. Böylece kişi, eşi ve eşinin kardeşleri aynı nesil; dünür anne-baba
+bir önceki, onların çocukları bir sonraki nesildir.
+
+- İstemci: `reindex()` → `n._depth`, gösterim `nesilOf(n)` (kartlar, arama, Çınar yanıtları).
+- Sunucu: `api/_lib/agac.js → nesilHaritasi(g)` / `nesil(g, id)` (grafta önbellekli).
+- Eskiden yalnız baba zinciri sayılıyordu: eşin kardeşi "1. nesil" görünüyordu. Test: `test/agac.test.mjs`.
+
 ## Ortam değişkenleri
 
 `DATABASE_URL`, `OTURUM_GIZLI`.

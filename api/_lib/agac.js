@@ -119,16 +119,11 @@ export function yakinlar(g, id) {
   };
 }
 
+// Nesil = ana köke uzaklık; eşler aynı nesil, ebeveyn bir üst, çocuk bir alt (nesilHaritasi).
+// Eskiden yalnız baba hattı sayılıyordu: eşin kardeşleri "1. nesil" çıkıyordu.
 export function nesil(g, id) {
-  let d = 0, cur = id; const gor = new Set();
-  // baba hattı (edges) üzerinden köke uzaklık
-  while (cur && !gor.has(cur)) {
-    gor.add(cur);
-    const e = (g.veri.edges || []).find((x) => x.to === cur);
-    if (!e) break;
-    cur = e.from; d++;
-  }
-  return d;
+  if (!g._nesil) g._nesil = nesilHaritasi(g);
+  return g._nesil.get(id) ?? 0;
 }
 
 // Kısa kimlik satırı: "Hamit (Mehmet oğlu, 4. nesil, vefat)"
@@ -167,7 +162,10 @@ export function kisiAra(g, sorgu, limit = 10) {
 export function nesilHaritasi(g) {
   const d = new Map();
   const kokler = (g.veri.nodes || []).filter((n) => !(g.veri.edges || []).some((e) => e.to === n.id && g.byId[e.from]));
-  const kok = kokler.find((n) => (g.CHILDREN.get(n.id) || new Set()).size) || kokler[0];
+  // alt ağacı en büyük kök (dünür ailesinin atası da köksüz görünür)
+  const altSay = (id, gor = new Set()) => { if (gor.has(id)) return 0; gor.add(id);
+    return 1 + (g.veri.edges || []).filter((e) => e.from === id).reduce((t, e) => t + altSay(e.to, gor), 0); };
+  const kok = kokler.map((n) => [n, altSay(n.id)]).sort((a, b) => b[1] - a[1])[0]?.[0];
   if (kok) {
     const yigin = [[kok.id, 0]];
     while (yigin.length) {
