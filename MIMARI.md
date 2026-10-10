@@ -310,13 +310,21 @@ tam/baştan/içinde eşleşme hiç tutmazsa. Gerçek veriyle sınandı:
 ## 7. Etkileşim modeli
 
 ```
-tık (moved ≤ TAP_SLOP, süre ≤ TAP_TIME) → seç + merkeze yaklaştır
-çift tık                                → merkeze al + yakınlarını göster
-merkezdeyken tekrar dokun               → düzenleme paneli
-uzun bas (~450ms, kademeli açılımda)    → alt ağacı aç/kapat
-sürükleme                               → pan / yaw döndürme
-iki parmak                              → pinch zoom
+dokun / tık (moved ≤ TAP_SLOP)    → ODAK: yalnızca o kişi + yakın ailesi (anne-baba,
+                                    kardeş, eş, çocuk) ve aralarındaki bağlar görünür;
+                                    kamera aileyi çerçeveler (kadrajaGit), adlar yazılır
+uzun bas (UZUN_BAS_MS = 500ms)    → ayrıntı paneli (parmak kaldırılmadan açılır;
+                                    basılıyken düğüm çevresinde dolan halka)
+çift tık                          → ayrıntı (masaüstü kolaylığı) · kademeli açılımda alt ağaç aç/kapat
+boşluğa dokun / Esc               → odağı kapat, tüm ağaca dön (animasyonlu)
+sürükleme                         → pan / yaw döndürme (uzun bası iptal eder)
+iki parmak                        → pinch zoom
 ```
+
+Odak `nodeVisible()` içinde uygulanır: odak dışı düğüm ve bağlar çizilmez, tıklanmaz
+(`pick`, `pickEdge`) ve kadraj yalnızca görünenleri çerçeveler. Durum çubuğu
+"7 / 245 kişi · filtreli" gösterir. Dokunmada küçük önizleme kartı (hoverCard) artık
+açılmıyor — uzun bas halkasını örtüyordu ve dokunuş zaten aileyi gösteriyor.
 
 `TAP_SLOP=10 px`, `TAP_TIME=600 ms`.
 

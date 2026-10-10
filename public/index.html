@@ -302,7 +302,7 @@ canvas{display:block;position:fixed;inset:0;
 @media (max-width:640px){ .aaUst{padding:14px 16px} .aaGovde{padding:16px} .aaKart{padding:14px} }
 
 /* Ağaç nasıl okunur? — yalnızca tema token'ları */
-.okuma{position:fixed;left:72px;bottom:14px;z-index:9;background:var(--panel);border:1px solid var(--line);
+.okuma{position:fixed;left:72px;bottom:50px;z-index:9;background:var(--panel);border:1px solid var(--line);
   border-radius:12px;box-shadow:0 8px 30px var(--shadow);max-width:230px;font-size:12px;color:var(--text-soft);overflow:hidden}
 .okumaBaslik{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;background:none;border:none;
   color:var(--text);font:600 12px Inter,system-ui,sans-serif;padding:8px 12px;cursor:pointer}
@@ -443,7 +443,7 @@ canvas{display:block;position:fixed;inset:0;
     </div>
   </div>
   <div id="acInfo" style="font-size:12px;color:var(--text-soft);margin-top:11px;line-height:1.6;display:none"></div>
-  <div id="acFoot" style="font-size:10px;color:var(--muted);margin-top:11px;font-family:'IBM Plex Mono',monospace">düzenlemek için tekrar dokun</div>
+  <div id="acFoot" style="font-size:10px;color:var(--muted);margin-top:11px;font-family:'IBM Plex Mono',monospace">ayrıntı için uzun bas</div>
   <!-- mobilde kart kompakt duruyor; bu ok detayları açar/kapatır -->
   <div id="acToggle" style="display:none;position:absolute;right:8px;bottom:4px;
     font-size:11px;color:var(--muted);cursor:pointer;padding:2px 6px;line-height:1">⌄</div>
@@ -1238,12 +1238,32 @@ function s2w(sx,sy){
 // dahil) arayüz şeritleri dışında kalan alana ortalar. Eskiden dünya koordinatlarından
 // kaba bir tahmin yapılıyordu; koni masaüstünde altta kesiliyor, mobilde sola kayıp
 // üstte büyük bir boşluk bırakıyordu.
+const KADRAJ_GECIS_MS = 480;   // odak aç/kapa kamera geçişi
+const KADRAJ_ODAK_PAY = 0.8;   // odakta aile ekranı tam doldurmasın, isimlere yer kalsın
 const KADRAJ_PAY = {
   masa:  { sol:76, sag:28, ust:76, alt:52, doluluk:0.94, maxOlcek:{koni:1.1, duz:1.3} },
   mobil: { sol:10, sag:10, ust:104, alt:92, doluluk:0.96, maxOlcek:{koni:1.1, duz:1.3} },
 };
 function fit(){
-  if(!nodes.length)return;
+  const k=kadrajHesapla(); if(!k) return;
+  scale=k.scale; ox=k.ox; oy=k.oy;
+}
+// Hedef kadraja yumuşak geçiş (odak açılıp kapanınca)
+let _kadrajAnim=0;
+function kadrajaGit(sure){
+  const k=kadrajHesapla(); if(!k) return;
+  const dur=(sure==null? KADRAJ_GECIS_MS : sure), t0=performance.now(), id=++_kadrajAnim;
+  const s0=scale, x0=ox, y0=oy;
+  (function adim(now){
+    if(id!==_kadrajAnim) return;            // yeni geçiş başladıysa bunu bırak
+    let t=Math.min(1,(now-t0)/dur); t=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    scale=s0+(k.scale-s0)*t; ox=x0+(k.ox-x0)*t; oy=y0+(k.oy-y0)*t;
+    if(t<1) requestAnimationFrame(adim);
+  })(t0);
+}
+// Görünür düğümlerin ekrana sığdığı kadrajı HESAPLAR (uygulamaz).
+function kadrajHesapla(){
+  if(!nodes.length)return null;
   // Yalnızca görünür düğümleri kadraja al: nesil aralığı daraltıldığında ya da
   // kademeli açılımda ekran boş alana zoomlanmasın.
   const kadraj = (typeof nodeVisible==="function") ? nodes.filter(nodeVisible) : nodes;
@@ -1255,19 +1275,19 @@ function fit(){
       if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x; if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y; }
     return {x0,x1,y0,y1}; };
   // Salınım (±yaw) kadrajı oynatmasın: dinlenme açısında ölç
-  const yawSakla=yaw; yaw=yawRest;
+  const yawSakla=yaw, sSakla=scale, xSakla=ox, ySakla=oy; yaw=yawRest;
   ox=0; oy=0; scale=1;
   const maxS = coneMode ? P.maxOlcek.koni : P.maxOlcek.duz;
   // perspektif ölçeğe bağlı → birkaç adımda yakınsar
   for(let i=0;i<4;i++){
     const k=kutu();
-    const f=Math.min(alanW/Math.max(1,k.x1-k.x0), alanH/Math.max(1,k.y1-k.y0))*P.doluluk;
+    const f=Math.min(alanW/Math.max(1,k.x1-k.x0), alanH/Math.max(1,k.y1-k.y0))*P.doluluk*(BLOOM.focusIds?KADRAJ_ODAK_PAY:1);
     scale=Math.max(0.05, Math.min(maxS, scale*f));
   }
   const k=kutu();
-  ox = P.sol + alanW/2 - (k.x0+k.x1)/2;
-  oy = P.ust + alanH/2 - (k.y0+k.y1)/2;
-  yaw=yawSakla;
+  const sonuc={ scale, ox: P.sol + alanW/2 - (k.x0+k.x1)/2, oy: P.ust + alanH/2 - (k.y0+k.y1)/2 };
+  yaw=yawSakla; scale=sSakla; ox=xSakla; oy=ySakla;
+  return sonuc;
 }
 
 // ============================ BLOOM ÖZELLİKLERİ ============================
@@ -1314,6 +1334,8 @@ const BLOOM = {
 // ---- görünürlük: kademeli açılım ∩ nesil aralığı ----
 function nodeVisible(n){
   if(BLOOM.visible && !BLOOM.visible.has(n.id)) return false;
+  // ODAK: bir kişiye dokununca yalnızca o ve yakınları görünür (diğerleri gizli)
+  if(BLOOM.focusIds && !BLOOM.focusIds.has(n.id)) return false;
   const d = (n._depth==null? 0 : n._depth);
   if(d < BLOOM.genLo || d > BLOOM.genHi) return false;
   return true;
@@ -1377,15 +1399,22 @@ function toggleExpand(n){
 }
 
 // ---- ÖZELLİK 3: odak modu ----
+// Yakın aile: kendisi + anne-baba + kardeşler + eş(ler) + çocuklar (anne bağları dahil)
 function odakAc(id){
   const s=new Set([id]);
   for(const nb of (ADJ.get(id)||[])) s.add(nb);
+  if(typeof relativesOf==="function") relativesOf(id).forEach(x=>s.add(x));
   BLOOM.focusIds=s;
   const b=document.getElementById("focusBtn"); if(b) b.classList.add("on");
+  if(typeof updateStatus==="function") updateStatus();
+  kadrajaGit();      // aileyi çerçevele
 }
 function odakKapat(){
+  if(!BLOOM.focusIds) return;
   BLOOM.focusIds=null;
   const b=document.getElementById("focusBtn"); if(b) b.classList.remove("on");
+  if(typeof updateStatus==="function") updateStatus();
+  kadrajaGit();      // tüm ağaca dön
 }
 
 // ---- ÖZELLİK 4: nesil aralığı ----
@@ -2081,8 +2110,9 @@ function draw(){
     const isActive = (n===activeNode && (n._grow||0)>0.3);   // ismi aktif blokta yazılıyor
     if(!isActive){
       // ÖNCELİK: 0 bakan/seçili/üzerinde · 1 soy hattı (köke kadar) · 2 bakanın yakınları · 3 diğerleri
+      // Odakta (bir kişiye dokununca) görünen herkesin adı yazılır — aile tek bakışta okunsun.
       const oncelik = (isViewer||sel||hov) ? 0
-                    : (viewerId && onSpine) || (!viewerId && isFounder) ? 1
+                    : BLOOM.focusIds || (viewerId && onSpine) || (!viewerId && isFounder) ? 1
                     : yakinKume.has(n.id) ? 2 : 3;
       // Uzakta yalnızca hikâyeyi anlatan isimler; yakınlaştıkça herkes.
       const goster = oncelik===0 || oncelik===1
@@ -2092,6 +2122,20 @@ function draw(){
     }
   });
   isimleriYerlestir(etiketAdaylari);
+
+  // ——— UZUN BAS geri bildirimi: basılı tutulan düğümün çevresinde dolan halka
+  if(basiliDugum && basimT && moved<=TAP_SLOP){
+    const gecen=Date.now()-basimT;
+    if(gecen>UZUN_BAS_MS*0.25){
+      const pr=project(basiliDugum.x,basiliDugum.y,nodeHeight(basiliDugum));
+      const r=radius(basiliDugum)*zoomK()*pr.k+9;
+      const oran=Math.min(1,gecen/UZUN_BAS_MS);
+      ctx.lineCap="round"; ctx.lineWidth=3; ctx.strokeStyle=getVar("--accent");
+      ctx.globalAlpha=0.25; ctx.beginPath(); ctx.arc(pr.x,pr.y,r,0,6.283); ctx.stroke();
+      ctx.globalAlpha=0.95; ctx.beginPath(); ctx.arc(pr.x,pr.y,r,-Math.PI/2,-Math.PI/2+oran*6.283); ctx.stroke();
+      ctx.globalAlpha=1; ctx.lineCap="butt";
+    }
+  }
 
   // ——— AKTİF DÜĞÜM: genişleme + fotoğraf + detay halkası (Bloom tarzı) ———
   nodes.forEach(n=>{ // grow animasyonu
@@ -2145,7 +2189,17 @@ function yakinlariGetir(){
 // Öncelik 0 (bakan, seçili, üzerinde gezilen) her zaman çizilir.
 function isimleriYerlestir(adaylar){
   adaylar.sort((a,b)=> a.oncelik-b.oncelik || b.depthK-a.depthK);
-  const yerlesen=[];
+  // İsimler düğümlerin ve seçili kişinin (aktif blokta yazılan) adının üstüne binmesin:
+  // bu alanlar baştan "dolu" sayılır.
+  const yerlesen=adaylar.map(c=>({x:c.p.x-c.r-2, y:c.p.y-c.r-2, w:2*c.r+4, h:2*c.r+4, dugum:true}));
+  if(activeNode && (activeNode._grow||0)>0.3 && nodeVisible(activeNode)){
+    const ap=project(activeNode.x,activeNode.y,nodeHeight(activeNode));
+    const ar=radius(activeNode)*zoomK()*ap.k;
+    ctx.font="700 13px Inter, system-ui, sans-serif";
+    const aw=ctx.measureText(dispName(activeNode.name)).width+14;
+    yerlesen.push({x:ap.x-ar-6, y:ap.y-ar-6, w:2*ar+12, h:2*ar+12, dugum:true});
+    yerlesen.push({x:ap.x-aw/2, y:ap.y-ar-24, w:aw, h:20, dugum:true});
+  }
   const cakisir=k=>yerlesen.some(b=>k.x<b.x+b.w && k.x+k.w>b.x && k.y<b.y+b.h && k.y+k.h>b.y);
   const bg=getVar("--panel"), cizgi=getVar("--line"), soy=getVar("--spine");
   for(const c of adaylar){
@@ -2162,8 +2216,13 @@ function isimleriYerlestir(adaylar){
       {x:p.x-w/2,       y:p.y+ara},          // alt
       {x:p.x-w/2,       y:p.y-ara-h},        // üst
     ];
+    // Önce ekrana tam sığan ve çakışmayan konum; sığan yoksa ekrana kırpılmış ilk boş konum
+    const EK=4;
+    const sigar=k=>k.x>=EK && k.x+w<=innerWidth-EK && k.y>=EK && k.y+h<=innerHeight-EK;
+    const kirp=k=>({x:Math.min(Math.max(EK,k.x),innerWidth-EK-w), y:Math.min(Math.max(EK,k.y),innerHeight-EK-h), w, h});
     let kutu=null;
-    for(const k of konumlar){ const aday={x:k.x,y:k.y,w,h}; if(oncelik===0 || !cakisir(aday)){ kutu=aday; break; } }
+    for(const k of konumlar){ const aday={x:k.x,y:k.y,w,h}; if(sigar(aday) && (oncelik===0 || !cakisir(aday))){ kutu=aday; break; } }
+    if(!kutu) for(const k of konumlar){ const aday=kirp(k); if(oncelik===0 || !cakisir(aday)){ kutu=aday; break; } }
     if(!kutu) continue;
     yerlesen.push(kutu);
     const dimmed=(highlightSet.size&&!hl&&!isFounder);
@@ -2217,6 +2276,7 @@ function pickEdge(sx,sy){
   let best=null, bd=TOL;
   const check=(a,b,type)=>{
     if(!a||!b) return;
+    if(!nodeVisible(a) || !nodeVisible(b)) return;   // gizli (odak dışı) bağ tıklanmaz
     const pa=w2sn(a), pb=w2sn(b);
     const dx=pb.x-pa.x, dy=pb.y-pa.y;
     const L2=dx*dx+dy*dy; if(L2<1) return;
@@ -2296,8 +2356,11 @@ function showRelationCard(edge, mx, my){
   highlightSet.clear(); highlightSet.add(info.a.id); highlightSet.add(info.b.id);
 }
 function hideRelationCard(){ const c=document.getElementById("relCard"); if(c) c.style.display="none"; }
-// BLOOM: uzun bas ölçümü (mobilde çift tık yerine uzun bas = aç/kapat)
-let basimT=0;
+// UZUN BAS → kişi ayrıntısı. Parmak kaldırılmadan, süre dolunca açılır; basılı
+// tutarken düğümün çevresinde dolan halka geri bildirim verir (draw içinde).
+const UZUN_BAS_MS=500;
+let basimT=0, uzunBasT=null, uzunBasildi=false, basiliDugum=null;
+function uzunBasIptal(){ clearTimeout(uzunBasT); uzunBasT=null; basiliDugum=null; }
 function basiliSure(now){ return basimT ? (now-basimT) : 0; }
 canvas.addEventListener("pointerdown",e=>{ down={x:e.clientX,y:e.clientY}; moved=0;
   basimT=Date.now();
@@ -2311,9 +2374,22 @@ canvas.addEventListener("pointerdown",e=>{ down={x:e.clientX,y:e.clientY}; moved
   // dragNode artık "basılan düğüm" demek; konumu değiştirilmiyor. Konumlar
   // zaten hiçbir yere kaydedilmiyor (currentGraphJSON x/y göndermez),
   // layoutSpiral her yüklemede yeniden hesaplıyor — sürükleme kalıcı değildi.
+  uzunBasildi=false; uzunBasIptal();
+  if(hit && !BLOOM.pathMode){
+    basiliDugum=hit;
+    uzunBasT=setTimeout(()=>{
+      if(down && moved<=TAP_SLOP && dragNode===hit){
+        uzunBasildi=true; basiliDugum=null;
+        document.getElementById("hoverCard").style.display="none";
+        try{ navigator.vibrate && navigator.vibrate(12); }catch(_){}
+        focusCenter(hit); openPanel(hit);
+      }
+    }, UZUN_BAS_MS);
+  }
   if(hit){ dragNode=hit; canvas.setPointerCapture(e.pointerId);
-    // dokunmatik/mobil: düğüme dokununca detay kartını göster
-    if(e.pointerType==="touch"){ hoverNode=hit; updateHoverCard(hit, e.clientX, e.clientY); }
+    // Basınca küçük önizleme kartı kapanır: uzun bas halkası görünsün. Dokunmada
+    // kart artık açılmıyor — dokunuş aileyi gösterir, uzun bas ayrıntıyı açar.
+    document.getElementById("hoverCard").style.display="none";
   }
   panning=true;   // her durumda pan'e hazır; TAP_SLOP aşılırsa devreye girer
   sonPX=e.clientX; sonPY=e.clientY;   // delta hesabı için başlangıç
@@ -2331,6 +2407,7 @@ canvas.addEventListener("pointermove",e=>{
   sonPX=e.clientX; sonPY=e.clientY;
   mouse={x:e.clientX,y:e.clientY};
   if(down) moved+=Math.abs(dx)+Math.abs(dy);
+  if(moved>TAP_SLOP && uzunBasT) uzunBasIptal();   // sürükleme uzun bas sayılmaz
   // Sürükleme her zaman pan/döndürme — düğüm taşıma YOK.
   // TAP_SLOP eşiği aşılmadan kamerayı oynatmıyoruz ki tık titremesi pan sayılmasın.
   if(down && panning && moved>TAP_SLOP){
@@ -2384,15 +2461,14 @@ function updateHoverCard(n,mx,my){
 }
 canvas.addEventListener("pointerleave",()=>{ hoverNode=null; document.getElementById("hoverCard").style.display="none"; });
 let lastTap=0, lastTapNode=null;
+const ODAK_IPUCU_MAX=3; let odakIpucuSayac=0;   // ipucu oturumda ilk birkaç dokunuşta
+canvas.addEventListener("pointercancel",()=>{ uzunBasIptal(); uzunBasildi=false; });
 canvas.addEventListener("pointerup",e=>{
+  uzunBasIptal();
+  if(uzunBasildi){ uzunBasildi=false; dragNode=null; panning=false; down=null; basimT=0; return; }
   if(dragNode){
     if(moved<=TAP_SLOP){ // tıklama (hareket eşiği altında kaldıysa)
       const now=Date.now();
-      // BLOOM uzun bas (~450ms): kademeli açılımda alt ağacı aç/kapat.
-      // Tek tık seçim davranışını bozmaz; sürükleme TAP_SLOP ile ayrılıyor.
-      if(BLOOM.visible && basiliSure(now) > 450){
-        toggleExpand(dragNode); dragNode=null; down=null; basimT=0; return;
-      }
       // BLOOM yol bulma modu: birinci tık A, ikinci tık B
       if(BLOOM.pathMode){
         if(!BLOOM.pathA){
@@ -2408,21 +2484,20 @@ canvas.addEventListener("pointerup",e=>{
       }
       if(basiliSure(now) <= TAP_TIME){
         if(now-lastTap<320 && lastTapNode===dragNode){
-          // ÇİFT TIK → kişiyi merkeze al ve yakınlarıyla birlikte göster.
-          // (Eskiden düzenleme panelini açıyordu; panel artık yalnızca "zaten
-          //  merkezdeyken tekrar dokun" ile açılıyor — o yol korunuyor.)
-          // Katmandan bağımsız: 2B ve 3B modda aynı çalışır.
-          focusCenter(dragNode);
-          merkezeAl(dragNode);
-          odakAc(dragNode.id);
-          showHint(`${dispName(dragNode.name)} merkezde · yakınları vurgulu`);
+          // ÇİFT TIK: kademeli açılımda alt ağacı aç/kapat; değilse ayrıntı
+          // (masaüstünde uzun basmaya alternatif).
+          if(BLOOM.visible) toggleExpand(dragNode); else openPanel(dragNode);
           lastTap=0; lastTapNode=null;
-        } else if(dragNode===activeNode){ // zaten merkezdeyse tekrar dokunuş → panel (mobil dostu)
-          openPanel(dragNode); lastTap=now; lastTapNode=dragNode;
-        } else { // tek tık → merkeze al + genişlet + detay halkası
-          focusCenter(dragNode); lastTap=now; lastTapNode=dragNode;
-          // Odak modu açıksa seçim onu takip eder (mod kendiliğinden açılmaz).
-          if(BLOOM.focusIds) odakAc(dragNode.id);
+        } else {
+          // TEK DOKUNUŞ → yalnızca bu kişi ve yakın ailesi görünür, kamera aileyi çerçeveler
+          // (focusCenter kullanılmıyor: onun kamera hareketi kadrajaGit ile yarışırdı)
+          activeNode=dragNode; highlightFor(dragNode);
+          document.getElementById("hoverCard").style.display="none";
+          showActiveCard(dragNode);
+          odakAc(dragNode.id);
+          if(odakIpucuSayac++ < ODAK_IPUCU_MAX)
+            showHint(`${dispName(dragNode.name)} ve ailesi · ayrıntı için uzun bas · tüm ağaç için boşluğa dokun`);
+          lastTap=now; lastTapNode=dragNode;
         }
       }
     }
@@ -4723,8 +4798,8 @@ function startAs(id){
   // Yanlış vaat vermek yerine ne yapabileceğini söylüyoruz.
   const yetkili = !!sessionToken || isAdmin;
   if(yetkili){
-    showHint(id ? "Bu senin evrenin · sürükle, tıkla, düzenle"
-                : "Nesil halkaları · tıkla-seç · düzenle");
+    showHint(id ? "Bu senin evrenin · bir kişiye dokun: ailesi · uzun bas: ayrıntı"
+                : "Bir kişiye dokun: ailesi · uzun bas: ayrıntı");
   } else {
     showHint(id ? `Hoş geldin ${dispName((byId[id]||{}).name||"")} · görüntüleme modu — düzenlemek için aile şifresiyle gir`
                 : "Görüntüleme modu · düzenlemek için aile şifresiyle gir");
