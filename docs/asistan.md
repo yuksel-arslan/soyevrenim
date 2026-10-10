@@ -33,6 +33,25 @@ Hesap `api/_lib/agac.js → enBuyukYasayan()` (istemci aynı kodu `public/lib/ag
 Rehber o kişi **değildir**: sistem istemi modelin o büyüğün ağzından konuşmasını, onun adına
 anı/söz uydurmasını yasaklar; ad yalnızca saygı ifadesidir. Doğum yılı girildikçe seçim kesinleşir.
 
+## Rehberin becerileri (`uzman_bilgi` aracı)
+
+`api/_lib/uzmanlik.js` (→ `public/lib/uzmanlik.js`) — Rehber'in uzmanlık modülleri:
+
+| Beceri | İçerik |
+|---|---|
+| `bolge` | Doğu Karadeniz · Arhavi–Fındıklı (Viçe) tarihi: Lazlar, Osmanlı'ya katılış (1461), tahrir kayıtları, 17. yy göçleri, Viçe→Fındıklı, Lazistan, 1959 köy adı değişiklikleri |
+| `site` | soyevrenim.com kullanımı: Rehber ne yapar, ağaçta gezinme (dokun / uzun bas), kişi ekleme ve öneri, sesli hikâye, giriş, kota, temalar, Köken ve araştırma köşesi |
+| `lazca` | Lazca (Lazuri): dil hakkında, selamlaşma, teşekkür, akrabalık adları — Laz Enstitüsü ve lazca.org'dan, yazım farkları belirtilerek |
+
+- **Model açıkken:** asistan bu modülleri `uzman_bilgi({sorgu, beceri})` ile çağırır. Kullanıcı Lazca yazarsa (`lazcaMi`) istemde
+  Lazca kuralı devreye girer: kısa Lazca yanıt + **her zaman Türkçe karşılık**; bilinmeyen sözcük uydurulmaz.
+  Not: Lazca az kaynaklı bir dildir; model Lazcayı akıcı konuşamaz, bilinen ifadelerle sınırlı kalır.
+- **Model kapalıyken (kota/anahtar yok):** ücretsiz Rehber aynı modülleri anahtar sözcükle eşler (`uzmanYaniti`, eşik `UZMAN_ESIK`).
+  Lazca becerisi yalnızca soruda "Lazca" geçerse ya da metin Lazca yazılmışsa çalışır; ağaçta bulunan bir kişinin adı geçen
+  sorular ("Fahri'nin annesi kim?") akrabalık komutuna bırakılır. Hiçbir şey eşleşmezse "kimseyi bulamadım" yerine Rehber'in neler
+  yapabildiği anlatılır.
+- Yeni bilgi eklemek: ilgili becerinin `konular` listesine `{baslik, anahtar[], metin, guven, kaynak[]}` ekle → `npm run build`.
+
 ## Soy tarihi (`soy_tarihi` aracı)
 
 `api/_lib/soy-tarihi.js` (→ `public/lib/soy-tarihi.js`): Fahri Arslan'ın 1956 çizimindeki not
@@ -72,6 +91,7 @@ Yanıt (her zaman HTTP 200):
 | `kisi_getir {kisi_id}` | Profil: ebeveyn, eş, çocuk, kardeş, meslek, eğitim, anılar (iletişim bilgisi **verilmez**) |
 | `yol_bul {a_id, b_id}` | En kısa akrabalık yolu, adım ilişkileri, ortak ata, derece (istemcideki "Yol bul" ile aynı kod) |
 | `ani_ara {sorgu, kisi_id?}` | Anı metni/başlık/tarih içinde arama |
+| `uzman_bilgi {sorgu, beceri}` | Beceriler: bölge tarihi, site kullanımı, Lazca (kaynaklı, güven etiketli) |
 | `soy_tarihi {}` | Fahri Arslan notu, zaman çizelgesi, yerler, adlar (güven etiketli, kaynaklı) + ağaç sayıları |
 | `oneri_olustur {islemler, aciklama}` | `kisi_ekle`, `iliski_ekle`, `bilgi_duzelt` yaması → onay kuyruğu |
 

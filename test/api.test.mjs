@@ -199,3 +199,21 @@ test('soy sorusu → soy_tarihi aracı: Fahri Arslan notu + ağaç sayıları; r
   const { MESAJ_MAX_TOKEN, tahminiToken } = await import('../api/_lib/ayar.js');
   for (const i of llm.istekler) assert.ok(tahminiToken(JSON.stringify(i.messages)) + tahminiToken(JSON.stringify(i.tools || [])) <= MESAJ_MAX_TOKEN);
 });
+
+test('Lazca yazan kullanıcı: istemde Lazca kuralı; uzman_bilgi(lazca) Türkçe karşılıklı ifade döner', { skip: atla }, async () => {
+  const llm = senaryoLlm([
+    { content: null, tool_calls: [arac('uzman_bilgi', { sorgu: 'merhaba nasılsın', beceri: 'lazca' })] },
+    (g) => {
+      const s = JSON.parse(g.messages.at(-1).content);
+      assert.match(s.konular[0].bilgi, /Muç̌ore/);
+      return { content: 'Xelaǩaoba! Ma ǩai vore. (Merhaba! Ben iyiyim.)' };
+    },
+  ]);
+  globalThis.__SOY_TEST.llm = llm;
+  const r = await cagir(asistan, { body: { jeton, kisi_id: KISI, mesaj: 'Xelaǩaoba, muç̌ore?' } });
+  assert.equal(r.govde.ok, true);
+  assert.match(llm.istekler[0].messages[1].content, /Lazca yazdı/);
+  assert.ok(llm.istekler[0].tools.some((t) => t.function.name === 'uzman_bilgi'));
+  const { MESAJ_MAX_TOKEN, tahminiToken } = await import('../api/_lib/ayar.js');
+  for (const i of llm.istekler) assert.ok(tahminiToken(JSON.stringify(i.messages)) + tahminiToken(JSON.stringify(i.tools || [])) <= MESAJ_MAX_TOKEN);
+});

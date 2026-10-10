@@ -100,3 +100,21 @@ test('soy tarihi: Fahri Arslan notu birebir, her bilgi güven etiketli, kaynakla
   assert.ok(o.fahri_arslan_notu.includes('1956'));
   assert.ok(o.osmanli_arsivi.some((a) => a.yil === '1835' && /1165/.test(a.defter)));
 });
+
+test('Rehber becerileri: sorular doğru uzmanlığa gider, Lazca yalnız istenince', async () => {
+  const U = await import('../api/_lib/uzmanlik.js');
+  const ilk = (q, b) => U.uzmanAra(q, b, 1)[0];
+  assert.equal(ilk('sorulara yanıt verebilir misin?').baslik, 'Rehber ne yapabilir?');
+  assert.equal(ilk('Nasıl kişi eklerim?').beceri, 'site');
+  assert.equal(ilk('Fındıklı’nın eski adı ne?').baslik, 'Viçe’den Fındıklı’ya');
+  assert.equal(ilk('Lazca teşekkür nasıl denir', 'lazca').baslik, 'Teşekkür');
+  assert.equal(ilk('Lazca anne ne demek', 'lazca').baslik, 'Akrabalık adları');
+  assert.ok(U.lazcaMi('Xelaǩaoba, muç̌ore?'));
+  assert.ok(!U.lazcaMi('Fahri’nin annesi kim?'));
+  for (const b of Object.values(U.BECERILER)) for (const k of b.konular) {
+    assert.ok(U.GUVEN[k.guven], k.baslik);
+    for (const x of k.kaynak) assert.ok(U.BECERI_KAYNAKLARI[x], x);
+  }
+  const o = U.uzmanBilgi('Lazca merhaba', 'lazca');
+  assert.ok(o.konular[0].bilgi.includes('Xelaǩaoba') && o.lazca_notu);
+});

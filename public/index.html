@@ -703,8 +703,8 @@ canvas{display:block;position:fixed;inset:0;
 
 <!-- Ortak ağaç kütüphanesi (yol bulma / ortak ata) — sunucudaki asistanla aynı kod -->
 <script type="module">
-  import * as L from "/lib/agac.js"; import * as T from "/lib/soy-tarihi.js";
-  window.AgacLib = L; window.SoyTarihi = T;
+  import * as L from "/lib/agac.js"; import * as T from "/lib/soy-tarihi.js"; import * as U from "/lib/uzmanlik.js";
+  window.AgacLib = L; window.SoyTarihi = T; window.Uzmanlik = U;
   window.dispatchEvent(new Event("kok-lib-hazir"));
 </script>
 <script>
@@ -3892,7 +3892,31 @@ function renderAnalysis(){
 const REHBER_KEY="kok_rehber_gorildi";
 
 // Komut tablosu: desen → çalıştırıcı. Sıra önemli (özel olan önce).
+// Rehberin becerileri (public/lib/uzmanlik.js): bölge tarihi · site kullanımı · Lazca.
+// Model yokken de yanıt verebilsin diye anahtar sözcükle eşleşir. Lazca becerisi yalnız
+// soruda "lazca" geçerse ya da metin Lazca yazılmışsa devreye girer (yoksa "Fahri'nin
+// annesi kim?" gibi bir soru Lazca akrabalık sözlüğüne düşerdi).
+function uzmanYaniti(metin){
+  const U=window.Uzmanlik; if(!U) return null;
+  const lazca = /laz(ca|uri)/i.test(metin) || U.lazcaMi(metin);
+  const l = lazca ? U.uzmanAra(metin,"lazca",1) : U.uzmanAra(metin,null,2).filter(k=>k.beceri!=="lazca");
+  const k=l[0]; if(!k || k.puan<UZMAN_ESIK) return null;
+  const kay=(k.kaynak||[]).map(x=>U.BECERI_KAYNAKLARI[x]?.ad).filter(Boolean).join(" · ");
+  const selam = U.lazcaMi(metin) ? "Xelaǩaoba! (Merhaba!) " : "";
+  return `${selam}${k.metin}${kay?`\n\nKaynak: ${kay}`:""}`;
+}
+const UZMAN_ESIK=4;   // en az bir tam anahtar sözcük/öbek eşleşmesi
 const KOMUTLAR=[
+  { ad:"uzman", desen:/.*/,
+    calistir:(m,metin)=>{
+      // Kişi/akrabalık soruları önce kendi komutlarına gitsin: kesme işaretli ad AĞAÇTA bir
+      // kişiyse ("Fahri'nin…") atla; yer adıysa ("Fındıklı'nın…") beceri yanıtlasın.
+      if(!/laz(ca|uri)/i.test(metin)){
+        const adlar=[...metin.matchAll(/(\p{Lu}\p{Ll}+)['’]/gu)].map(x=>x[1].toLocaleLowerCase("tr"));
+        if(adlar.some(a=>nodes.some(n=>dispName(n.name).toLocaleLowerCase("tr").split(/\s+/)[0]===a))) return null;
+      }
+      return uzmanYaniti(metin);
+    } },
   { ad:"kaynakca", desen:/kaynakça|kaynaklar|nasıl araştır|araştırma (köşe|kaynak|yap)|arşiv(de|e)? (ara|bak)|tahrir defter/i,
     calistir:()=>{
       setTimeout(()=>{ if(typeof window.__kokenHikayeAc==="function"){ window.__kokenHikayeAc();
@@ -3966,7 +3990,8 @@ const KOMUTLAR=[
         /hala/.test(t)           ? "hala" :
         /teyze/.test(t)          ? "teyze" :
         /kardeş|kardes/.test(t)  ? "kardes" :
-        /eş[iy]|esi|karısı|kocası/.test(t) ? "es" :
+        // "annesi"nin içindeki "esi" eş sanılmasın: yalnız tek başına sözcük olarak
+        /(^|[\s'’])(eşi|eşleri|esi|eşini)(?=$|[\s?.!,])|karısı|kocası/.test(t) ? "es" :
         /anne/.test(t)           ? "anne" :
         /baba/.test(t)           ? "baba" :
         /ebeveyn/.test(t)        ? "ebeveyn" :
@@ -3992,8 +4017,10 @@ const KOMUTLAR=[
       // anne hattından gelen çocuklar da (baba hattında yoksa) eklenir
       (motherEdges||[]).forEach(me=>{ if(me.from===k.id){ const c=byId[me.to];
         if(c && !cocuklar.some(x=>x.id===c.id)) cocuklar.push(c); } });
-      const anneDugum = k.mother ? byId[k.mother] : null;
       const babaDugum = (k._parent && k._parent.sex!=="K") ? k._parent : null;
+      // Veride "anne" alanı bazen babayı (erkek bir kişiyi) gösteriyor — anne sayma.
+      const anneAday = k.mother ? byId[k.mother] : (k._parent && k._parent.sex==="K" ? k._parent : null);
+      const anneDugum = anneAday && anneAday.sex==="K" && anneAday!==babaDugum ? anneAday : null;
       const kardesler = k._parent ? (k._parent._kids||[]).filter(x=>x.id!==k.id) : [];
       const esler = (k.spouse||[]).map(s=>dispName(String(s).replace(" (aileden)","")));
 
@@ -4094,7 +4121,9 @@ const KOMUTLAR=[
     calistir:(m,metin)=>{
       const temiz=metin.replace(/['’]?[ıiu]?\s*(göster|getir|bul|aç|nerede|kim)\b/gi,"").trim();
       const liste=rehberKisiAra(temiz||metin);
-      if(!liste.length) return `“${(temiz||metin).trim()}” için kimseyi bulamadım.`;
+      // Uzun bir cümle (soru) isim değildir: "kimseyi bulamadım" demek yerine yardım mesajına bırak
+      const sozcuk=(temiz||metin).trim().split(/\s+/).length;
+      if(!liste.length) return sozcuk>2 || /\?$/.test(metin.trim()) ? null : `“${(temiz||metin).trim()}” için kimseyi bulamadım.`;
       const k=liste[0];
       selectNode(k); if(typeof merkezeAl==="function") merkezeAl(k);
       const kim=(typeof kimlikSatiri==="function") ? kimlikSatiri(k) : "";
@@ -4212,6 +4241,8 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     "Emine ile Fahri nasıl akraba?",
     "Molla Memiş kimdir?",
     "Araştırma kaynakları",
+    "Lazca teşekkür nasıl denir?",
+    "Nasıl kişi eklerim?",
     "Yüksel'i göster",
     "Aslanişi kolunu göster",
     "Kollar neler?",
@@ -4244,8 +4275,10 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       try{ c=k.calistir(m,t); }catch(e){ yaz("Bunu yapamadım."); return; }
       if(c){ yaz(c); return; }
     }
-    yaz("Anlayamadım. Bir isim söyleyebilirsin (“Yüksel”), bir kol (“Aslanişi”), "+
-        "ya da “yaşayanları göster”, “3-6 nesil”, “kökenimizi göster” diyebilirsin.");
+    // Hiçbir komut tutmadı: Rehber'in ne yapabildiğini sıcak bir dille anlat
+    const y = window.Uzmanlik ? window.Uzmanlik.BECERILER.site.konular[0].metin : "";
+    yaz((y || "Soyumuz, bölgemiz ve bu site hakkında soruları yanıtlarım.") +
+        "\n\nŞu an akıllı asistan kapalı ya da günlük kotası dolu; bu soruyu tam anlayamadım. Bir isim, bir akrabalık sorusu ya da “Nereden geldik?” gibi bir soruyla dener misin?");
   }
 
   function ac(ilkZiyaret){
@@ -4329,6 +4362,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   const YEREL=new Set(["koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
   function yerelArayuzMu(t){
     for(const k of KOMUTLAR){
+      if(k.ad==="uzman") continue;   // bilgi becerisi arayüz komutu değil: asistan önce denesin
       if(k.ad==="kol") return typeof kolBul==="function" && !!kolBul(t);
       if(!k.desen.test(t)) continue;
       if(YEREL.has(k.ad)) return true;

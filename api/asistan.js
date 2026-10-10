@@ -14,9 +14,11 @@ import { kotaDurumu, llmIzin, kullanimKaydet, KOTA_MESAJI } from './_lib/kota.js
 import { sohbet, SaglayiciKotaHatasi } from './_lib/groq.js';
 import { grafKur, kisiAra, kisiKisa, yakinlar, yolBul, adiGoster, normalize, nesilHaritasi, enBuyukYasayan } from './_lib/agac.js';
 import { soyTarihiOzet } from './_lib/soy-tarihi.js';
+import { uzmanBilgi, lazcaMi } from './_lib/uzmanlik.js';
 import { oneriEkle, yamaHatasiMi } from './_lib/oneri.js';
 
 const SISTEM = `Sen "Kök" soy ağacının asistanısın (Abdurrahman Oğulları, 1615'ten beri). Türkçe, kısa ve sıcak yaz.
+Üç uzmanlığın var: (1) bu ailenin soyu ve kökeni, (2) Doğu Karadeniz — Arhavi ve Fındıklı (Viçe) — bölge tarihi, (3) soyevrenim.com sitesinin kullanımı. Ayrıca temel Lazca biliyorsun.
 Kurallar:
 1. Bilgiyi YALNIZCA araç sonuçlarından ver; uydurma. Bilmiyorsan söyle.
 2. Her isim için önce kisi_ara kullan. Birden çok eşleşme varsa ve bağlam ayırt etmiyorsa hangisi olduğunu sor (baba adı ve nesille listele); asla tahmin etme.
@@ -25,8 +27,10 @@ Kurallar:
 5. Yeni kişi eklerken: hedef kişiyi kisi_ara ile kesinleştir; cinsiyeti ifadeden çıkar ("kız kardeşi", "kızı", "annesi" → K); aynı adda bir kişi zaten o ilişkideyse eklemeden önce sor.
 6. Akrabalık sorusunda yol_bul kullan, yolu adım adım anlat (ör. "Emine, Ali'nin kızı; Ali, Fahri'nin kardeşi…").
 7. Soyun kökeni, göçü, tarihi, yerler (Arhavi, Potocur, Derbent), Molla Memiş, kollar ya da ağacın genel sayıları sorulursa soy_tarihi kullan. Fahri Arslan'ın notunu (aile kaydı) kaynaklı bilgiden ayır; "Teyit gerekli" ya da "Yorum" etiketli bilgiyi kesinmiş gibi söyleme.
-8. Kişisel iletişim bilgisi (telefon, adres, e-posta) verme.
-9. Sıcak ve saygılı ol; aile büyüklerinden söz ederken "rahmetli" gibi geleneksel ifadeleri yerinde kullanabilirsin.`;
+8. Bölge tarihi (Lazlar, Osmanlı dönemi, Lazistan, köy adları), site kullanımı (kişi ekleme, öneri, hikâye kaydı, temalar, kota) ya da Lazca sorularında uzman_bilgi kullan (beceri: bolge | site | lazca). Bilgi yoksa uydurma, bilmediğini söyle.
+9. Lazca: kullanıcı Lazca yazarsa ya da isterse kısa Lazca cümleler kur ve her zaman Türkçe karşılığını ver. Emin olmadığın Lazca sözcüğü uydurma; uzman_bilgi(lazca) ifadelerini kullan, gerisini Türkçe söyle.
+10. Kişisel iletişim bilgisi (telefon, adres, e-posta) verme.
+11. Sıcak ve saygılı ol; aile büyüklerinden söz ederken "rahmetli" gibi geleneksel ifadeleri yerinde kullanabilirsin.`;
 
 const ILISKI = ['cocugu', 'esi', 'kardesi', 'babasi', 'annesi'];
 const ARACLAR = [
@@ -38,6 +42,9 @@ const ARACLAR = [
     parameters: { type: 'object', properties: { a_id: { type: 'string' }, b_id: { type: 'string' } }, required: ['a_id', 'b_id'] } } },
   { type: 'function', function: { name: 'ani_ara', description: 'Anılarda sözcük arar (isteğe bağlı tek kişiyle sınırlı).',
     parameters: { type: 'object', properties: { sorgu: { type: 'string' }, kisi_id: { type: 'string' } }, required: ['sorgu'] } } },
+  { type: 'function', function: { name: 'uzman_bilgi', description:
+    'Rehberin uzmanlık modülleri: bolge (Arhavi–Fındıklı/Doğu Karadeniz tarihi), site (soyevrenim.com kullanımı), lazca (selamlaşma, teşekkür, akrabalık adları). Kaynaklı ve güven etiketli bilgi döner.',
+    parameters: { type: 'object', properties: { sorgu: { type: 'string' }, beceri: { type: 'string', enum: ['bolge', 'site', 'lazca'] } }, required: ['sorgu'] } } },
   { type: 'function', function: { name: 'soy_tarihi', description:
     'Soyun kökeni ve tarihi (Fahri Arslan\'ın 1956 notu, zaman çizelgesi, yerler, kaynaklar ve güven etiketleri) ile ağacın genel sayıları (kişi, nesil, yaşayan, kollar).',
     parameters: { type: 'object', properties: {} } } },
@@ -112,6 +119,7 @@ function aracCalistirici(ctx) {
       }
       return { sonuc, not: sonuc.length ? undefined : 'anı bulunamadı' };
     },
+    uzman_bilgi: ({ sorgu, beceri }) => uzmanBilgi(sorgu, beceri),
     soy_tarihi: () => {
       const d = nesilHaritasi(g);
       const nodes = ctx.veri.nodes || [];
@@ -186,7 +194,7 @@ export default async function handler(req, res) {
     .map((m) => ({ role: m.rol === 'asistan' ? 'assistant' : 'user', content: m.metin.slice(0, ASISTAN.mesajMaxKarakter), gecmis: true }));
   const messages = [
     { role: 'system', content: SISTEM },
-    { role: 'system', content: rehberKimligi(kim) },
+    { role: 'system', content: rehberKimligi({ ...kim, lazca: lazcaMi(mesaj) }) },
     ...gecmis,
     { role: 'user', content: mesaj },
   ];
@@ -229,8 +237,9 @@ export default async function handler(req, res) {
 function rehberKimligi(kim) {
   const eb = enBuyukYasayan(kim.veri);
   const ad = eb ? `${eb.tamAd} Rehberi` : 'Kök Rehberi';
+  const laz = kim.lazca ? ' Kullanıcı Lazca yazdı: Lazca selamla, kısa yanıtla ve Türkçe karşılığını mutlaka ekle.' : '';
   return `Adın "${ad}". Adını ailenin yaşayan en büyüğünden${eb ? ` (${eb.ad})` : ''} alıyorsun; ama sen o kişi değilsin: onun ağzından konuşma, onun adına anı ya da söz uydurma. `
-    + `Konuşan kişi: ${kim.ad} (kisi_id: ${kim.kisiId}). "ben", "babam" gibi ifadeler bu kişiye göredir.`;
+    + `Konuşan kişi: ${kim.ad} (kisi_id: ${kim.kisiId}). "ben", "babam" gibi ifadeler bu kişiye göredir.${laz}`;
 }
 
 async function kayit(ctx, t) {
