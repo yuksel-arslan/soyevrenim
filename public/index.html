@@ -2878,7 +2878,21 @@ function openInspector(n){
     row.onclick=()=>{ const t=byId[row.dataset.id]; if(t){selectNode(t);focus(t);} };
   });
   document.getElementById("fName").oninput=e=>{ n.name=e.target.value; iName.textContent=dispName(n.name); touch(); };
-  document.getElementById("fSex").onchange=e=>{ n.sex=e.target.value; iDot.style.background=nodeColor(n); touch(); };
+  document.getElementById("fSex").onchange=e=>{ n.sex=e.target.value;
+    // Erkek yapılan kişinin "anne bağları" geride kalmasın: aynı çocuğa zaten baba bağı
+    // varsa anne bağı kopyadır, kaldırılır (bkz. sql/anne-bagi-temizligi.sql — eski
+    // verideki 41 hatalı kayıt bu yoldan oluşmuştu).
+    if(n.sex==="E"){
+      for(let i=motherEdges.length-1;i>=0;i--){
+        const m=motherEdges[i];
+        if(m.from===n.id && edges.some(x=>x.from===n.id && x.to===m.to)){
+          motherEdges.splice(i,1);
+          const c=byId[m.to]; if(c && c.mother===n.id) c.mother=null;
+        }
+      }
+      reindex();
+    }
+    iDot.style.background=nodeColor(n); touch(); };
   document.getElementById("fAlive").onchange=e=>{ n.alive=e.target.value==="1"; iDot.style.background=nodeColor(n); touch(); };
 
   // ——— YETKİ: bu kişiyi düzenleyebilir miyim? ———
