@@ -94,6 +94,22 @@ Yanıt (her zaman HTTP 200):
 { "ok": false, "yedek": true, "sebep": "sistem|kisi|saglayici|hata", "mesaj": "Bugünkü ücretsiz asistan kotası doldu, yarın 03:00'te yenilenir." }
 ```
 
+## Dinamik öneriler (Çınar akıllı ve tekrar etmez)
+
+Eskiden sabit 12 öneri hep aynı sırayla geliyordu. Şimdi:
+
+- **Sorduğunu hatırlar:** yazılan ya da dokunulan her konu `localStorage.kok_sorulan`'a eklenir ve bir
+  daha önerilmez. Havuz bitince liste baştan döner.
+- **Sana özel** (kim olduğu biliniyorsa, en çok 3): 👪 Ailem · 🌳 Benim soy zincirim · 👤 Babam … ·
+  👴 Dedem … · 📖 Benim anılarım · 🔗 *(ağaçta seçili kişi)* ile akrabalığım. Bunlar yerel eylemdir,
+  kota harcamaz.
+- **Geniş havuz** (`HAVUZ`, 22 konu: köken, bölge tarihi, Lazca, site kullanımı, ekran komutları) her
+  seferinde karıştırılır; toplam en çok `CIP_MAX` (8) öneri.
+- Her yanıttan sonra (yerel ya da yapay zekâ) öneriler yeniden kurulur.
+- **Karşılama** saate göre (Günaydın / İyi günler / İyi akşamlar / İyi geceler) ve ada göre selamlar,
+  henüz sorulmamış bir konuyu önerir.
+- Her havuz sorusunun yerel bir yanıtı olduğu tarayıcı testiyle denetlenir (hiçbiri "anlayamadım"a düşmez).
+
 ## Kişi sorusu: önce ne istendiğini sorar
 
 Asistana yalnızca bir ad yazılınca ("Yüksel", "Hamit kim?", "Yüksel'i göster", en fazla üç sözcük)

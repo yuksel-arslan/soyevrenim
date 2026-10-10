@@ -4619,28 +4619,67 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   const giris=el("rehberGiris");
   if(!panel) return;
 
-  const ORNEKLER=[
-    "Nereden geldik?",
-    "Emine ile Fahri nasıl akraba?",
-    "Molla Memiş kimdir?",
-    "Araştırma kaynakları",
-    "Lazca teşekkür nasıl denir?",
-    "Nasıl kişi eklerim?",
-    "Yüksel'i göster",
-    "Aslanişi kolunu göster",
-    "Kollar neler?",
-    "Yaşayanları göster",
-    "İstatistikleri aç",
-    "Kökenimizi göster",
+  // DİNAMİK ÖNERİLER: eskiden sabit 12 madde hep aynı sırayla geliyordu.
+  // • Sorulan (yazılan ya da dokunulan) konu bir daha önerilmez; hepsi bitince liste baştan döner.
+  // • Kim olduğu biliniyorsa ona özel öneriler (babası, dedesi, ailesi, soy zinciri, anıları).
+  // • Ağaçta başka biri seçiliyse onunla ilgili öneri.
+  // • Geniş havuzdan her seferinde karışık seçim.
+  const HAVUZ=[
+    "Nereden geldik?", "Molla Memiş kimdir?", "Emine ile Fahri nasıl akraba?", "Araştırma kaynakları",
+    "Kollar neler?", "Aslanişi kolunu göster", "Yaşayanları göster", "İstatistikleri aç", "Kökenimizi göster",
+    "Lazlar kimdir?", "Fındıklı'nın eski adı ne?", "Köy adları neden değişti?", "Tahrir defterleri nedir?",
+    "1615'te bölgede ne oluyordu?", "Lazca teşekkür nasıl denir?", "Lazca 'kardeş' ne demek?",
+    "Lazca nasıl selamlaşılır?", "Nasıl kişi eklerim?", "Sesli hikâye nasıl anlatılır?",
+    "Ağaçta nasıl gezinirim?", "Temayı nasıl değiştiririm?", "Lazca konuşalım",
   ];
+  const CIP_MAX=8, SORULAN_KEY="kok_sorulan";
+  const anahtarla=t=>String(t||"").toLocaleLowerCase("tr").replace(/[^\p{L}\p{N} ]/gu," ").replace(/\s+/g," ").trim();
+  function sorulanlar(){ try{ return new Set(JSON.parse(localStorage.getItem(SORULAN_KEY)||"[]")); }catch(e){ return new Set(); } }
+  function sorulanEkle(t){ const s=sorulanlar(); s.add(anahtarla(t)); try{ localStorage.setItem(SORULAN_KEY, JSON.stringify([...s])); }catch(e){} }
+  const karistir=a=>{ const b=a.slice(); for(let i=b.length-1;i>0;i--){ const k=Math.floor(Math.random()*(i+1)); [b[i],b[k]]=[b[k],b[i]]; } return b; };
+  // Kişiye özel öneriler: {etiket, eylem} — yerel, kota harcamaz
+  function kisiselOneriler(){
+    const kim=kimlikId(), ben=kim&&byId[kim]; if(!ben || typeof kisiSecenekleri!=="function") return [];
+    const ol=[];
+    const sec=(n,etiketParca)=>{ const o=kisiSecenekleri(n).find(x=>x.etiket.includes(etiketParca)); return o?o.eylem:null; };
+    const ailem=sec(ben,"Ailesi"), zincir=sec(ben,"Soy zinciri"), anilar=sec(ben,"Anıları");
+    if(ailem) ol.push({etiket:"👪 Ailem", eylem:ailem});
+    if(zincir) ol.push({etiket:"🌳 Benim soy zincirim", eylem:zincir});
+    const baba=ben._parent; if(baba) ol.push({etiket:`👤 Babam ${dispName(baba.name)}`, eylem:()=>kisiTanit(baba)});
+    const dede=baba&&baba._parent; if(dede) ol.push({etiket:`👴 Dedem ${dispName(dede.name)}`, eylem:()=>kisiTanit(dede)});
+    if(anilar) ol.push({etiket:"📖 Benim anılarım", eylem:anilar});
+    const secili=(typeof activeNode!=="undefined"&&activeNode&&activeNode!==ben)?activeNode:null;
+    if(secili) ol.push({etiket:`🔗 ${dispName(secili.name)} ile akrabalığım`, eylem:()=>{
+      const an=akrabalikAnlatisi(ben.id, secili.id); if(typeof yolBul==="function") yolBul(ben.id, secili.id);
+      return an?[an.ozet,...an.cumleler].join("\n"):"Akrabalığı hesaplayamadım."; }});
+    return ol;
+  }
+  // Henüz sorulmamış öneriler (önce kişisel, sonra karışık havuz)
+  function oneriler(){
+    let sorulan=sorulanlar();
+    const kisisel=kisiselOneriler().filter(o=>!sorulan.has(anahtarla(o.etiket)));
+    let genel=HAVUZ.filter(t=>!sorulan.has(anahtarla(t)));
+    if(!genel.length && !kisisel.length){   // hepsi soruldu → baştan
+      try{ localStorage.removeItem(SORULAN_KEY); }catch(e){}
+      sorulan=new Set(); genel=HAVUZ.slice();
+    }
+    const kisiselSec=karistir(kisisel).slice(0, Math.min(3, kisisel.length));
+    return [...kisiselSec, ...karistir(genel).slice(0, CIP_MAX-kisiselSec.length).map(t=>({etiket:t, metin:t}))];
+  }
+  function ilkOneri(){ const o=HAVUZ.filter(t=>!sorulanlar().has(anahtarla(t))); return o.length ? o[Math.floor(Math.random()*o.length)] : null; }
   function ciplerKur(){
     cipler.innerHTML="";
-    ORNEKLER.forEach(t=>{
+    oneriler().forEach(o=>{
       const b=document.createElement("button");
-      b.textContent=t;
-      b.style.cssText="background:var(--panel2);border:1px solid var(--line);color:var(--text);"+
+      b.textContent=o.etiket;
+      b.style.cssText="background:var(--panel2);border:1px solid "+(o.eylem?"var(--spine)":"var(--line)")+";color:var(--text);"+
         "font-size:12px;padding:7px 11px;border-radius:16px;cursor:pointer";
-      b.onclick=()=>{ if(sifreBekle) sifreModundanCik(); giris.value=t; rehberGonder(t); };
+      b.onclick=()=>{
+        if(sifreBekle) sifreModundanCik();
+        sorulanEkle(o.etiket);
+        if(o.eylem){ notYaz(""); let c=null; try{ c=o.eylem(); }catch(e){ c="Bunu yapamadım."; } sonucGoster(c); if(!(c&&typeof c==="object")) ciplerKur(); return; }
+        giris.value=o.metin; rehberGonder(o.metin);
+      };
       cipler.appendChild(b);
     });
   }
@@ -4696,9 +4735,13 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   function ac(ilkZiyaret){
     asistanAdiGuncelle();
     const ad=asistanAdi();
+    const saat=new Date().getHours();
+    const selam = saat<11 ? "Günaydın" : saat<17 ? "İyi günler" : saat<22 ? "İyi akşamlar" : "İyi geceler";
+    const kim=kimlikId(), kimAd = kim&&byId[kim] ? " "+dispName(byId[kim].name) : "";
+    const oneri=ilkOneri();
     yaz(ilkZiyaret
-      ? `Merhaba, ben ${ad}. Abdurrahman Oğullarının soy ağacını bilirim; ailemizi, bölgemizi ve bu siteyi sorabilirsin. Bu evren, Fahri Arslan'ın 1956'da elle çizdiği ağacın yaşayan hâli: nereden geldiğimizi, kimin kimin nesi olduğunu, büyüklerimizin anılarını birlikte konuşalım.`
-      : `Tekrar hoş geldin! Ben ${ad}. Soyumuz hakkında ne merak ediyorsun?`);
+      ? `Merhaba${kimAd}, ben ${ad}. Abdurrahman Oğullarının soy ağacını bilirim; ailemizi, bölgemizi ve bu siteyi sorabilirsin. Bu evren, Fahri Arslan'ın 1956'da elle çizdiği ağacın yaşayan hâli: nereden geldiğimizi, kimin kimin nesi olduğunu, büyüklerimizin anılarını birlikte konuşalım.`
+      : `${selam}${kimAd}! ${oneri ? `Bugün belki şunu merak edersin: “${oneri}”` : "Soyumuz hakkında ne merak ediyorsun?"}`);
     ciplerKur();
     panel.style.display="block";
     if(typeof kotaTazele==="function") kotaTazele();
@@ -4808,6 +4851,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   async function rehberGonder(metin){
     const t=String(metin||"").trim();
     if(!t || mesgul) return;
+    if(!sifreBekle) sorulanEkle(t);   // yanıtı alınan konu bir daha önerilmez
     if(sifreBekle){
       mesgul=true; const j=await sifreyleGir(t); mesgul=false;
       giris.value="";
@@ -4836,7 +4880,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       if(j.kota) kotaGoster(j.kota);
       if(!j.ok){ calistirKomut(t); notYaz(j.mesaj||"Şu an tam yanıt veremedim; hazır bilgilerimle yanıtladım."); return; }
       gecmis.push({rol:"kullanici",metin:t},{rol:"asistan",metin:j.yanit});
-      yaz(j.yanit);
+      yaz(j.yanit); ciplerKur();
       const g=j.gorsel||{};
       if(g.yol && typeof yolBul==="function") yolBul(g.yol[0], g.yol[1]);
       else if(g.kisi && byId[g.kisi]){ selectNode(byId[g.kisi]); if(typeof merkezeAl==="function") merkezeAl(byId[g.kisi]); }
