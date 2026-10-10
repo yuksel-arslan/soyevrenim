@@ -12,6 +12,16 @@ Depo: **Cloudflare R2** — sesli hikâyelerle aynı kova, `medya/AAAAAA/` altı
 | `POST /api/medya?adim=yukle&jeton=…&tip=…` — gövde: ham dosya (octet-stream) | aile / admin jetonu | `{ok, anahtar, okuUrl}` — yedek yol, en çok `MEDYA.vekilMaxMb` |
 | `GET /api/medya?adim=oku&anahtar=…` | herkes | `302` → taze imzalı R2 **GET** (tarayıcı `MEDYA.okuOnbellekSn` önbellekler) |
 
+R2 reddederse (`502`) yanıt R2'nin hata kodunu ve ne yapılacağını söyler (`api/_lib/r2.js → r2Hatasi`):
+
+| Kod | Anlamı / yapılacak |
+|---|---|
+| `AccessDenied` (ya da kodsuz 403) | R2 API anahtarının kovaya **yazma** izni yok → Manage API tokens: "Object Read & Write", doğru kova |
+| `SignatureDoesNotMatch` | `R2_SECRET_ACCESS_KEY` yanlış/eksik kopyalanmış |
+| `InvalidAccessKeyId` | `R2_ACCESS_KEY_ID` yanlış ya da anahtar silinmiş |
+| `NoSuchBucket` | `R2_BUCKET` adı yanlış |
+| `Unauthorized` | `R2_ACCOUNT_ID` ile anahtar farklı hesaplara ait |
+
 Hatalar: `401` giriş gerekli · `400` desteklenmeyen tür / geçersiz anahtar · `503` R2 ayarları eksik.
 Türler (`MEDYA.turler`): jpg, png, webp, gif, heic, mp4, mov, webm.
 
