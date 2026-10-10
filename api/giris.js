@@ -10,7 +10,7 @@
 
 import crypto from 'crypto';
 
-function jetonUret(rol){
+export function jetonUret(rol){
   const gizli = process.env.OTURUM_GIZLI || 'degistir-beni';
   const veri = JSON.stringify({ rol, t: Date.now() });
   const imza = crypto.createHmac('sha256', gizli).update(veri).digest('hex').slice(0,32);
