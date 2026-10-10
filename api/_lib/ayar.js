@@ -62,6 +62,20 @@ export const DEPOLAMA = { kotaBayt: 10 * 1024 ** 3, onEk: 'ses/' };
 // — Panel: katkı sıralaması (1 eklenen kişi = bu kadar saniyelik hikâye ağırlığında)
 export const KATKI = { kisiAgirlikSn: 60 };
 
+// Aile sohbeti: yeni mesaj yoklaması (rozet + bildirim) ve panel açıkken yenileme
+export const SOHBET = { yoklamaSn: 45, acikYoklamaSn: 15, yeniMax: 50 };
+
+// Web Push bildirimleri (api/_lib/push.js)
+export const BILDIRIM = {
+  ttlSn: 86400,            // telefon kapalıysa push servisi bu kadar saklar (1 gün)
+  jwtSureSn: 43200,        // VAPID imzası geçerliliği (≤ 24 sa olmalı)
+  zamanAsimiMs: 5000,      // tek gönderim için bekleme sınırı
+  kayitBoyu: 4096,         // aes128gcm kayıt boyu (rs)
+  metinMax: 140,           // bildirim metni (mesajın başı)
+  enCokAlici: 200,         // bir duyuruda en fazla abonelik
+  konu: 'mailto:bildirim@soyevrenim.com',   // VAPID "sub" — push servisi sorun olursa buraya yazar
+};
+
 // — Yazılı anı (mevcut istemci sınırı) —
 export const YAZILI_ANI_MAX_CHARS = 1000;
 
@@ -74,6 +88,7 @@ export function kamuAyar() {
     SES: { mime: SES.mime, mimeYedek: SES.mimeYedek, bitHizi: SES.bitHizi, parcaSn: SES.parcaSn,
       parcaMaxMb: SES.parcaMaxMb, maxKayitDk: SES.maxKayitDk },
     DEPOLAMA: { kotaBayt: DEPOLAMA.kotaBayt },
+    SOHBET,
     ASISTAN: { ad: ASISTAN.ad, mesajMaxKarakter: ASISTAN.mesajMaxKarakter, gecmisTur: ASISTAN.gecmisTur },
   };
 }

@@ -5,7 +5,7 @@
   "description": "Abdurrahman Oğulları — ortak soy ağacı (Vercel + Neon)",
   "scripts": {
     "build": "node scripts/lib-kopyala.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test --test-concurrency=1 test/*.test.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
