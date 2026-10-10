@@ -59,6 +59,17 @@ export const SES = {
 // — Depolama (Cloudflare R2) —
 export const DEPOLAMA = { kotaBayt: 10 * 1024 ** 3, onEk: 'ses/' };
 
+// Fotoğraf / video (api/medya.js) — aynı R2 kovası, "medya/" altında
+export const MEDYA = {
+  onEk: 'medya/',
+  imzaSureSn: 900,         // imzalı PUT/GET bağlantısı ömrü
+  okuOnbellekSn: 600,      // görüntüleme yönlendirmesinin tarayıcı önbelleği (imzadan kısa)
+  fotoMaxMb: 15,           // küçültmeden sonra fotoğraf üst sınırı
+  videoMaxMb: 200,         // video üst sınırı (doğrudan R2'ye gider)
+  turler: { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
+    'image/heic': 'heic', 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' },
+};
+
 // — Panel: katkı sıralaması (1 eklenen kişi = bu kadar saniyelik hikâye ağırlığında)
 export const KATKI = { kisiAgirlikSn: 60 };
 
@@ -88,6 +99,7 @@ export function kamuAyar() {
     SES: { mime: SES.mime, mimeYedek: SES.mimeYedek, bitHizi: SES.bitHizi, parcaSn: SES.parcaSn,
       parcaMaxMb: SES.parcaMaxMb, maxKayitDk: SES.maxKayitDk },
     DEPOLAMA: { kotaBayt: DEPOLAMA.kotaBayt },
+    MEDYA: { fotoMaxMb: MEDYA.fotoMaxMb, videoMaxMb: MEDYA.videoMaxMb },
     SOHBET,
     ASISTAN: { ad: ASISTAN.ad, mesajMaxKarakter: ASISTAN.mesajMaxKarakter, gecmisTur: ASISTAN.gecmisTur },
   };

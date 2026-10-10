@@ -1,26 +1,31 @@
 # Medya servisi — `api/medya.js`
 
-Kişi kartındaki **profil fotoğrafı**, galeri ve anı fotoğrafları/videoları için yükleme.
-Depo: **Vercel Blob** (Vercel → Storage → Blob → projeye bağla; `BLOB_READ_WRITE_TOKEN` otomatik eklenir).
+Kişi kartındaki **profil fotoğrafı**, galeri ve anı fotoğrafları/videoları.
+Depo: **Cloudflare R2** — sesli hikâyelerle aynı kova, `medya/AAAAAA/` altında. Kova özel kalır.
+(Eskiden Vercel Blob kullanılıyordu; ayrı kurulum istediği ve 4,5 MB gövde sınırına takıldığı için kaldırıldı.)
 
 ## Uç
 
 | İstek | Yetki | Yanıt |
 |---|---|---|
-| `POST /api/medya?ad=<dosya>&jeton=<oturum>` — gövde: ham dosya (`image/*`, `video/*`) | aile / admin jetonu | `{ok, url, tip}` |
-| `DELETE /api/medya?url=<blob-url>&jeton=<oturum>` | aile / admin jetonu | `{ok}` |
+| `POST /api/medya?adim=yukle-url` `{jeton, tip}` | aile / admin jetonu | `{ok, anahtar, tip, url, okuUrl}` — `url`: 15 dk geçerli imzalı **PUT** |
+| `GET /api/medya?adim=oku&anahtar=…` | herkes | `302` → taze imzalı R2 **GET** (tarayıcı `MEDYA.okuOnbellekSn` önbellekler) |
 
-Hatalar: `401` "Giriş gerekli" (jeton yok/geçersiz) · `413` dosya çok büyük · `503` "Fotoğraf deposu
-kurulmamış" (Blob bağlı değil) · `500` diğer.
+Hatalar: `401` giriş gerekli · `400` desteklenmeyen tür / geçersiz anahtar · `503` R2 ayarları eksik.
+Türler (`MEDYA.turler`): jpg, png, webp, gif, heic, mp4, mov, webm.
 
-## İstemci (`uploadMedia`)
+## Akış (istemci `uploadMedia`)
 
-- Fotoğraf yüklemeden önce tarayıcıda küçültülür (`shrinkImage`, en fazla `maxW` piksel genişlik).
-- İstek `yetkiliIstek()` ile gider: **401 gelirse** oturum kapatılır, "Giriş gerekli" penceresi açılır,
-  şifre girilince yükleme kendiliğinden yeniden denenir (bkz. `docs/giris.md`).
-- Vercel'in gövde sınırını aşan dosya (JSON olmayan 413) için "Dosya çok büyük" mesajı.
-- Bulut kapalıysa (yerel mod) dosya data-URI olarak profilde tutulur.
+1. Fotoğraf tarayıcıda küçültülür (`shrinkImage` → JPEG, en fazla `maxW` px).
+2. Boyut sınırı (`MEDYA.fotoMaxMb` / `videoMaxMb`, istemciye `kamuAyar`).
+3. `yukle-url` → `yetkiliIstek()`: 401 gelirse şifre penceresi, girişten sonra yeniden denenir.
+4. Dosya **doğrudan R2'ye** `PUT` edilir (Vercel'den geçmez).
+5. Profilde `okuUrl` (`/api/medya?adim=oku&anahtar=…`) saklanır; görüntülemede taze imzalı bağlantıya yönlenir.
+
+R2 kovasında CORS: site adresine `PUT`, `GET`, başlık `content-type` (bkz. `KURULUM.md`).
+Eski Vercel Blob adresleriyle kaydedilmiş fotoğraflar (varsa) olduğu gibi görünmeye devam eder.
 
 ## Ortam değişkenleri
 
-`BLOB_READ_WRITE_TOKEN` (Vercel Blob bağlanınca otomatik), `OTURUM_GIZLI` (jeton doğrulama).
+`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` (ses ile ortak), `OTURUM_GIZLI`.
+Ayarlar: `api/_lib/ayar.js → MEDYA`. Test: `test/medya.test.mjs`.

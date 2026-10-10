@@ -1,62 +1,53 @@
-// Vercel Serverless Function — foto/video YÜKLE (Vercel Blob)
-// /api/medya  (POST, multipart yerine doğrudan dosya body'si)
+// Vercel Serverless Function — FOTOĞRAF / VİDEO DEPOLAMA (Cloudflare R2)
+// POST /api/medya?adim=yukle-url  {jeton, tip}   → {anahtar, url, okuUrl}  (tarayıcı PUT ile doğrudan R2'ye yükler)
+// GET  /api/medya?adim=oku&anahtar=…              → 302 kısa ömürlü imzalı R2 URL'i (görüntüle)
 //
-// Gerekli: Vercel projesinde "Storage → Blob" oluştur (ücretsiz başlar).
-//   Vercel otomatik BLOB_READ_WRITE_TOKEN ekler; ayrıca giriş için oturum jetonu ister.
+// Sesli hikâyelerle aynı depo (R2, 10 GB ücretsiz). Dosya Vercel'den GEÇMEZ: 4,5 MB gövde
+// sınırı ve bant genişliği sorun olmaz. Kova özel kalır; profilde "/api/medya?adim=oku&anahtar=…"
+// saklanır, her görüntülemede taze imzalı bağlantıya yönlenir.
+// Eskiden Vercel Blob kullanılıyordu (ayrı kurulum isteyen ikinci bir depo) — kaldırıldı.
 //
-// İstek: POST /api/medya?ad=<dosyaadi>&token=<oturumJetonu>
-//        Body: ham dosya (image/* veya video/*)
-// Yanıt: { ok:true, url:"https://...blob.vercel-storage.com/..." }
-
-import { put, del } from '@vercel/blob';
+// Env: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, OTURUM_GIZLI · Ayrıntı: docs/medya.md
+import crypto from 'node:crypto';
+import { cors, govde } from './_lib/db.js';
+import { MEDYA } from './_lib/ayar.js';
 import { jetonDogrula } from './giris.js';
+import { r2Url } from './_lib/r2.js';
 
-export const config = { api: { bodyParser: false } };  // ham dosya alacağız
-
-async function readBody(req){
-  const chunks=[];
-  for await (const c of req) chunks.push(c);
-  return Buffer.concat(chunks);
+export function medyaAnahtariGecerli(anahtar) {
+  return new RegExp(`^${MEDYA.onEk}\\d{6}/[\\w-]{1,60}\\.(${Object.values(MEDYA.turler).join('|')})$`).test(String(anahtar || ''));
 }
 
-export default async function handler(req, res){
-  res.setHeader('Access-Control-Allow-Origin','*');
-  res.setHeader('Access-Control-Allow-Methods','POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers','Content-Type');
-  if(req.method==='OPTIONS') return res.status(200).end();
-
-  try{
-    const jeton = (req.query.jeton||'').toString();
-    const oturum = jetonDogrula(jeton);
-    if(!oturum){
-      return res.status(401).json({ok:false, hata:'Giriş gerekli'});
+export default async function handler(req, res) {
+  cors(res, 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  const adim = String(req.query.adim || '');
+  try {
+    if (adim === 'yukle-url' && req.method === 'POST') {
+      const body = govde(req);
+      if (!jetonDogrula(body.jeton)) return res.status(401).json({ ok: false, hata: 'Giriş gerekli' });
+      const tip = String(body.tip || '').split(';')[0].toLowerCase();
+      const uz = MEDYA.turler[tip];
+      if (!uz) return res.status(400).json({ ok: false, hata: 'Bu dosya türü desteklenmiyor (fotoğraf ya da video seç)' });
+      const ay = new Date().toISOString().slice(0, 7).replace('-', '');
+      const anahtar = `${MEDYA.onEk}${ay}/${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${uz}`;
+      return res.status(200).json({ ok: true, anahtar, tip,
+        url: r2Url('PUT', anahtar, MEDYA.imzaSureSn),
+        okuUrl: `/api/medya?adim=oku&anahtar=${encodeURIComponent(anahtar)}` });
     }
-
-    if(req.method==='POST'){
-      const ad = (req.query.ad||('medya-'+Date.now())).toString().replace(/[^\w.\-]/g,'_').slice(0,80);
-      const tip = (req.headers['content-type']||'application/octet-stream');
-      // boyut sınırı (video için makul tut): 50 MB
-      const data = await readBody(req);
-      if(data.length > 50*1024*1024) return res.status(413).json({ok:false, hata:'Dosya çok büyük (max 50 MB)'});
-      const blob = await put(`medya/${Date.now()}-${ad}`, data, {
-        access:'public', contentType:tip, addRandomSuffix:true
-      });
-      return res.status(200).json({ok:true, url:blob.url, tip});
+    if (adim === 'oku' && req.method === 'GET') {
+      const anahtar = String(req.query.anahtar || '');
+      if (!medyaAnahtariGecerli(anahtar)) return res.status(400).json({ ok: false, hata: 'Geçersiz anahtar' });
+      // Yönlendirme imza süresinden kısa önbelleklenir: aynı fotoğraf tekrar tekrar sorulmasın
+      res.setHeader('Cache-Control', `private, max-age=${MEDYA.okuOnbellekSn}`);
+      res.statusCode = 302;
+      res.setHeader('Location', r2Url('GET', anahtar, MEDYA.imzaSureSn));
+      return res.end();
     }
-
-    if(req.method==='DELETE'){
-      const url = (req.query.url||'').toString();
-      if(!url) return res.status(400).json({ok:false, hata:'url gerekli'});
-      await del(url);
-      return res.status(200).json({ok:true});
-    }
-
-    return res.status(405).json({ok:false});
-  }catch(e){
-    const m = String(e.message||e);
-    // Blob deposu bağlı değilse anlaşılır söyle (yönetici ne yapacağını bilsin)
-    if(/BLOB_READ_WRITE_TOKEN|No token found/i.test(m))
-      return res.status(503).json({ok:false, hata:'Fotoğraf deposu kurulmamış (yönetici: Vercel → Storage → Blob → projeye bağla)'});
-    return res.status(500).json({ok:false, hata:m});
+    return res.status(400).json({ ok: false, hata: 'Bilinmeyen adım' });
+  } catch (e) {
+    const m = String(e.message || e);
+    if (/R2 ortam/.test(m)) return res.status(503).json({ ok: false, hata: 'Fotoğraf deposu (R2) ayarları eksik' });
+    return res.status(500).json({ ok: false, hata: m });
   }
 }

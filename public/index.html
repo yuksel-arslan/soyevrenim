@@ -2864,14 +2864,19 @@ async function uploadMedia(file, maxW){
     // buluta yükle
     let blob = file;
     if(!isVideo && maxW){ blob = await shrinkImage(file, maxW); }   // fotoğrafı küçült
-    const r = await yetkiliIstek(()=>fetch("/api/medya?"+new URLSearchParams({ ad:file.name||"medya", jeton:sessionToken||"" }).toString(),
-      { method:"POST", headers:{"Content-Type":file.type||"application/octet-stream"}, body:blob }),
+    // Cloudflare R2: önce imzalı yükleme bağlantısı al, sonra dosya DOĞRUDAN R2'ye gider
+    // (Vercel'den geçmez; sesli hikâyelerle aynı depo). Görüntüleme: /api/medya?adim=oku…
+    const tip = blob.type || file.type || "";
+    const sinir = (AYAR && AYAR.MEDYA) ? (isVideo ? AYAR.MEDYA.videoMaxMb : AYAR.MEDYA.fotoMaxMb) : 0;
+    if(sinir && blob.size > sinir*1024*1024) throw new Error(`Dosya çok büyük (en fazla ${sinir} MB)`);
+    const r = await yetkiliIstek(()=>fetch("/api/medya?adim=yukle-url",{ method:"POST",
+      headers:{"Content-Type":"application/json"}, body:JSON.stringify({ jeton:sessionToken||"", tip }) }),
       "Fotoğraf yüklemek için oturumunu yenile: aile ya da yönetici şifreni gir.");
-    // Vercel çok büyük gövdeyi JSON olmayan 413 ile reddeder; anlaşılır mesaj ver
-    if(r.status===413) throw new Error("Dosya çok büyük — daha kısa bir video ya da fotoğraf dene");
     const j = await r.json().catch(()=>({ ok:false, hata:`Sunucu yanıtı okunamadı (${r.status})` }));
-    if(j.ok) return { url:j.url, video:isVideo };
-    throw new Error(j.hata||"Yükleme başarısız");
+    if(!j.ok) throw new Error(j.hata||"Yükleme başarısız");
+    const p = await fetch(j.url,{ method:"PUT", headers:{"Content-Type":tip}, body:blob }).catch(()=>null);
+    if(!p || !p.ok) throw new Error(p ? `Depoya yüklenemedi (${p.status})` : "Depoya ulaşılamadı (R2 CORS ayarını kontrol et)");
+    return { url:j.okuUrl, video:isVideo };
   } else {
     // offline: data-uri (video için de, ama büyük olabilir)
     const url = await new Promise((res,rej)=>{
