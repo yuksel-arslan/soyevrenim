@@ -3265,13 +3265,19 @@ function addSibling(person){
   openPanel(nn);
   toast(`Kardeş eklendi: ${name.trim()} — adını/cinsiyetini düzenleyebilirsin`);
 }
+// Üst bardaki "＋ Kişi": eskiden adsız ("Yeni kişi") ve BAĞSIZ bir düğüm ekleyip
+// hemen kaydediyordu. Bağı olmayan düğümün nesli yok → kökün yanına, ağacın en
+// altına düşüp orada birikiyordu. Artık ad sorulur; ad girilmezse düğüm eklenmez.
+// Bir yakına bağlı eklemek için kişi kartındaki "Çocuk / Kardeş / Ebeveyn ekle".
 document.getElementById("addBtn").onclick=()=>{
+  const ad=prompt("Yeni kişinin adı:\n(Bir yakına bağlı eklemek için o kişinin kartındaki ekleme düğmelerini kullan.)");
+  if(!ad || !ad.trim()) return;
   const id=newId();
   const c=s2w(innerWidth/2,innerHeight/2);
-  const nn={id,name:"Yeni kişi",sex:"E",alive:true,spine:false,you:false,spouse:[],
+  const nn={id,name:ad.trim(),sex:"E",alive:true,spine:false,you:false,spouse:[],
     x:c.x,y:c.y,vx:0,vy:0,fixed:false};
   nodes.push(nn); reindex(); alpha=1; touch(); selectNode(nn);
-  toast("Kişi eklendi — bir ebeveyne bağlamak için ⇄ kullan");
+  toast(`${ad.trim()} eklendi — bir ebeveyne bağlamak için ⇄ kullan`);
 };
 
 function deleteNode(n){
