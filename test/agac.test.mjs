@@ -125,3 +125,45 @@ test('Akrabalık anlatısı: Türkçe ekler ve sıcak anlatım', async () => {
   assert.ok(kardes.ozet.length > 20);
   assert.equal(L.akrabalikAnlatisi(g, 'p1', 'p1').baslik, 'Aynı kişi');
 });
+
+test('agacBirlestir: iki cihazın değişikliği de korunur (foto mobilde, bilgi bilgisayarda)', async () => {
+  const { agacBirlestir } = await import('../api/_lib/agac.js');
+  const taban = { evren: { ad: 'A' }, nodes: [
+    { id: 'p1', name: 'Yüksel', profile: { photo: 'eski.jpg', info: { job: '' } } },
+    { id: 'p2', name: 'Fahri' }, { id: 'p3', name: 'Ayten' } ],
+    edges: [{ from: 'p2', to: 'p1' }], marriages: [{ from: 'p2', to: 'p3' }], motherEdges: [] };
+  const kopya = (x) => JSON.parse(JSON.stringify(x));
+  // mobil (sunucuya önce yazdı): Yüksel'in fotoğrafı değişti, yeni kişi eklendi
+  const sunucu = kopya(taban);
+  sunucu.nodes[0].profile.photo = 'mobil.jpg';
+  sunucu.nodes.push({ id: 'p4', name: 'Fahri Kaan' }); sunucu.edges.push({ from: 'p1', to: 'p4' });
+  // bilgisayar (eski kopyadan): Yüksel'in mesleği değişti, Ayten'in adı düzeltildi, evlilik silindi
+  const yerel = kopya(taban);
+  yerel.nodes[0].profile.info.job = 'Mühendis';
+  yerel.nodes[2].name = 'Ayten Arslan';
+  yerel.marriages = [];
+  const b = agacBirlestir(taban, yerel, sunucu);
+  const y = b.nodes.find((n) => n.id === 'p1');
+  assert.equal(y.profile.photo, 'mobil.jpg', 'mobildeki fotoğraf geri alınmamalı');
+  assert.equal(y.profile.info.job, 'Mühendis', 'bilgisayardaki bilgi de kalmalı');
+  assert.equal(b.nodes.find((n) => n.id === 'p3').name, 'Ayten Arslan');
+  assert.ok(b.nodes.find((n) => n.id === 'p4'), 'mobilde eklenen kişi korunur');
+  assert.ok(b.edges.some((e) => e.to === 'p4'));
+  assert.equal(b.marriages.length, 0, 'yerelde silinen bağ silinir');
+  assert.deepEqual(b.evren, { ad: 'A' });
+  // yerelde hiçbir şey değişmediyse sonuç = sunucu
+  assert.deepEqual(agacBirlestir(taban, kopya(taban), sunucu), sunucu);
+});
+
+test('agacBirlestir: boş varsayılan profil gerçek fotoğrafı silmez; anılar iki cihazdan birleşir', async () => {
+  const { agacBirlestir } = await import('../api/_lib/agac.js');
+  const taban = { nodes: [{ id: 'p1', name: 'Yüksel', profile: { memories: [{ text: 'eski' }] } }] };
+  const sunucu = { nodes: [{ id: 'p1', name: 'Yüksel', profile: { photo: 'mobil.jpg', memories: [{ text: 'eski' }, { text: 'mobil anı' }] } }] };
+  // bilgisayar: profil boş varsayılanlarla oluştu (photo:"") + meslek + kendi anısı
+  const yerel = { nodes: [{ id: 'p1', name: 'Yüksel', profile: { contact: {}, social: {}, photo: '', gallery: [],
+    info: { job: 'Mühendis' }, memories: [{ text: 'eski' }, { text: 'bilgisayar anı' }] } }] };
+  const p = agacBirlestir(taban, yerel, sunucu).nodes[0].profile;
+  assert.equal(p.photo, 'mobil.jpg');
+  assert.equal(p.info.job, 'Mühendis');
+  assert.deepEqual(p.memories.map((m) => m.text).sort(), ['bilgisayar anı', 'eski', 'mobil anı']);
+});

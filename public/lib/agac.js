@@ -326,3 +326,69 @@ export function akrabalikAnlatisi(g, aId, bId) {
   }
   return { baslik, ozet, cumleler, yol: y.yol, ata: o, etiket: y.etiket };
 }
+
+// ============================ ÜÇ YÖNLÜ BİRLEŞTİRME ============================
+// İki cihaz aynı anda düzenleyince (biri mobilde fotoğraf, öbürü bilgisayarda bilgi) ağaç bütün
+// olarak kaydedildiği için son kaydeden öbürünün değişikliğini siliyordu. Kaydı sunucu reddedince
+// (409) istemci şunu yapar: taban = son eşitlenen sunucu sürümü, yerel = kendi ekranı,
+// sunucu = güncel sürüm. Yalnızca YEREL'de tabana göre DEĞİŞEN alanlar sunucunun üstüne işlenir;
+// kişi alanları ve profil alanları (foto, bilgi, anılar…) ayrı ayrı birleşir.
+// Boş değerler ("", {}, [], null) "yok" sayılır: bir cihazda varsayılan boş profil oluşması
+// (photo:"") başka cihazdaki gerçek fotoğrafı silmesin.
+const _bos = (x) => x === undefined || x === null || x === '' ||
+  (Array.isArray(x) ? x.length === 0 : (typeof x === 'object' && Object.keys(x).every((k) => _bos(x[k]))));
+const _j = (x) => JSON.stringify(_bos(x) ? null : x);
+const _nesne = (x) => x && typeof x === 'object' && !Array.isArray(x);
+// Değer düzeyinde üç yönlü birleştirme (her derinlikte)
+function birlestirDeger(t, y, s) {
+  if (_j(t) === _j(y)) return s;                 // yerelde değişmemiş → sunucununki
+  if (_j(t) === _j(s)) return y;                 // sunucuda değişmemiş → yereldeki
+  if (_nesne(y) && (_nesne(s) || s === undefined || s === null)) {
+    const sonuc = { ...(s || {}) };
+    for (const a of new Set([...Object.keys(y), ...Object.keys(_nesne(t) ? t : {})])) {
+      const v = birlestirDeger(_nesne(t) ? t[a] : undefined, y[a], (s || {})[a]);
+      if (v === undefined) delete sonuc[a]; else sonuc[a] = v;
+    }
+    return sonuc;
+  }
+  if (Array.isArray(y) && (Array.isArray(s) || _bos(s))) {
+    // liste (anılar, galeri…): sunucudakiler + yerelde eklenenler − yerelde silinenler
+    const tk = new Set((Array.isArray(t) ? t : []).map((e) => JSON.stringify(e)));
+    const yk = new Set(y.map((e) => JSON.stringify(e)));
+    const out = (Array.isArray(s) ? s : []).filter((e) => !(tk.has(JSON.stringify(e)) && !yk.has(JSON.stringify(e))));
+    const ok = new Set(out.map((e) => JSON.stringify(e)));
+    for (const e of y) { const k = JSON.stringify(e); if (!tk.has(k) && !ok.has(k)) out.push(e); }
+    return out;
+  }
+  return _bos(y) && !_bos(s) ? s : y;            // iki tarafta da değişen tek değer: yerel kazanır (boşsa sunucu)
+}
+export function agacBirlestir(taban, yerel, sunucu) {
+  taban = taban || {}; yerel = yerel || {}; sunucu = sunucu || {};
+  const harita = (a) => new Map((a || []).map((n) => [n.id, n]));
+  const T = harita(taban.nodes), Y = harita(yerel.nodes), S = harita(sunucu.nodes);
+  const sonuc = new Map(S);
+  for (const [id, n] of Y) {
+    const t = T.get(id), sv = S.get(id);
+    if (!sv) { if (!t || _j(t) !== _j(n)) sonuc.set(id, n); }   // sunucuda yok: yeni ya da yerelde düzenlenmiş
+    else sonuc.set(id, birlestirDeger(t, n, sv));
+  }
+  for (const id of T.keys()) if (!Y.has(id)) sonuc.delete(id);   // yerelde silinen
+  const nodes = [...S.keys()].filter((id) => sonuc.has(id)).map((id) => sonuc.get(id))
+    .concat([...sonuc.keys()].filter((id) => !S.has(id)).map((id) => sonuc.get(id)));
+  const bag = (ad) => {
+    const k = (e) => `${e.from}|${e.to}`;
+    const t = new Set((taban[ad] || []).map(k)), y = new Map((yerel[ad] || []).map((e) => [k(e), e]));
+    const out = new Map((sunucu[ad] || []).map((e) => [k(e), e]));
+    for (const [key, e] of y) if (!t.has(key)) out.set(key, e);
+    for (const key of t) if (!y.has(key)) out.delete(key);
+    return [...out.values()].filter((e) => sonuc.has(e.from) && sonuc.has(e.to));
+  };
+  const birlesik = { ...sunucu };
+  for (const a of Object.keys(yerel)) {
+    if (['nodes', 'edges', 'motherEdges', 'marriages'].includes(a)) continue;
+    if (_j(yerel[a]) !== _j(taban[a])) birlesik[a] = yerel[a];
+  }
+  birlesik.nodes = nodes;
+  for (const ad of ['edges', 'motherEdges', 'marriages']) if (yerel[ad] || sunucu[ad]) birlesik[ad] = bag(ad);
+  return birlesik;
+}

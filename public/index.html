@@ -5576,6 +5576,14 @@ function currentGraphJSON(){
   };
 }
 
+// Birleşmiş/güncel ağacı ekrana uygula (bakan kişi ve kimlik korunur)
+function sunucuSurumunuUygula(veri){
+  const keepViewer=viewerId;
+  absorbCloudProfiles(veri);
+  loadGraph(veri); layoutRadial();
+  if(keepViewer && byId[keepViewer]) setViewer(keepViewer);
+  updateStatus(); if(typeof renderStats==="function") renderStats();
+}
 function absorbCloudProfiles(g){
   // bulut ağaç verisindeki profilleri yerel PROFILES'e al (foto/video URL'leri dahil)
   (g.nodes||[]).forEach(n=>{ if(n.profile){ PROFILES[n.id]=n.profile; } });
@@ -5590,6 +5598,7 @@ async function cloudLoad(){
       absorbCloudProfiles(j.veri);
       loadGraph(j.veri); layoutRadial(); fit();
       CLOUD.lastServer = j.guncelleme || null;
+      CLOUD.taban = j.veri;   // son eşitlenen sunucu sürümü (çakışmada birleştirme tabanı)
       // kişisel giriş bağlantısı ya da tanınan kişi → karşılamayı atla
       if(new URLSearchParams(location.search).has("giris")) davetleGir(); else setTimeout(()=>tanidikIceriAl(false), 0);
       smsShowIfCloud(); chatShowBtn();
@@ -5633,16 +5642,31 @@ function cloudSave(immediate){
     // Kayıt hatası artık SESSİZ değil: eskiden oturumu düşmüş yöneticinin değişikliği
     // yalnızca o cihazda kalıyor, diğer cihazlara hiç gitmiyordu ("mobilde var, bilgisayarda yok").
     try{
-      const kim = viewerId ? dispName((byId[viewerId]||{}).name||"") : "Yönetici";
-      const r = await yetkiliIstek(()=>fetch(CLOUD.url, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ veri: currentGraphJSON(), guncelleyen: kim,
-          jeton: sessionToken||"" })
-      }), "Değişikliğini ağaca kaydetmek için oturumunu yenile (yönetici şifresi).");
-      if(r.ok){
+      const kim = kimlikId()&&byId[kimlikId()] ? dispName(byId[kimlikId()].name) : "Yönetici";
+      // ÇAKIŞMA: hangi sürümün üstüne yazdığımızı söyle (onceki). Arada başka cihaz kaydettiyse
+      // sunucu 409 + güncel veri döner; kendi değişikliklerimizi onun üstüne işleyip yeniden dene.
+      let veri=currentGraphJSON(), r=null;
+      for(let deneme=0; deneme<3; deneme++){
+        const govdeVeri=veri, onceki=CLOUD.lastServer||"";
+        r = await yetkiliIstek(()=>fetch(CLOUD.url, {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ veri: govdeVeri, onceki, guncelleyen: kim, jeton: sessionToken||"" })
+        }), "Değişikliğini ağaca kaydetmek için oturumunu yenile (yönetici şifresi).");
+        if(r.status!==409) break;
+        const c=await r.json().catch(()=>({}));
+        if(!c.veri || !window.AgacLib || !AgacLib.agacBirlestir) break;
+        veri = AgacLib.agacBirlestir(CLOUD.taban || c.veri, govdeVeri, c.veri);
+        CLOUD.taban = c.veri; CLOUD.lastServer = c.guncelleme || null;
+        sunucuSurumunuUygula(veri);   // ekranda da birleşmiş hâl görünsün
+        showHint(`Ağaç başka bir cihazda da değişmişti${c.guncelleyen?` (${c.guncelleyen})`:""} — iki değişiklik birleştirildi`);
+      }
+      if(r && r.ok){
         const j=await r.json().catch(()=>({}));
         dirty=false; if(j.guncelleme) CLOUD.lastServer=j.guncelleme;   // kendi kaydımızı "yeni" sanmasın
+        CLOUD.taban = veri;
         updateStatus();
+      } else if(r && r.status===409){
+        toast("⚠ Ağaç başka cihazda değişiyor — birazdan tekrar dene");
       } else if(r.status===403 && !isAdmin){
         pendingChanges=true; updatePendingBar();   // yönetici değil: öneri yoluna düş
       } else {
@@ -5736,6 +5760,7 @@ async function bulutYokla(){
       const keepViewer = viewerId;
       absorbCloudProfiles(j.veri);   // fotoğraf, bilgi, anılar da gelsin (eskiden yalnız ağaç yapısı)
       loadGraph(j.veri); layoutRadial();
+      CLOUD.taban = j.veri;
       dirty=false;
       if(keepViewer && byId[keepViewer]) setViewer(keepViewer);
       updateStatus(); renderStats();
