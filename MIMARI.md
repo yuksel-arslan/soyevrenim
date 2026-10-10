@@ -326,6 +326,26 @@ Odak `nodeVisible()` içinde uygulanır: odak dışı düğüm ve bağlar çizil
 "7 / 245 kişi · filtreli" gösterir. Dokunmada küçük önizleme kartı (hoverCard) artık
 açılmıyor — uzun bas halkasını örtüyordu ve dokunuş zaten aileyi gösteriyor.
 
+**Odak yerleşimi (hiyerarşik):** Odakta yakınlar genel düzendeki yerlerinde kalmaz;
+`odakHedefleri()` onları nesil nesil **düz satırlara, eşit aralıklarla** dizer:
+
+```
+        çocuklar (satır)            ← üstte
+  kardeş · KİŞİ · eş · kardeş       ← ortada, kişi tam ortada, eşi yanında
+        anne · baba (satır)         ← altta
+```
+
+- Aralık `ODAK_ARALIK = RING_GAP × 1.15`; satırlar arası `RING_GAP`.
+- Kalabalık satır `odakSatirMax()` kişide bölünür (mobil 4, masaüstü 10); alt satırlar
+  `ODAK_ARALIK × 0.8` arayla.
+- Kamera aileyi kendine göre karşı tarafa çevirir (`yawRest`). Yakın tarafta perspektif
+  çok güçlü olduğu için satırlar ekrandan taşıyordu. Odakta salınım durur, tel örgü ve
+  "N. nesil" etiketleri gizlenir, yakınlaştırma sınırı `KADRAJ_ODAK_YAKIN` (×1.5) kat açılır.
+- Konumlar ve kamera aynı sürede (`KADRAJ_GECIS_MS`) birlikte geçer. Kadraj, düğümlerin
+  varacağı yerlere göre hesaplanır (`hedefleKadrajaGit`).
+- Odak kapanınca herkes eski yerine döner (`odakKayit.orijinal`). Odak açıkken ağaç
+  yeniden dizilirse `odakYenidenUygula()` aile düzenini yeniden kurar.
+
 `TAP_SLOP=10 px`, `TAP_TIME=600 ms`.
 
 ### iOS Safari: `movementX` tuzağı

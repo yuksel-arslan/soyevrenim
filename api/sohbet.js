@@ -5,9 +5,8 @@
 //
 // Ortam değişkenleri: DATABASE_URL, OTURUM_GIZLI (jeton doğrulaması giris.js üzerinden)
 
-import { neon } from '@neondatabase/serverless';
 import { jetonDogrula } from './giris.js';
-const sql = neon(process.env.DATABASE_URL);
+import { db } from './_lib/db.js';   // ortak bağlantı (testte yerel PostgreSQL)
 
 function oturumRol(body){ const o=jetonDogrula(body.jeton); return o?o.rol:null; }
 function adminMi(body){ return oturumRol(body)==='admin'; }
@@ -29,6 +28,7 @@ export default async function handler(req, res){
   const body=req.body||{};
 
   try{
+    const sql = db();
     // — mesajları oku (herkes, giriş gerekmez) —
     if(adim==='oku'){
       const kapsam = temizKapsam(body.kapsam);
