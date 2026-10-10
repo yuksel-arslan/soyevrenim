@@ -37,3 +37,24 @@ test('medya: görüntüleme taze imzalı R2 bağlantısına yönlendirir; geçer
     assert.equal(k.statusCode, 400, kotu);
   }
 });
+
+test('medya yedek yol: sunucu küçük dosyayı R2\'ye kendisi yükler (CORS gerekmez)', async () => {
+  const jeton = jetonUret('aile');
+  const gelen = [];
+  globalThis.__SOY_TEST.r2Fetch = async (url, istek) => { gelen.push({ url, istek }); return { ok: true, status: 200 }; };
+  const veri = Buffer.from('fotograf-baytlari');
+  const r = await cagir(medya, { query: { adim: 'yukle', jeton, tip: 'image/jpeg' }, body: veri });
+  assert.equal(r.govde.ok, true);
+  assert.match(r.govde.anahtar, /^medya\/\d{6}\/.+\.jpg$/);
+  assert.equal(gelen[0].url, `https://r2.test/PUT/${r.govde.anahtar}`);
+  assert.equal(gelen[0].istek.method, 'PUT');
+  assert.equal(gelen[0].istek.headers['Content-Type'], 'image/jpeg');
+  assert.deepEqual(gelen[0].istek.body, veri);
+  assert.equal((await cagir(medya, { query: { adim: 'yukle', tip: 'image/jpeg' }, body: veri })).statusCode, 401);
+  const { MEDYA } = await import('../api/_lib/ayar.js');
+  const buyuk = Buffer.alloc(MEDYA.vekilMaxMb * 1024 * 1024 + 1);
+  assert.equal((await cagir(medya, { query: { adim: 'yukle', jeton, tip: 'image/jpeg' }, body: buyuk })).statusCode, 413);
+  globalThis.__SOY_TEST.r2Fetch = async () => ({ ok: false, status: 403 });
+  assert.equal((await cagir(medya, { query: { adim: 'yukle', jeton, tip: 'image/jpeg' }, body: veri })).statusCode, 502);
+  delete globalThis.__SOY_TEST.r2Fetch;
+});
