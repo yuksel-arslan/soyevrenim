@@ -29,7 +29,7 @@ export const ASISTAN = {
   gecmisTur: 6,            // istemciden kabul edilen önceki mesaj sayısı
   mesajMaxKarakter: 600,   // kullanıcı mesajı
   aracSonucMaxKarakter: 2500,
-  soyTarihiMaxKarakter: 4800, // soy_tarihi aracı (Fahri Arslan notu + kaynaklı bağlam)
+  soyTarihiMaxKarakter: 6500, // soy_tarihi aracı (Fahri Arslan notu + kaynaklı bağlam)
   aramaSonucMax: 8,
   aniParcaKarakter: 300,
   kisiAniMax: 6,

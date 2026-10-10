@@ -87,10 +87,11 @@ test('enBuyukYasayan: doğum yılı yoksa en eski nesildeki yaşayan; doğum yı
 test('soy tarihi: Fahri Arslan notu birebir, her bilgi güven etiketli, kaynaklar geçerli', async () => {
   const T = await import('../api/_lib/soy-tarihi.js');
   assert.match(T.FAHRI_NOTU.metin, /Aşağı Potocur \(Üçırmak\).*UZUNALOĞULLARI.*1615.*DERBENT.*Molla Memiş/);
-  for (const x of [...T.ZAMAN, ...T.YERLER, ...T.ADLAR]) {
+  for (const x of [...T.ZAMAN, ...T.YERLER, ...T.ADLAR, ...T.ARSIV]) {
     assert.ok(T.GUVEN_ETIKETI[x.guven], x.ad || x.baslik);
     for (const k of x.kaynak) assert.ok(T.KAYNAKLAR[k]?.url?.startsWith('https://'), k);
   }
   const o = T.soyTarihiOzet();
   assert.ok(o.fahri_arslan_notu.includes('1956'));
+  assert.ok(o.osmanli_arsivi.some((a) => a.yil === '1835' && /1165/.test(a.defter)));
 });

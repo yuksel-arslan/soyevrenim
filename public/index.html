@@ -348,6 +348,8 @@ canvas{display:block;position:fixed;inset:0;
 .kh-kaynak{border-color:var(--ok);color:var(--ok)}
 .kh-belirsiz{border-color:var(--danger);color:var(--danger)}
 .khOneri{margin:0;padding-left:18px;color:var(--text-soft)}
+.khOneri li{margin-bottom:6px}
+.khBul{margin-top:8px !important;padding-top:8px;border-top:1px dashed var(--line2);color:var(--text-soft) !important;font-size:12.5px}
 .khBos{padding:30px;color:var(--muted)}
 @media (max-width:640px){ .kokHikaye{width:100%;top:auto;height:82%;border-left:none;border-top:1px solid var(--line);
   border-radius:16px 16px 0 0;transform:translateY(105%)} .kokHikaye.acik{transform:none} .khIc{padding:18px 16px 40px} }
@@ -4421,6 +4423,13 @@ function kokenHikayesiCiz(kap){
       <ol class="khZaman">${T.ZAMAN.map(z=>`<li><span class="khYil">${escapeHtml(z.yil)}</span>${kart(z)}</li>`).join("")}</ol>
       <h4>Yerler</h4>${T.YERLER.map(kart).join("")}
       <h4>Adlar ve unvanlar</h4>${T.ADLAR.map(kart).join("")}
+      <h4>Osmanlı Arşivi kayıtları</h4>
+      <p class="khAcik">Trabzon / Lazistan defterleri Devlet Arşivleri’nde tarama görüntüsü olarak durur; aşağıdakiler onları yayımlayan ya da inceleyen çalışmalardan derlendi. “Ne bulunabilir” satırları bir araştırma yol haritasıdır.</p>
+      <ol class="khZaman">${(T.ARSIV||[]).map(a=>`<li><span class="khYil">${escapeHtml(a.yil)}</span><div class="khKart">
+        <div class="khKartUst"><b>${escapeHtml(a.ad)}</b>${etiket(a.guven)}</div>
+        <p>${escapeHtml(a.metin)}</p>
+        <p class="khBul"><b>Ne bulunabilir:</b> ${escapeHtml(a.bulunabilir)}</p>
+        ${a.kaynak&&a.kaynak.length?`<div class="khKaynak">Kaynak: ${kay(a.kaynak)}</div>`:""}</div></li>`).join("")}</ol>
       <h4>Daha derine inmek için</h4>
       <ul class="khOneri">${T.ARASTIRMA_ONERILERI.map(o=>`<li>${escapeHtml(o)}</li>`).join("")}</ul>
       <p class="khAcik">Aile büyüklerinin bildikleri bu sayfadaki her şeyden değerlidir: bir kişinin kartında <b>🎙 Hikâye anlat</b> ile kaydedebilirsin.</p>

@@ -38,6 +38,7 @@ anı/söz uydurmasını yasaklar; ad yalnızca saygı ifadesidir. Doğum yılı 
 `api/_lib/soy-tarihi.js` (→ `public/lib/soy-tarihi.js`): Fahri Arslan'ın 1956 çizimindeki not
 (birincil kaynak, birebir) + internetten derlenen bağlam. Her bilgi bir güven etiketi taşır:
 **Aile kaydı** · **Kaynakta geçiyor** (bağlantılı) · **Yorum** · **Teyit gerekli**.
+**Osmanlı Arşivi** bölümü (`ARSIV`): 1486 ve 1583 Trabzon mufassal tahrirleri, 1564 TT 442 (Atina-Arhavi-Hemşin), 1681/82 Arhavi avârız defteri, 1835 Arhavi nüfus defteri (No. 1165; Hiçyılmaz 2015 yayını) — her biri için yayımlayan/inceleyen kaynak ve "ne bulunabilir" yol haritası. Defterlerin kendisi Devlet Arşivleri'nde tarama görüntüsüdür; bu bilgiler ikincil kaynaklardan derlenmiştir.
 Asistan köken/göç/yer/kol sorularında bu aracı çağırır; araç ayrıca ağacın sayılarını
 (kişi, yaşayan, nesil, kök, kolların soy büyüklüğü) döndürür. Sonuç `ASISTAN.soyTarihiMaxKarakter`
 ile sınırlı, istem yine `MESAJ_MAX_TOKEN` altında. Aynı içerik Köken ekranında

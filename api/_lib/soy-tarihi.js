@@ -27,6 +27,14 @@ export const KAYNAKLAR = {
   findikliWiki: { ad: 'Vikipedi — Fındıklı', url: 'https://tr.wikipedia.org/wiki/F%C4%B1nd%C4%B1kl%C4%B1' },
   vice: { ad: 'Dergipark — XIX. yy Trabzon Eyaleti idari birimleri', url: 'https://dergipark.org.tr/tr/download/article-file/117817' },
   molla: { ad: 'TDV İslâm Ansiklopedisi — Molla', url: 'https://islamansiklopedisi.org.tr/molla' },
+  findikliTarihce: { ad: 'Fındıklı Belediyesi — Tarihçe', url: 'https://findikli.bel.tr/tarihce/' },
+  findikliEnvanter: { ad: 'Fındıklı Belediyesi — Kültür Envanteri (PDF)', url: 'https://findikli.bel.tr/wp-content/uploads/2023/07/fndkl_kultur_envanteri-sayfalar-9-272.pdf' },
+  tt442: { ad: '1564 Tarihli Tahrir Defterine Göre Atina, Arhavi ve Hemşin Kazaları (TT 442)', url: 'https://www.academia.edu/123553691/1564_Tarihli_Tahrir_Defterine_G%C3%B6re_Atina_Arhavi_ve_Hem%C5%9Fin_Kazalar%C4%B1nda_Sosyal_ve_%C4%B0ktisad%C3%AE_Hayat' },
+  aydin: { ad: 'K. Aydın — Arhavi Kazasında İskân ve Nüfus (1583-1681/1682), HÜTAD 34 (2021)', url: 'https://dergipark.org.tr/tr/pub/turkiyat/article/773264' },
+  hicyilmaz: { ad: 'M. Ü. Hiçyılmaz — Çayeli’nden Oyani: 1835 Arhavi-Hopa-Fındıklı Nüfus Kayıtları (Dergâh, 2015)', url: 'https://www.dergah.com.tr/kitaplar/cayelinden-oyani-1835-arhavi-hopa-findikli-nufus-kayitlari' },
+  atina: { ad: 'Dergipark — Atina’nın idari durumu (1554, TT 288)', url: 'https://dergipark.org.tr/tr/download/article-file/117817' },
+  oztürk: { ad: 'Özhan Öztürk — Arhavi', url: 'https://ozhanozturk.com/2017/12/20/arhavi-artvin/' },
+  boa: { ad: 'Devlet Arşivleri Başkanlığı — katalog', url: 'https://katalog.devletarsivleri.gov.tr/' },
 };
 
 // Zaman çizelgesi (eskiden yeniye)
@@ -74,9 +82,37 @@ export const ADLAR = [
     guven: 'belirsiz', kaynak: [] },
 ];
 
+// OSMANLI ARŞİVİ — Trabzon / Lazistan defterleri. Defterlerin kendisi Devlet Arşivleri'nde
+// tarama görüntüsü olarak durur (metin araması yok); buradaki bilgiler onları yayımlayan ya da
+// inceleyen çalışmalardan derlendi. "Ne bulunabilir" satırı bir araştırma yol haritasıdır.
+export const ARSIV = [
+  { yil: '1486', ad: 'Trabzon Livası Mufassal Tahrir Defteri',
+    metin: 'Bölge “Lâz” / “Lâz-ı Magal” adıyla kayıtlı. Fındıklı belediyesinin kültür envanterine göre bu defterde Laz kazası altında Viçe, Sümle, Pazine ve Mzuğu köyleri geçiyor — yani bugünkü Fındıklı köyleri, Arhavi ile aynı idari birimdeydi. Derbend adı bu listede görünmüyor.',
+    bulunabilir: 'Viçe ve Sümle’nin hisseleri; köylerdeki yetişkin erkeklerin adları (“X veled-i Y”).',
+    guven: 'kaynak', kaynak: ['findikliTarihce', 'findikliEnvanter', 'oztürk'] },
+  { yil: '1564', ad: 'TT 442 — Atina, Arhavi ve Hemşin Mufassal Tahrir Defteri',
+    metin: 'Devlet Arşivleri’nde Tapu Tahrir 442 numarada; 173 sayfa. Atina kazası s. 5–75, Arhavi/Laz kazası s. 81–139, Hemşin s. 149–172. Kazalar Batum sancağına bağlıyken düzenlenmiş. Marmara Üniversitesi’nde bir tez defteri baştan sona yeni harflere aktarmış. İnternetteki özetlerde Potocur adı görünmüyor; defterin içinde başka yazımla (ör. Potoçur) geçebilir.',
+    bulunabilir: 'Aşağı Potocur’da 1564’te yaşayan hane reislerinin adları — Uzunaloğulları’nın Molla Memiş’ten önceki kuşakları burada olabilir.',
+    guven: 'kaynak', kaynak: ['tt442'] },
+  { yil: '1583', ad: 'Trabzon Livası Mufassal Tahrir Defteri',
+    metin: 'Bölgenin Molla Memiş’in göçünden (~1615) önceki son ayrıntılı sayımı. Defterin arşiv numarası internette teyit edilemedi.',
+    bulunabilir: 'Potocur ve Viçe/Sümle köylerinin 1615’ten hemen önceki nüfusu ve adları.',
+    guven: 'belirsiz', kaynak: ['aydin'] },
+  { yil: '1681/82', ad: 'Arhavi Kazası Avârız Defteri',
+    metin: 'Kenan Aydın’ın makalesine göre 1583 ile 1681/82 arasında Fındıklı, Arhavi, Hopa ve Gonio bölgesindeki köylerin çoğunda nüfus ve statü değişmiş — Molla Memiş’in göçü de bu hareketli döneme denk geliyor. Fındıklı kültür envanterine göre 1682 kaydında bugünkü Fındıklı’ya karşılık gelen sekiz köy adı (Viçe, Sümle, Zuğu, Pazine, Martunvat, Zatrikandu, Abu…) ve çok hisseli köylerin her hissesinin ayrı adı yazılı.',
+    bulunabilir: 'Göçten ~65 yıl sonra Derbent çevresindeki haneler. Derbend o dönem ayrı köy değil, Viçe ya da Sümle’nin bir hissesi olarak kayıtlı olabilir (Derbent Köprüsü Sümle/Sümer Deresi üzerindedir) — bu bir yorumdur.',
+    guven: 'kaynak', kaynak: ['aydin', 'findikliEnvanter'] },
+  { yil: '1835', ad: 'Arhavi Nüfus Defteri (No. 1165)',
+    metin: 'Arhavi, Viçe (Fındıklı) ve Hopa nahiyelerinin köylerini kapsıyor ve tamamı yeni harflerle yayımlandı: Murat Ümit Hiçyılmaz, “Çayeli’nden Oyani — 1835 Arhavi-Hopa-Fındıklı Nüfus Kayıtları”, Dergâh Yayınları, 2015, 520 s., ISBN 978-975-995-586-1. Nüfus defterleri erkekleri hane hane, baba adı ve yaşıyla yazar.',
+    bulunabilir: 'En somut iz: kitabın Derbend köyü sayfalarında Abdurrahman oğullarının 1835’teki hane reisleri. Ağaçtaki eski nesil adlarıyla (Abdurrahman, Musa, Mustafa Tahsin, Mehmet Yazıcı, Aslan, Hamit, Ali, Osman…) ve baba adlarıyla karşılaştırılabilir.',
+    guven: 'kaynak', kaynak: ['hicyilmaz'] },
+];
+
 export const ARASTIRMA_ONERILERI = [
-  'Osmanlı Arşivi’nde Trabzon / Lazistan tahrir defterleri — Viçe nahiyesi ve Derbend köyü (16.–17. yy).',
-  '1835 Arhavi nüfus defteri — Potocur kayıtları.',
+  'Önce kitap: Hiçyılmaz’ın 1835 nüfus kayıtları (Dergâh, ISBN 978-975-995-586-1) — Derbend ve Potocur sayfaları. İkinci el olarak bulunabiliyor.',
+  'Kenan Aydın’ın makalesi DergiPark’ta açık erişimli: 1681/82 avârız defterindeki köy listeleri ve dipnotlarında 1583 defterinin numarası.',
+  'TT 442 (1564): Marmara Üniversitesi’ndeki tezin transkripsiyonunda Arhavi bölümü (s. 81–139) — Potocur/Potoçur hane reisleri.',
+  'Devlet Arşivleri katalogu (katalog.devletarsivleri.gov.tr) — üyelikle; “Arhavi”, “Viçe”, “Derbend” aramaları ve 1165 no.lu nüfus defterinin görüntüleri.',
   'Derbent ve Dülgerli köylerindeki mezar taşları, cami kayıtları ve yaşlıların anlatıları.',
 ];
 
@@ -92,6 +128,7 @@ export function soyTarihiOzet() {
     zaman: ZAMAN.map((z) => ({ yil: z.yil, olay: z.metin, guven: GUVEN_ETIKETI[z.guven], kaynak: k(z.kaynak) || undefined })),
     yerler: YERLER.map((y) => ({ yer: y.ad, bilgi: y.metin, guven: GUVEN_ETIKETI[y.guven] })),
     adlar: ADLAR.map((a) => ({ konu: a.ad, bilgi: a.metin, guven: GUVEN_ETIKETI[a.guven] })),
+    osmanli_arsivi: ARSIV.map((a) => ({ yil: a.yil, defter: a.ad, bulunabilir: a.bulunabilir, guven: GUVEN_ETIKETI[a.guven] })),
     not: 'Güveni "Teyit gerekli" ya da "Yorum" olan bilgileri kesinmiş gibi sunma; aile kaydı ile kaynakta geçeni ayır.',
   };
 }
