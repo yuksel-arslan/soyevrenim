@@ -259,8 +259,17 @@ canvas{display:block;position:fixed;inset:0;
     width:52px;height:52px;font-size:21px}
   #rehber{left:10px !important;right:10px;width:auto !important;
     bottom:calc(env(safe-area-inset-bottom,0) + 132px) !important;
-    max-height:54vh;overflow-y:auto}
-  #rehberCipler button{font-size:13px !important;padding:9px 12px !important}
+    max-height:none;overflow:hidden}
+  /* Yanıt alanı kısa tutulur; hazır sorular tek satırda yana kayar. Böylece yazı
+     kutusu her zaman görünür (eskiden 11 soru paneli doldurup kutuyu dışarı itiyordu). */
+  #rehberMesaj{max-height:min(30vh,260px) !important}
+  #rehberCipler{flex-wrap:nowrap !important;overflow-x:auto;scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;padding-bottom:2px !important}
+  #rehberCipler::-webkit-scrollbar{display:none}
+  #rehberCipler button{font-size:13px !important;padding:9px 12px !important;flex:none;white-space:nowrap}
+  #rehberGiris{font-size:16px !important} /* iOS yakınlaştırma engeli */
+  /* Aile Sohbeti açıkken mikrofon "Gönder" düğmesinin üstüne binmesin */
+  body.sohbet-acik #rehberMic{display:none !important}
   #lensLegend{left:12px !important;right:auto;bottom:calc(env(safe-area-inset-bottom,0) + 74px) !important;font-size:11px;max-width:60vw}
   /* dock SVG ikonları biraz daha büyük (dokunma) */
   .dock button svg{width:22px;height:22px}
@@ -4319,7 +4328,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       b.textContent=t;
       b.style.cssText="background:var(--panel2);border:1px solid var(--line);color:var(--text);"+
         "font-size:12px;padding:7px 11px;border-radius:16px;cursor:pointer";
-      b.onclick=()=>{ giris.value=t; rehberGonder(t); };
+      b.onclick=()=>{ if(sifreBekle) sifreModundanCik(); giris.value=t; rehberGonder(t); };
       cipler.appendChild(b);
     });
   }
@@ -4440,11 +4449,34 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     return false;
   }
   function notYaz(t){ const n=el("rehberNot"); if(!n) return; n.textContent=t||""; n.style.display=t?"block":"none"; }
+  // Giriş yoksa notun altına "🔑 Giriş yap": yazı kutusu bir kerelik şifre kutusuna dönüşür
+  let sifreBekle=false;
+  function girisDugmesi(){
+    const n=el("rehberNot"); if(!n) return;
+    const b=document.createElement("button");
+    b.textContent="🔑 Aile şifresiyle giriş yap";
+    b.style.cssText="display:block;margin-top:6px;background:none;border:1px solid var(--line2);border-radius:8px;"
+      +"color:var(--accent);font-size:12.5px;font-weight:600;padding:6px 10px;cursor:pointer";
+    b.onclick=()=>{ sifreBekle=true; giris.type="password"; giris.value=""; giris.placeholder="Aile şifresi";
+      el("rehberGonder").textContent="Giriş"; giris.focus(); };
+    n.appendChild(b);
+  }
+  function sifreModundanCik(){ sifreBekle=false; giris.type="text"; giris.placeholder="yaz ya da 🎤 ile söyle";
+    el("rehberGonder").textContent="Git"; }
   const gecmis=[];
   let mesgul=false;
   async function rehberGonder(metin){
     const t=String(metin||"").trim();
     if(!t || mesgul) return;
+    if(sifreBekle){
+      mesgul=true; const j=await sifreyleGir(t); mesgul=false;
+      giris.value="";
+      if(!j.ok){ notYaz(j.hata); girisDugmesi(); sifreModundanCik(); return; }
+      sifreModundanCik();
+      notYaz(kimlikId() ? "" : "Giriş tamam. Şimdi kim olduğunu yaz: “Ben Yüksel” gibi.");
+      yaz(kimlikId() ? "Giriş tamam — artık sorularını asistan yanıtlar. Ne sormak istersin?" : "Giriş tamam.");
+      return;
+    }
     notYaz("");
     if(yerelArayuzMu(t) || !CLOUD.on){ calistirKomut(t); return; }
     const kisi=kimlikId();
@@ -4453,6 +4485,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       notYaz((sessionToken||isAdmin)
         ? "Asistan için kim olduğunu yaz: “Ben Yüksel” gibi — şimdilik ücretsiz Rehber yanıtladı."
         : "Asistan için aile şifresiyle giriş yap — şimdilik ücretsiz Rehber yanıtladı.");
+      if(!(sessionToken||isAdmin)) girisDugmesi();
       return;
     }
     mesgul=true; yaz("Düşünüyorum…");
@@ -5349,6 +5382,32 @@ cloudLoad();
 function smsShowIfCloud(){
   if(CLOUD.on){ const el=document.getElementById("smsLogin"); if(el) el.style.display="block"; }
 }
+// Ortak giriş: karşılama ekranı, Aile Sohbeti ve Rehber aynı yolu kullanır.
+// Eskiden şifre kutusu yalnızca karşılamadaydı; ad seçince ekran kapandığı için
+// sonradan giriş yapmanın yolu yoktu (sohbet ve asistan hep kilitli kalıyordu).
+async function sifreyleGir(sifre){
+  sifre=String(sifre||"").trim();
+  if(!sifre) return {ok:false, hata:"Şifreyi yaz"};
+  let j;
+  try{
+    const r=await fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({sifre})});
+    j=await r.json();
+  }catch(e){ return {ok:false, hata:"Bağlantı hatası"}; }
+  if(!j.ok) return {ok:false, hata:j.hata||"Şifre yanlış"};
+  sessionToken=j.jeton; sessionRol=j.rol;
+  if(j.rol==="admin"){ isAdmin=true; window.__adminRol="admin";
+    const ab=document.getElementById("approvalBtn"); if(ab) ab.style.display="";
+    if(typeof refreshApprovals==="function") refreshApprovals();
+    tohumla();
+  }
+  try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:j.rol})); }catch(e){}
+  if(typeof chatShowBtn==="function") chatShowBtn();
+  toast(j.rol==="admin" ? "Yönetici olarak girildi" : "Aile üyesi olarak girildi");
+  if(typeof cloudLoad==="function") cloudLoad();
+  if(selNode && typeof openInspector==="function") openInspector(selNode);
+  return {ok:true, rol:j.rol};
+}
 (function bindAileGiris(){
   const $=id=>document.getElementById(id);
   const err=(m)=>{ const e=$("smsErr"); if(e) e.textContent=m||""; };
@@ -5357,18 +5416,9 @@ function smsShowIfCloud(){
   async function gir(){
     const sifre=(inp.value||"").trim(); if(!sifre){ err("Şifreyi yaz"); return; }
     err(""); btn.disabled=true; btn.textContent="Giriş yapılıyor…";
-    try{
-      const r=await fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({sifre})});
-      const j=await r.json();
+    {
+      const j=await sifreyleGir(sifre);
       if(j.ok){
-        sessionToken=j.jeton; sessionRol=j.rol;
-        if(j.rol==="admin"){ isAdmin=true; window.__adminRol="admin";
-          const ab=document.getElementById("approvalBtn"); if(ab) ab.style.display="";
-          if(typeof refreshApprovals==="function") refreshApprovals();
-          tohumla();
-        }
-        try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:j.rol})); }catch(e){}
         const w=document.getElementById("welcome");
         if(benId && byId[benId]){ if(w) w.style.display="none"; }
         else{
@@ -5377,11 +5427,8 @@ function smsShowIfCloud(){
           const wi=document.getElementById("whoInput");
           if(wi){ wi.placeholder="Giriş tamam — şimdi adını yaz…"; wi.focus(); }
         }
-        if(typeof chatShowBtn==="function") chatShowBtn();
-        toast(j.rol==="admin" ? "Yönetici olarak girildi" : "Aile üyesi olarak girildi");
-        if(typeof cloudLoad==="function") cloudLoad();
-      } else err(j.hata||"Şifre yanlış");
-    }catch(e){ err("Bağlantı hatası"); }
+      } else err(j.hata);
+    }
     btn.disabled=false; btn.textContent="Gir";
   }
   btn.onclick=gir;
@@ -5554,18 +5601,32 @@ async function chatDelete(id, kapsam, container){
   const msgs=document.getElementById("chatMsgs"), input=document.getElementById("chatInput"),
         send=document.getElementById("chatSend");
   let poll=null;
-  const open=()=>{ pnl.style.display="flex"; chatLoad("genel", msgs);
-    // giriş yoksa yazmayı kilitle
-    const canWrite = !!sessionToken || isAdmin;
-    input.disabled=!canWrite; send.disabled=!canWrite;
-    input.placeholder = canWrite ? "Mesaj yaz…" : "Yazmak için aile şifresiyle giriş yap";
+  // Giriş yoksa kutu aile şifresi kutusuna dönüşür: buradan da giriş yapılabilir
+  const sifreModu=()=>!(sessionToken || isAdmin);
+  const kutuyuAyarla=()=>{
+    const s=sifreModu();
+    input.disabled=false; send.disabled=false;
+    input.type = s ? "password" : "text";
+    input.placeholder = s ? "Yazmak için aile şifresi" : "Mesaj yaz…";
+    send.textContent = s ? "Giriş" : "Gönder";
+  };
+  const gonder=async()=>{
+    if(!sifreModu()){ chatSend("genel", input, msgs); return; }
+    send.disabled=true;
+    const j=await sifreyleGir(input.value);
+    send.disabled=false;
+    if(!j.ok){ toast(j.hata); return; }
+    input.value=""; kutuyuAyarla(); input.focus();
+  };
+  const open=()=>{ pnl.style.display="flex"; document.body.classList.add("sohbet-acik"); chatLoad("genel", msgs);
+    kutuyuAyarla();
     poll=setInterval(()=>{ if(pnl.style.display!=="none" && !document.hidden) chatLoad("genel", msgs); }, 15000);
   };
-  const close=()=>{ pnl.style.display="none"; if(poll)clearInterval(poll); };
+  const close=()=>{ pnl.style.display="none"; document.body.classList.remove("sohbet-acik"); if(poll)clearInterval(poll); };
   btn.onclick=()=>{ if(pnl.style.display==="none") open(); else close(); };
   document.getElementById("chatClose").onclick=close;
-  send.onclick=()=>chatSend("genel", input, msgs);
-  input.addEventListener("keydown",e=>{ if(e.key==="Enter"){ chatSend("genel", input, msgs); } });
+  send.onclick=gonder;
+  input.addEventListener("keydown",e=>{ if(e.key==="Enter") gonder(); });
 })();
 
 })();

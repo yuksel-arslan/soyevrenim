@@ -20,6 +20,9 @@ Rehber girişi / 🎤 ─► arayüz komutu mu? (köken, istatistik, kol, "3-6 n
     — adaşta **"Ben Fahri oğlu Yüksel"** — ya da kişi kartında **🙋 Bu benim**).
   - Şifreyle girişte kişi seçilmemişse karşılama kapanmaz, ad sorulur. Jeton var ama kişi yoksa not:
     "Asistan için kim olduğunu yaz: “Ben Yüksel” gibi…". Yönetici de bu kurala tabidir.
+  - Jeton yoksa notun altında **🔑 Aile şifresiyle giriş yap** düğmesi çıkar; kutu bir kerelik şifre
+    kutusuna dönüşür (ortak `sifreyleGir()`, bkz. `docs/sohbet.md`).
+  - Mobilde hazır sorular tek satırda yana kayar, yanıt alanı ≤30vh: yazı kutusu hep görünür.
 - **Model ağaca yazmaz.** Ekleme/düzeltme `oneri_olustur` aracıyla `oneri` tablosuna **yama** (`islem`) olarak düşer;
   yönetici mevcut onay kutusundan onaylar. Onayda yama **o anki** ağaca uygulanır (araya giren onayları ezmez).
 - **Belirsiz isim:** sistem istemi, birden çok eşleşmede tahmin yerine soru sormayı zorunlu kılar (ağaçta 37 tekrarlı ad var).
