@@ -70,7 +70,7 @@ export default async function handler(req, res){
       const ab = body.abonelik || {}, k = ab.keys || {};
       const endpoint = String(ab.endpoint || '');
       if(!/^https:\/\//.test(endpoint) || !k.p256dh || !k.auth) return res.status(400).json({ok:false, hata:'Geçersiz abonelik'});
-      const kid = String(body.kisi_id || '').trim();
+      const kid = String(jetonDogrula(body.jeton)?.kisi || body.kisi_id || '').trim();   // kimlik önce oturumdan
       const kisi = /^[\w-]{1,40}$/.test(kid) ? kid : null;
       await sql`
         insert into bildirim_abonelik (kisi_id, endpoint, p256dh, auth)
@@ -95,7 +95,7 @@ export default async function handler(req, res){
       // yazan_id: yazanın ağaçtaki kişi id'si (seçtiği kişi). Kişi seçilmemişse rol
       // ('aile' / 'admin'). Eskiden hep rol yazılıyordu; kimin yazdığı ve "benim
       // mesajım" ayırt edilemiyordu.
-      const kid = String(body.kisi_id || '').trim();
+      const kid = String(jetonDogrula(body.jeton)?.kisi || body.kisi_id || '').trim();   // kimlik önce oturumdan
       const yid = /^[\w-]{1,40}$/.test(kid) ? kid : rol;
       const rows = await sql`
         insert into sohbet (kapsam, yazan_id, yazan_ad, mesaj)

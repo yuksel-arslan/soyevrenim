@@ -47,7 +47,7 @@ export default async function handler(req, res){
         insert into oneri (durum, gonderen_id, gonderen_ad, telefon, ozet, veri, fark, kaynak, kisi_id)
         values ('bekliyor', ${rol}, ${ad}, ${null},
                 ${ozet}, ${JSON.stringify(yeni)}::jsonb, ${JSON.stringify(fark)}::jsonb,
-                'elle', ${/^[\w-]{1,40}$/.test(String(body.kisi_id||'')) ? String(body.kisi_id) : null})
+                'elle', ${(() => { const k = String(jetonDogrula(body.jeton)?.kisi || body.kisi_id || ''); return /^[\w-]{1,40}$/.test(k) ? k : null; })()})
       `;
       return res.status(200).json({ok:true, ozet});
     }

@@ -74,6 +74,12 @@ export const MEDYA = {
 // — Panel: katkı sıralaması (1 eklenen kişi = bu kadar saniyelik hikâye ağırlığında)
 export const KATKI = { kisiAgirlikSn: 60 };
 
+// Giriş: oturum ve kişisel giriş bağlantısı süreleri (api/giris.js)
+export const GIRIS = {
+  oturumGun: 30,           // oturum jetonu (kullandıkça yenilenir)
+  davetGun: 180,           // kişisel giriş bağlantısı geçerliliği
+};
+
 // Aile sohbeti: yeni mesaj yoklaması (rozet + bildirim) ve panel açıkken yenileme
 export const SOHBET = { yoklamaSn: 45, acikYoklamaSn: 15, yeniMax: 50 };
 

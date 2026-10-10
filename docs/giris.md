@@ -10,7 +10,7 @@ Aile şifresi / yönetici şifresiyle giriş; veritabanı gerekmez. Jeton HMAC i
 | `{sifre}` | `{ok, rol:'aile'|'admin', jeton}` · yanlışsa `401` |
 | `{adim:'dogrula', jeton}` | geçerliyse `{ok, rol, jeton}` (**taze jeton**, süre yenilenir) · değilse `401` |
 
-- Jeton `{rol, t}` + imza; **30 gün** geçerli. İstemci açılışta `dogrula` ile tazeler: siteyi kullanan
+- Jeton `{rol, t, kisi?}` + imza; `GIRIS.oturumGun` gün geçerli. İstemci açılışta `dogrula` ile tazeler: siteyi kullanan
   kişinin oturumu düşmez.
 - `OTURUM_GIZLI` değişirse eski jetonların hepsi geçersiz olur (güvenlik için doğru davranış).
 
@@ -22,6 +22,30 @@ Aile şifresi / yönetici şifresiyle giriş; veritabanı gerekmez. Jeton HMAC i
 - `yetkiliIstek(yap, neden)`: istek 401 alırsa şifre penceresi (`girisPenceresi`) açılır, girişten
   sonra istek **bir kez** yeniden denenir. Kullananlar: fotoğraf yükleme, öneri gönderme, sohbete yazma.
 - Şifre kutuları: karşılama, Aile Sohbeti, asistan, kişi kartı şeridi ve bu pencere — hepsi `sifreyleGir()`.
+
+## Kişi kimliği (ID)
+
+Ağaçtaki her ferdin kalıcı bir **id**'si var (`p12222123`). Giriş ortak şifreyle olsa da kimlik artık
+**oturuma bağlı**: jeton `{rol, t, kisi}` taşır ve sunucu kimliği önce buradan okur
+(`kimlikCoz`, sohbet, öneri; tarayıcının söylediği `kisi_id` yalnız yedek).
+
+| İstek (`POST /api/giris`) | Ne yapar |
+|---|---|
+| `{sifre, kisi}` | girişte cihazda seçili kişi oturuma işlenir |
+| `{adim:'ben', jeton, kisi}` | "Ben …" / "Bu benim" / ad seçimi → kişiyi oturuma işler (rol aynı) |
+| `{adim:'dogrula', jeton}` | taze jeton; **kişi korunur** |
+| `{adim:'davet-uret', jeton, kisi}` | **yalnız yönetici**: o kişiye özel giriş bağlantısı (`GIRIS.davetGun` gün) |
+| `{adim:'davet', davet}` | bağlantıyla gelen: şifresiz, doğrudan o kişi olarak (aile rolü) |
+
+- **Kişisel giriş bağlantısı:** yönetici kişi kartında **🔗 Kişisel giriş bağlantısı gönder** →
+  `/?giris=…`. Açan kişi hangi cihazda olursa olsun doğrudan **kendisi** olarak girer; bağlantı adres
+  çubuğundan hemen silinir. Bağlantı jetonu (`tur:'davet'`) oturum yerine kullanılamaz.
+  Tüm bağlantıları iptal etmek için `OTURUM_GIZLI` değiştirilir (herkes yeniden girer).
+- Oturumu ve kişisi bilinen kullanıcı karşılamada adını yeniden seçmez (`tanidikIceriAl`).
+- **Düzeltilen hata:** kişi seçilmemişse kimlik, ekranın merkezindeki kişiden (`viewerId`) alınıyordu —
+  başkasını merkeze alınca site kullanıcıyı o kişi sanıyordu. Artık kimlik yalnız oturumdan ya da
+  açıkça seçilen kişiden gelir.
+- Süreler `api/_lib/ayar.js → GIRIS` (`oturumGun`, `davetGun`). Test: `test/giris.test.mjs`.
 
 ## Rol görünürlüğü
 
