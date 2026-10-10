@@ -138,6 +138,8 @@ canvas{display:block;position:fixed;inset:0;
   background:var(--panel);border-left:1px solid var(--line);box-shadow:-8px 0 40px var(--shadow);
   transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
 .inspector.show{transform:none}
+/* Ayrıntı paneli açıkken sağ üst kişi kartı panelin üstüne binmesin */
+body:has(.inspector.show) #activeCard{display:none !important}
 .inspector .head{padding:18px 18px 14px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:10px}
 .inspector .dot{width:34px;height:34px;border-radius:50%;flex:none;margin-top:2px}
 .inspector h2{margin:0;font-size:19px;font-weight:600;line-height:1.2}
@@ -3096,9 +3098,26 @@ function applyEditPermission(n){
   } else if(editable){
     banner.style.background="rgba(90,200,122,.12)"; banner.style.color=getVar("--ok");
     banner.textContent="✎ Bu kişiyi düzenleyebilirsin (yakının)";
+  } else if(!(sessionToken||isAdmin)){
+    // Giriş yok: düzenleme kilidinin nedeni bu. Şifre kutusu panelin içinde
+    // (aile şifresi de, yönetici şifresi de aynı kutudan girer).
+    banner.style.background="rgba(140,156,180,.12)"; banner.style.color=getVar("--text-soft");
+    banner.innerHTML=`<div style="margin-bottom:8px">👁 Sadece görüntüleme — düzenlemek için giriş yap</div>
+      <div style="display:flex;gap:6px">
+        <input id="permSifre" type="password" placeholder="Aile ya da yönetici şifresi" autocomplete="current-password"
+          style="flex:1;min-width:0;font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg2);color:var(--text)">
+        <button id="permGir" class="tbtn" style="flex:none">Giriş</button>
+      </div>`;
+    const inp=banner.querySelector("#permSifre"), btn=banner.querySelector("#permGir");
+    const gir=async()=>{ btn.disabled=true; const j=await sifreyleGir(inp.value); btn.disabled=false;
+      if(!j.ok){ toast(j.hata); return; }
+      if(!kimlikId() && !isAdmin) toast("Giriş tamam — kim olduğunu Rehber'e “Ben …” diye yaz");
+      openInspector(n); };   // yetkiyle yeniden çiz
+    btn.onclick=gir; inp.addEventListener("keydown",e=>{ if(e.key==="Enter") gir(); });
   } else {
     banner.style.background="rgba(140,156,180,.12)"; banner.style.color=getVar("--text-soft");
-    banner.textContent=editorId ? "👁 Sadece görüntüleme — bu kişi senin dalında değil" : "👁 Sadece görüntüleme";
+    banner.textContent=editorId ? "👁 Sadece görüntüleme — bu kişi senin dalında değil"
+      : "👁 Sadece görüntüleme — Rehber'e “Ben …” yazarak kim olduğunu söyle";
   }
 }
 
