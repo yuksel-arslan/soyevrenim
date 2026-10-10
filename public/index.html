@@ -1308,6 +1308,7 @@ function s2w(sx,sy){
 // üstte büyük bir boşluk bırakıyordu.
 const KADRAJ_GECIS_MS = 480;   // odak aç/kapa kamera geçişi
 const KADRAJ_ODAK_PAY = 0.8;   // odakta aile ekranı tam doldurmasın, isimlere yer kalsın
+const KADRAJ_ODAK_YAKIN = 1.5; // odakta en fazla yakınlaştırma çarpanı
 const KADRAJ_PAY = {
   masa:  { sol:76, sag:28, ust:76, alt:52, doluluk:0.94, maxOlcek:{koni:1.1, duz:1.3} },
   mobil: { sol:10, sag:10, ust:104, alt:92, doluluk:0.96, maxOlcek:{koni:1.1, duz:1.3} },
@@ -1345,7 +1346,8 @@ function kadrajHesapla(){
   // Salınım (±yaw) kadrajı oynatmasın: dinlenme açısında ölç
   const yawSakla=yaw, sSakla=scale, xSakla=ox, ySakla=oy; yaw=yawRest;
   ox=0; oy=0; scale=1;
-  const maxS = coneMode ? P.maxOlcek.koni : P.maxOlcek.duz;
+  // Odakta küçük bir aile ekranın ortasında minicik kalmasın: biraz daha yakınlaşılabilir
+  const maxS = (coneMode ? P.maxOlcek.koni : P.maxOlcek.duz) * (BLOOM.focusIds ? KADRAJ_ODAK_YAKIN : 1);
   // perspektif ölçeğe bağlı → birkaç adımda yakınsar
   for(let i=0;i<4;i++){
     const k=kutu();
@@ -1468,21 +1470,140 @@ function toggleExpand(n){
 
 // ---- ÖZELLİK 3: odak modu ----
 // Yakın aile: kendisi + anne-baba + kardeşler + eş(ler) + çocuklar (anne bağları dahil)
+//
+// ODAK YERLEŞİMİ (hiyerarşik): Yakınlar genel düzendeki yerlerinde kalınca bazıları
+// üst üste biniyor, bazıları çok uzağa düşüyordu. Odakta aile nesil nesil DÜZ satırlara,
+// EŞİT aralıklarla dizilir: anne-baba bir satır; kardeşler + kişi + eş(ler) bir satır
+// (kişi ortada, eşi yanında); çocuklar bir satır. Satırlar kişinin hizasında ortalanır.
+// Kamera kişiyi öne alacak kadar döner, satırlar ekranda yatay görünür.
+// Odak kapanınca herkes eski yerine döner.
+const ODAK_ARALIK = RING_GAP*1.15;   // odakta komşular arası dünya mesafesi
+// bir satırdaki en fazla kişi (dar ekranda isimler sığsın diye daha az)
+const odakSatirMax=()=> innerWidth<=640 ? 4 : 10;
+let odakKayit=null;                  // {id, orijinal: Map id->{x,y}, yawRest}
+let _odakAnim=0;
+function odakHedefleri(id){
+  const me=byId[id]; if(!me || !odakKayit) return null;
+  const orj=x=>odakKayit.orijinal.get(x)||{x:byId[x].x, y:byId[x].y};
+  const p0=orj(id);
+  const theta = Math.hypot(p0.x,p0.y)>1 ? Math.atan2(p0.y,p0.x) : -Math.PI/2;
+  const esler=new Set();
+  (marriages||[]).forEach(m=>{ if(m.from===id) esler.add(m.to); if(m.to===id) esler.add(m.from); });
+  const gruplar=new Map();
+  BLOOM.focusIds.forEach(x=>{ const n=byId[x]; if(!n) return;
+    const d=n._depth||0; if(!gruplar.has(d)) gruplar.set(d,[]); gruplar.get(d).push(n); });
+  const rel=n=>{ const q=orj(n.id); let a=Math.atan2(q.y,q.x)-theta;
+    while(a>Math.PI)a-=2*Math.PI; while(a<-Math.PI)a+=2*Math.PI; return a; };
+  // Her nesil bir SATIR; kalabalıksa ODAK_SATIR_MAX'lık alt satırlara bölünür.
+  const satirlar=new Map();   // derinlik -> [[düğümler], ...]
+  gruplar.forEach((liste,d)=>{
+    let sira, merkez;
+    if(liste.includes(me)){
+      const es=liste.filter(n=>esler.has(n.id)).sort((a,b)=>rel(a)-rel(b));
+      const diger=liste.filter(n=>n!==me && !esler.has(n.id)).sort((a,b)=>rel(a)-rel(b));
+      const sol=diger.slice(0,Math.floor(diger.length/2));
+      sira=[...sol, me, ...es, ...diger.slice(sol.length)]; merkez=sol.length;
+    } else { sira=liste.slice().sort((a,b)=>rel(a)-rel(b)); merkez=-1; }
+    const N=odakSatirMax(), parcalar=[];
+    if(sira.length<=N) parcalar.push(sira);
+    else if(merkez>=0){
+      // kişinin satırı: kişi ilk (ana) satırın ortasında, kalanlar alt satırlarda
+      const bas=Math.max(0, Math.min(sira.length-N, merkez-Math.floor(N/2)));
+      parcalar.push(sira.slice(bas, bas+N));
+      const kalan=[...sira.slice(0,bas), ...sira.slice(bas+N)];
+      for(let i=0;i<kalan.length;i+=N) parcalar.push(kalan.slice(i,i+N));
+    } else for(let i=0;i<sira.length;i+=N) parcalar.push(sira.slice(i,i+N));
+    satirlar.set(d, parcalar);
+  });
+  // HİYERARŞİK SATIRLAR: her satır kişinin yönüne dik DÜZ bir çizgide, eşit aralıklı,
+  // kişinin hizasında ortalı. Yön bilerek ters: aile kameranın karşı tarafında durduğu
+  // için içe (merkeze) gitmek ekranda YUKARI demek; koni yüksekliği de çocukları yukarı
+  // taşır. İkisi aynı yöne çalışsın diye çocuk satırları içte, anne-baba satırları dışta.
+  // (Halka yarıçapı kullanılınca ikisi birbirini götürüp satırlar üst üste biniyordu.)
+  // 2B'de de çocuklar üstte, anne-baba altta görünür.
+  const dKisi=me._depth||0, R0=Math.hypot(p0.x,p0.y);
+  const ux=Math.cos(theta), uy=Math.sin(theta), tx=-uy, ty=ux;
+  const ALT=ODAK_ARALIK*0.8;          // aynı neslin alt satırları arası
+  const hedef=new Map();
+  const yerlestir=(parca,r)=>{ const m=(parca.includes(me)) ? parca.indexOf(me) : (parca.length-1)/2;
+    parca.forEach((n,i)=>{ const k=(i-m)*ODAK_ARALIK; hedef.set(n.id,{x:ux*(R0+r)+tx*k, y:uy*(R0+r)+ty*k}); }); };
+  // kişinin nesli: ana satır 0'da, alt satırları dışa (aşağı)
+  let altSinir=0, ustSinir=0;
+  (satirlar.get(dKisi)||[]).forEach((p,i)=>{ yerlestir(p, i*ALT); altSinir=i*ALT; });
+  const derinlikler=[...satirlar.keys()].sort((a,b)=>a-b);
+  // üst nesiller (anne-baba ve öncesi): dışa doğru
+  derinlikler.filter(d=>d<dKisi).reverse().forEach(d=>{
+    let r=altSinir+RING_GAP; satirlar.get(d).forEach((p,i)=>{ yerlestir(p, r+i*ALT); altSinir=r+i*ALT; }); });
+  // alt nesiller (çocuklar ve sonrası): içe doğru
+  derinlikler.filter(d=>d>dKisi).forEach(d=>{
+    let r=ustSinir-RING_GAP; satirlar.get(d).forEach((p,i)=>{ yerlestir(p, r-i*ALT); ustSinir=r-i*ALT; }); });
+  return { hedef, theta };
+}
+// Düğümleri hedeflere yumuşakça taşı (kamera geçişiyle aynı süre)
+function odakTasi(hedef, sure){
+  const id=++_odakAnim, t0=performance.now(), dur=(sure==null?KADRAJ_GECIS_MS:sure);
+  const bas=new Map(); hedef.forEach((_,k)=>{ const n=byId[k]; if(n) bas.set(k,{x:n.x,y:n.y}); });
+  (function adim(now){
+    if(id!==_odakAnim) return;
+    let t=dur>0?Math.min(1,(now-t0)/dur):1; t=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    hedef.forEach((h,k)=>{ const n=byId[k], b=bas.get(k); if(!n||!b) return;
+      n.x=b.x+(h.x-b.x)*t; n.y=b.y+(h.y-b.y)*t; n.vx=0; n.vy=0; });
+    if(t<1) requestAnimationFrame(adim);
+  })(t0);
+}
+// Kadrajı düğümlerin VARACAĞI yerlere göre hesapla (geçici yerleştir, ölç, geri al)
+function hedefleKadrajaGit(hedef){
+  const eski=new Map(); hedef.forEach((h,k)=>{ const n=byId[k]; if(n){ eski.set(k,{x:n.x,y:n.y}); n.x=h.x; n.y=h.y; } });
+  kadrajaGit();
+  eski.forEach((p,k)=>{ byId[k].x=p.x; byId[k].y=p.y; });
+}
 function odakAc(id){
   const s=new Set([id]);
   for(const nb of (ADJ.get(id)||[])) s.add(nb);
   if(typeof relativesOf==="function") relativesOf(id).forEach(x=>s.add(x));
+  // başka bir kişiye geçiliyorsa önce eski yerleri geri ver (anlık)
+  const oncekiYaw = odakKayit ? odakKayit.yawRest : yawRest;
+  if(odakKayit) odakKayit.orijinal.forEach((p,k)=>{ const n=byId[k]; if(n){ n.x=p.x; n.y=p.y; } });
   BLOOM.focusIds=s;
+  odakKayit={ id, orijinal:new Map(), yawRest:oncekiYaw };
+  s.forEach(k=>{ const n=byId[k]; if(n) odakKayit.orijinal.set(k,{x:n.x,y:n.y}); });
   const b=document.getElementById("focusBtn"); if(b) b.classList.add("on");
   if(typeof updateStatus==="function") updateStatus();
-  kadrajaGit();      // aileyi çerçevele
+  const h=odakHedefleri(id);
+  if(!h){ kadrajaGit(); return; }
+  // Aileyi kameranın KARŞI tarafına döndür: radyal yön ekranda dikey olur, satırlar
+  // yatay görünür. (Yakın tarafta perspektif çok güçlü; küçük bir salınım bile satırları
+  // ekrandan taşırıyordu.)
+  let hedefYaw=Math.PI/2-h.theta;
+  while(hedefYaw-yawRest>Math.PI) hedefYaw-=2*Math.PI;
+  while(hedefYaw-yawRest<-Math.PI) hedefYaw+=2*Math.PI;
+  yawRest=hedefYaw; yawTarget=hedefYaw;
+  hedefleKadrajaGit(h.hedef);
+  odakTasi(h.hedef);
 }
 function odakKapat(){
   if(!BLOOM.focusIds) return;
   BLOOM.focusIds=null;
+  const kayit=odakKayit; odakKayit=null;
+  if(kayit){
+    yawRest=kayit.yawRest; yawTarget=kayit.yawRest;
+    hedefleKadrajaGit(kayit.orijinal);
+    odakTasi(kayit.orijinal);
+  } else kadrajaGit();      // tüm ağaca dön
   const b=document.getElementById("focusBtn"); if(b) b.classList.remove("on");
   if(typeof updateStatus==="function") updateStatus();
-  kadrajaGit();      // tüm ağaca dön
+}
+// Odak açıkken ağaç yeniden dizilirse (bulut güncellemesi, düzenleme) odak yerleşimini
+// yeni düzene göre anında tekrar uygula; yoksa aile yeniden dağılır.
+{ const _lr=layoutRadial;
+  layoutRadial=function(){ const r=_lr.apply(this,arguments); odakYenidenUygula(); return r; }; }
+function odakYenidenUygula(){
+  if(!BLOOM.focusIds || !odakKayit) return;
+  const id=odakKayit.id;
+  if(!byId[id]){ BLOOM.focusIds=null; odakKayit=null; return; }
+  odakKayit.orijinal=new Map();
+  BLOOM.focusIds.forEach(k=>{ const n=byId[k]; if(n) odakKayit.orijinal.set(k,{x:n.x,y:n.y}); });
+  const h=odakHedefleri(id); if(h) odakTasi(h.hedef, 0);
 }
 
 // ---- ÖZELLİK 4: nesil aralığı ----
@@ -1938,7 +2059,8 @@ function draw(){
   // hafif otomatik salınım (nefes alan galaksi) — kullanıcı döndürmüyorsa
   if(!panning && !dragNode){
     autoT=(autoT||0)+0.008;
-    const gentle=Math.sin(autoT)*0.12;   // ±0.12 rad yavaş salınım
+    // ±0.12 rad yavaş salınım; odakta durur (aile satırları yatay ve sabit kalsın)
+    const gentle=BLOOM.focusIds ? 0 : Math.sin(autoT)*0.12;
     yawTarget = yawRest + gentle;
   }
   // yaw'ı hedefe yumuşat
@@ -1963,7 +2085,9 @@ function draw(){
   // Çok soluk tutuluyor (244 düğüm + kenar zaten yoğun) ve uzaklaşınca güçleniyor.
   // Tel örgü 2B modda da çizilir: orada halkalar düz daireler, meridyenler
   // merkezden çıkan düz ışınlar olur — nesil yapısını okutan aynı iskelet.
-  if(nodes.length && kafesGoster){
+  // Odakta gizli: aile hiyerarşik satırlara dizilir, halkalara oturmaz; örgü ve
+  // "N. nesil" etiketleri yanlış yeri gösterirdi.
+  if(nodes.length && kafesGoster && !BLOOM.focusIds){
     // Tel örgü kendi alfasını kullanır. ringAlpha'ya bağlıyken (0.18 tabanlı)
     // meridyenler ~0.09'a düşüp görünmez oluyordu — yüzeyi hissettirmiyordu.
     // Taban 0.30, uzaklaşınca 0.60'a çıkıyor.
