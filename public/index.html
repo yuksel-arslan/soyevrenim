@@ -2333,21 +2333,15 @@ function draw(){
     // Derinlik soluklaştırması ayrı çarpan olarak kalıyor (3B his).
     const dimAlpha = nodeAlpha(n) * depthAlpha;
     if(n===activeNode && (n._grow||0)>0.05){
-      // aktif düğüm: sadece taban daire (foto/detay aktif blokta) — çakışmayı önle
-      ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
-      ctx.fillStyle=nodeColor(n); ctx.globalAlpha=dimAlpha*0.5; ctx.fill(); ctx.globalAlpha=1;
+      // Aktif (seçili) düğüm büyür: fotoğrafı varsa FOTOĞRAF, yoksa yarı saydam taban daire.
+      // Eskiden burada hep düz daire çiziliyordu — seçili kişinin fotoğrafı hiç görünmüyordu
+      // (odakta kişi hep seçili olduğundan büyük dairede fotoğraf yoktu).
+      if(!(hasPhoto && fotoCiz(n, prof.photo, p, r, dimAlpha))){
+        ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
+        ctx.fillStyle=nodeColor(n); ctx.globalAlpha=dimAlpha*0.5; ctx.fill(); ctx.globalAlpha=1;
+      }
     } else if(hasPhoto){
-      // görüntüyü hazırla/önbellekle
-      if(!n._img||n._img._src!==prof.photo){ const im=new Image(); im._src=prof.photo; im.src=prof.photo; n._img=im; }
-      if(n._img.complete&&n._img.naturalWidth){
-        ctx.save();
-        ctx.globalAlpha=dimAlpha;
-        ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283); ctx.clip();
-        const s=Math.max((2*r)/n._img.naturalWidth,(2*r)/n._img.naturalHeight);
-        const iw=n._img.naturalWidth*s, ih=n._img.naturalHeight*s;
-        ctx.drawImage(n._img,p.x-iw/2,p.y-ih/2,iw,ih);
-        ctx.restore();
-        ctx.globalAlpha=1;
+      if(fotoCiz(n, prof.photo, p, r, dimAlpha)){
         // cinsiyet/durum renginde çerçeve
         ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
         ctx.lineWidth=sel?2.5:2; ctx.strokeStyle=sel?getVar("--accent"):nodeColor(n); ctx.stroke();
@@ -2459,6 +2453,20 @@ function yakinlariGetir(){
 // İsim etiketleri: öncelik sırasıyla, çakışmasız yerleşim. Her isim için dört
 // konum denenir (sağ, sol, alt, üst); hiçbiri boş değilse o isim bu karede çizilmez.
 // Öncelik 0 (bakan, seçili, üzerinde gezilen) her zaman çizilir.
+// Düğüm fotoğrafı: önbellekli yükle, daireye kırparak çiz. Çizildiyse true (yüklenmediyse false).
+function fotoCiz(n, url, p, r, alpha){
+  if(!n._img || n._img._src!==url){ const im=new Image(); im._src=url; im.decoding="async"; im.src=url; n._img=im; }
+  const im=n._img;
+  if(!(im.complete && im.naturalWidth)) return false;
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283); ctx.clip();
+  const k=Math.max((2*r)/im.naturalWidth,(2*r)/im.naturalHeight);
+  ctx.drawImage(im,p.x-im.naturalWidth*k/2,p.y-im.naturalHeight*k/2,im.naturalWidth*k,im.naturalHeight*k);
+  ctx.restore();
+  ctx.globalAlpha=1;
+  return true;
+}
 function isimleriYerlestir(adaylar){
   adaylar.sort((a,b)=> a.oncelik-b.oncelik || b.depthK-a.depthK);
   // İsimler düğümlerin ve seçili kişinin (aktif blokta yazılan) adının üstüne binmesin:
