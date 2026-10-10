@@ -220,3 +220,16 @@ test('Lazca yazan kullanıcı: istemde Lazca kuralı; uzman_bilgi(lazca) Türkç
   const { MESAJ_MAX_TOKEN, tahminiToken } = await import('../api/_lib/ayar.js');
   for (const i of llm.istekler) assert.ok(tahminiToken(JSON.stringify(i.messages)) + tahminiToken(JSON.stringify(i.tools || [])) <= MESAJ_MAX_TOKEN);
 });
+
+test('agac kaydet: oturumsuz 401 (yeniden giriş), aile 403 (öneri yolu), yönetici 200 + güncelleme zamanı', { skip: atla }, async () => {
+  const { default: agac } = await import('../api/agac.js');
+  const veri = (await cagir(agac, { method: 'GET' })).govde.veri;
+  const kaydet = (j) => cagir(agac, { method: 'POST', body: { veri, guncelleyen: 'Test', jeton: j } });
+  assert.equal((await kaydet('')).statusCode, 401);
+  assert.equal((await kaydet(jeton)).statusCode, 403);
+  const r = await kaydet(adminJeton);
+  assert.equal(r.govde.ok, true);
+  assert.ok(r.govde.guncelleme, 'kaydeden cihaz kendi kaydını tanısın');
+  const g = await cagir(agac, { method: 'GET' });
+  assert.equal(String(g.govde.guncelleme), String(r.govde.guncelleme));
+});

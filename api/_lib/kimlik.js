@@ -12,7 +12,8 @@ export class KimlikHatasi extends Error {
 export async function kimlikCoz(body) {
   const oturum = jetonDogrula(body.jeton);
   if (!oturum) throw new KimlikHatasi('Asistan için aile şifresiyle giriş yap.');
-  const kisiId = String(body.kisi_id || '').trim();
+  // Kimlik önce OTURUMDAN (kişiye bağlı jeton / kişisel giriş bağlantısı); yoksa istemcinin seçimi
+  const kisiId = String(oturum.kisi || body.kisi_id || '').trim();
   if (!/^[\w-]{1,40}$/.test(kisiId)) throw new KimlikHatasi('Önce adını seç ("Bu evrene kim bakıyor?").');
   const veri = await agacOku();
   const n = (veri.nodes || []).find((x) => x.id === kisiId);

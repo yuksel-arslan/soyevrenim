@@ -1974,15 +1974,33 @@ let sessionToken=null, sessionKisiId=null, sessionRol=null;
 const BEN_KEY="kok_ben";
 let benId=null;
 try{ benId=localStorage.getItem(BEN_KEY)||null; }catch(e){}
-function benAta(id){
+function benAta(id, sunucuyaBildirme){
   benId=id||null;
   try{ if(benId) localStorage.setItem(BEN_KEY,benId); else localStorage.removeItem(BEN_KEY); }catch(e){}
+  // Oturum varsa seçimi OTURUMA işle (kişiye bağlı jeton): sunucu kimliği buradan okur
+  if(!sunucuyaBildirme && sessionToken) oturumaKisiIsle(benId);
 }
+async function oturumaKisiIsle(kisi){
+  try{
+    const r=await fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({adim:"ben", jeton:sessionToken, kisi:kisi||""})});
+    const j=await r.json();
+    if(j.ok) oturumSakla(j);
+  }catch(e){}
+}
+// Oturumu (jeton + rol + kişi) sakla — tek yer
+function oturumSakla(j){
+  sessionToken=j.jeton; sessionRol=j.rol; sessionKisiId=j.kisi||null;
+  try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:j.rol, kisi:j.kisi||null})); }catch(e){}
+}
+// KİMLİK: oturumdaki kişi (kişiye bağlı jeton / kişisel giriş bağlantısı), yoksa bu cihazda
+// açıkça seçilen kişi. Eskiden son çare olarak EKRANIN MERKEZİNDEKİ kişi (viewerId) alınıyordu:
+// biri başkasını merkeze alınca site onu o kişi sanıyordu. O geri dönüş kaldırıldı.
 function kimlikId(){
-  if(sessionKisiId) return sessionKisiId;
   if(!(sessionToken || isAdmin)) return null;
+  if(sessionKisiId && byId[sessionKisiId]) return sessionKisiId;
   if(benId && byId[benId]) return benId;
-  return viewerId || null;
+  return null;
 }
 
 // Eş/çocuk özetini TAM CÜMLE olarak üretir. Hem hover kartı hem sağ üst kart
@@ -2008,7 +2026,7 @@ function esCocukCumlesi(n){
 }
 setTimeout(()=>{ if(typeof oturumDogrula==="function") oturumDogrula(); }, 0);
 try{ const s=JSON.parse(localStorage.getItem("kok_session")||"null");
-  if(s){ sessionToken=s.jeton||s.token||null; sessionRol=s.rol||null; if(sessionRol==="admin"){ isAdmin=true; window.__adminRol="admin"; } } }catch(e){}
+  if(s){ sessionToken=s.jeton||s.token||null; sessionRol=s.rol||null; sessionKisiId=s.kisi||null; if(sessionRol==="admin"){ isAdmin=true; window.__adminRol="admin"; } } }catch(e){}
 function relativesOf(id){
   // düzenlenebilir yakınlar kümesi: kendisi + ebeveyn + kardeş + çocuk + eş
   const set=new Set(); const me=byId[id]; if(!me) return set;
@@ -2090,11 +2108,10 @@ async function tryAdminLogin(){
   if(c===null) return;
   try{
     const r=await fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({sifre:c})});
+      body:JSON.stringify({sifre:c, kisi:benId||""})});
     const j=await r.json();
     if(j.ok && j.rol==="admin"){
-      isAdmin=true; sessionToken=j.jeton; sessionRol="admin"; window.__adminRol="admin";
-      try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:"admin"})); }catch(e){}
+      isAdmin=true; window.__adminRol="admin"; oturumSakla(j);
       const ab=document.getElementById("approvalBtn"); if(ab) ab.style.display="";
       if(typeof refreshApprovals==="function") refreshApprovals();
       if(typeof chatShowBtn==="function") chatShowBtn();
@@ -3318,6 +3335,12 @@ function renderProfileSections(n){
     mem.appendChild(card);
   });
   // bu kişi için kaydedilmiş, henüz onaylanmamış sesli hikâyeler
+  if(isAdmin){
+    const kb=document.createElement("button"); kb.className="tbtn"; kb.style.cssText="width:100%;justify-content:center;margin-bottom:8px";
+    kb.textContent="🔗 Kişisel giriş bağlantısı gönder"; kb.title="Bu kişi bağlantıyı açınca şifresiz, doğrudan kendisi olarak girer";
+    kb.onclick=()=>kisiselBaglanti(n);
+    mem.appendChild(kb);
+  }
   if((sessionToken||isAdmin) && benId!==n.id){
     const bb=document.createElement("button"); bb.className="tbtn"; bb.style.cssText="width:100%;justify-content:center;margin-bottom:8px";
     bb.textContent="🙋 Bu benim"; bb.title="Asistan ve hikâyeler seni bu kişi olarak tanısın";
@@ -5559,6 +5582,8 @@ async function cloudLoad(){
       absorbCloudProfiles(j.veri);
       loadGraph(j.veri); layoutRadial(); fit();
       CLOUD.lastServer = j.guncelleme || null;
+      // kişisel giriş bağlantısı ya da tanınan kişi → karşılamayı atla
+      if(new URLSearchParams(location.search).has("giris")) davetleGir(); else setTimeout(()=>tanidikIceriAl(false), 0);
       smsShowIfCloud(); chatShowBtn();
       // Sayaçlar açılışta (ağaç henüz boşken) hesaplanıyor; veri gelince tazele.
       // Gömülü GRAPH kaldırılınca bunlar "0 kişi · 0 bağ" olarak takılı kalıyordu.
@@ -5597,15 +5622,26 @@ function cloudSave(immediate){
   const doSave = async ()=>{
     if(CLOUD.saving) { CLOUD.timer=setTimeout(doSave,800); return; }
     CLOUD.saving = true;
+    // Kayıt hatası artık SESSİZ değil: eskiden oturumu düşmüş yöneticinin değişikliği
+    // yalnızca o cihazda kalıyor, diğer cihazlara hiç gitmiyordu ("mobilde var, bilgisayarda yok").
     try{
       const kim = viewerId ? dispName((byId[viewerId]||{}).name||"") : "Yönetici";
-      const r = await fetch(CLOUD.url, {
+      const r = await yetkiliIstek(()=>fetch(CLOUD.url, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ veri: currentGraphJSON(), guncelleyen: kim,
           jeton: sessionToken||"" })
-      });
-      if(r.ok){ dirty=false; updateStatus(); }
-    }catch(e){}
+      }), "Değişikliğini ağaca kaydetmek için oturumunu yenile (yönetici şifresi).");
+      if(r.ok){
+        const j=await r.json().catch(()=>({}));
+        dirty=false; if(j.guncelleme) CLOUD.lastServer=j.guncelleme;   // kendi kaydımızı "yeni" sanmasın
+        updateStatus();
+      } else if(r.status===403 && !isAdmin){
+        pendingChanges=true; updatePendingBar();   // yönetici değil: öneri yoluna düş
+      } else {
+        const j=await r.json().catch(()=>({}));
+        toast("⚠ Kaydedilemedi: "+(j.hata||("sunucu "+r.status))+" — değişiklik yalnızca bu cihazda");
+      }
+    }catch(e){ toast("⚠ Kaydedilemedi: bağlantı yok — değişiklik yalnızca bu cihazda, bağlantı gelince tekrar dene"); }
     CLOUD.saving = false;
   };
   if(immediate) doSave(); else CLOUD.timer = setTimeout(doSave, 1200);
@@ -5654,7 +5690,7 @@ async function sendForApproval(){
       "Değişikliği göndermek için oturumunu yenile.");
     const j=await r.json();
     if(j.ok){
-      pendingChanges=false; dirty=false; updatePendingBar(); updateStatus();
+      pendingChanges=false; dirty=false; updatePendingBar(); updateStatus();   // eşitleme yeniden başlar
       toast("Aile üyesi olarak gönderdin — yönetici onaylayınca ağaca işlenir ✓");
     } else toast(j.hata||"Gönderilemedi");
   }catch(e){ toast("Bağlantı hatası"); }
@@ -5671,7 +5707,11 @@ touch = function(){ _touch_local(); cloudSave(false); };
 // kimse bakmıyorken bu tamamen boşa gidiyordu. Sekmeye dönülünce hemen bir kez
 // yoklanır, böylece kullanıcı bekletilmez.
 async function bulutYokla(){
-  if(!CLOUD.on || CLOUD.saving || dirty) return;
+  if(!CLOUD.on || CLOUD.saving) return;
+  // Yerelde kaydedilmemiş değişiklik varken buluttaki sürüm üstüne yazılmasın:
+  // yöneticide kayıt bekliyorsa, aile üyesinde gönderilmemiş öneri varsa bekle.
+  // (Eskiden her düzenleme 'dirty' bırakıyordu ve o cihaz bir daha HİÇ eşitlenmiyordu.)
+  if(isAdmin ? dirty : pendingChanges) return;
   if(document.hidden) return;   // arka planda: istek yok
   try{
     const r = await fetch(CLOUD.url, {method:"GET"}); if(!r.ok) return;
@@ -5686,7 +5726,9 @@ async function bulutYokla(){
       CLOUD.lastServer = j.guncelleme;
       CLOUD.bosSunucu = false;
       const keepViewer = viewerId;
+      absorbCloudProfiles(j.veri);   // fotoğraf, bilgi, anılar da gelsin (eskiden yalnız ağaç yapısı)
       loadGraph(j.veri); layoutRadial();
+      dirty=false;
       if(keepViewer && byId[keepViewer]) setViewer(keepViewer);
       updateStatus(); renderStats();
       showHint("Ağaç güncellendi — biri yeni bilgi ekledi");
@@ -5712,7 +5754,7 @@ function smsShowIfCloud(){
 // tazelenir; bir istek yine 401 alırsa küçük bir şifre penceresi açılır, girişten
 // sonra istek kendiliğinden yeniden denenir.
 function oturumKapat(mesaj){
-  sessionToken=null; sessionRol=null;
+  sessionToken=null; sessionRol=null; sessionKisiId=null;
   if(isAdmin){ isAdmin=false; window.__adminRol="";
     const ab=document.getElementById("approvalBtn"); if(ab) ab.style.display="none"; }
   try{ localStorage.removeItem("kok_session"); }catch(e){}
@@ -5762,7 +5804,11 @@ async function oturumDogrula(){
     const r=await fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({adim:"dogrula", jeton:sessionToken})});
     const j=await r.json();
-    if(j.ok){ sessionToken=j.jeton; try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:j.rol})); }catch(e){} }
+    if(j.ok){
+      // Oturumda kişi yoksa ama bu cihazda seçiliyse oturuma işle; varsa cihaz seçimini oturumdan al
+      if(!j.kisi && benId){ sessionToken=j.jeton; oturumaKisiIsle(benId); }
+      else { oturumSakla(j); if(j.kisi && j.kisi!==benId) benAta(j.kisi, true); }
+    }
     else if(r.status===401) oturumKapat("Oturumun süresi dolmuş — devam etmek için yeniden giriş yap");
   }catch(e){}   // ağ hatası oturumu düşürmesin
 }
@@ -5800,23 +5846,62 @@ async function yetkiliIstek(yap, neden){
   if(await girisPenceresi(neden)) r=await yap();
   return r;
 }
+async function kisiselBaglanti(n){
+  const r=await yetkiliIstek(()=>fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({adim:"davet-uret", jeton:sessionToken||"", kisi:n.id})}), "Bağlantı üretmek için yönetici şifreni gir.");
+  const j=await r.json().catch(()=>({}));
+  if(!j.ok){ toast(j.hata||"Bağlantı üretilemedi"); return; }
+  const url=`${location.origin}/?giris=${encodeURIComponent(j.davet)}`;
+  const ad=dispName(n.name);
+  const metin=`${ad}, soyevrenim.com'daki ailemizin soy ağacına senin için özel giriş bağlantısı 🌳 `+
+    `Dokununca doğrudan kendin olarak girersin, şifre gerekmez. Bağlantı ${j.gun} gün geçerli ve yalnızca sana özel — başkasıyla paylaşma: ${url}`;
+  try{ if(navigator.share){ await navigator.share({title:"soyevrenim.com giriş", text:metin}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
+  try{ await navigator.clipboard.writeText(metin); toast(`${ad} için bağlantı kopyalandı — ona özel mesajla gönder`); }catch(e){ prompt("Bağlantıyı kopyala:", url); }
+}
+// KİŞİSEL GİRİŞ BAĞLANTISI (/?giris=…): şifresiz, doğrudan o kişi olarak (aile rolü).
+// Bağlantı adres çubuğundan hemen silinir (ekran görüntüsünde/geçmişte kalmasın).
+async function davetleGir(){
+  const q=new URLSearchParams(location.search), davet=q.get("giris");
+  if(!davet) return;
+  q.delete("giris");
+  try{ history.replaceState(null,"", location.pathname+(q.toString()?"?"+q:"")+location.hash); }catch(e){}
+  try{
+    const r=await fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({adim:"davet", davet})});
+    const j=await r.json();
+    if(!j.ok){ toast(j.hata||"Giriş bağlantısı geçersiz"); return; }
+    if(isAdmin){ isAdmin=false; window.__adminRol=""; }
+    oturumSakla(j); benAta(j.kisi, true);
+    if(typeof chatShowBtn==="function") chatShowBtn();
+    if(typeof updateStatus==="function") updateStatus();
+    tanidikIceriAl(true);
+  }catch(e){ toast("Bağlantı hatası"); }
+}
+// Oturumu ve kişisi bilinen biri karşılamada adını yeniden seçmesin: doğrudan kendisi olarak aç
+function tanidikIceriAl(davetle){
+  const kim=kimlikId();
+  const w=document.getElementById("welcome");
+  if(!kim || !w || w.style.display==="none" || w.style.opacity==="0") return false;
+  if(typeof startAs==="function"){ startAs(kim);
+    toast(davetle ? `Hoş geldin ${dispName(byId[kim].name)} — kişisel bağlantınla girdin` : `Hoş geldin ${dispName(byId[kim].name)}`); }
+  return true;
+}
 async function sifreyleGir(sifre){
   sifre=String(sifre||"").trim();
   if(!sifre) return {ok:false, hata:"Şifreyi yaz"};
   let j;
   try{
     const r=await fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({sifre})});
+      body:JSON.stringify({sifre, kisi:benId||""})});   // seçili kişi oturuma işlensin
     j=await r.json();
   }catch(e){ return {ok:false, hata:"Bağlantı hatası"}; }
   if(!j.ok) return {ok:false, hata:j.hata||"Şifre yanlış"};
-  sessionToken=j.jeton; sessionRol=j.rol;
+  oturumSakla(j);
   if(j.rol==="admin"){ isAdmin=true; window.__adminRol="admin";
     const ab=document.getElementById("approvalBtn"); if(ab) ab.style.display="";
     if(typeof refreshApprovals==="function") refreshApprovals();
     tohumla();
   }
-  try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:j.rol})); }catch(e){}
   if(typeof chatShowBtn==="function") chatShowBtn();
   if(typeof updateStatus==="function") updateStatus();
   if(typeof updatePendingBar==="function") updatePendingBar();
@@ -5854,7 +5939,7 @@ async function sifreyleGir(sifre){
 
 // admin girişi düğmesi
 document.getElementById("adminBtn").onclick=()=>{
-  if(isAdmin){ isAdmin=false; sessionToken=null; sessionRol=null; window.__adminRol="";
+  if(isAdmin){ isAdmin=false; sessionToken=null; sessionRol=null; sessionKisiId=null; window.__adminRol="";
     try{ localStorage.removeItem("kok_session"); }catch(e){}
     toast("Yönetici modu kapandı");
     if(typeof updateStatus==="function") updateStatus();
