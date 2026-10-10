@@ -86,6 +86,8 @@ test('"Emine ile Fahri nasıl akraba?" → yol_bul sonucu modele gider, yanıt k
       const s = JSON.parse(g.messages.at(-1).content);
       assert.equal(s.ortak_ata.ad, 'Hamit');
       assert.ok(s.adimlar.length >= 2);
+      assert.match(s.anlati, /Hamit'in çocukları/);           // sıcak anlatım modele gider
+      assert.ok(!s.adimlar.some((x) => /Emine'in/.test(x)));  // ek doğru: Emine'nin
       return { content: `Emine, Fahri'nin yeğeni. ${s.adimlar.join('; ')}.\nKaynak: soy ağacı kaydı` };
     },
   ]);
@@ -180,7 +182,7 @@ test('kullanım paneli: ayın özeti, katkılar, depolama, kişinin hakkı', { s
   assert.equal(JSON.stringify(r.govde).includes('maliyet'), false);
 });
 
-test('soy sorusu → soy_tarihi aracı: Fahri Arslan notu + ağaç sayıları; rehber adı istemde', { skip: atla }, async () => {
+test('soy sorusu → soy_tarihi aracı: Fahri Arslan notu + ağaç sayıları; asistan adı istemde', { skip: atla }, async () => {
   const llm = senaryoLlm([
     { content: null, tool_calls: [arac('soy_tarihi', {})] },
     (g) => {
@@ -194,8 +196,9 @@ test('soy sorusu → soy_tarihi aracı: Fahri Arslan notu + ağaç sayıları; r
   globalThis.__SOY_TEST.llm = llm;
   const r = await cagir(asistan, { body: { jeton, kisi_id: KISI, mesaj: 'Nereden geldik?' } });
   assert.equal(r.govde.ok, true);
-  assert.match(llm.istekler[0].messages[1].content, /Nine Rehberi|Dede Rehberi/);
-  assert.match(llm.istekler[0].messages[1].content, /o kişi değilsin/);
+  assert.match(llm.istekler[0].messages[0].content, /Adın Çınar/);
+  assert.match(llm.istekler[0].messages[1].content, /Konuşan kişi/);
+  assert.match(llm.istekler[0].messages[0].content, /kimsenin ağzından konuşma/);
   const { MESAJ_MAX_TOKEN, tahminiToken } = await import('../api/_lib/ayar.js');
   for (const i of llm.istekler) assert.ok(tahminiToken(JSON.stringify(i.messages)) + tahminiToken(JSON.stringify(i.tools || [])) <= MESAJ_MAX_TOKEN);
 });

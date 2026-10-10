@@ -24,7 +24,7 @@ Genel **Aile Sohbeti** ve kişi kartındaki **Yorumlar** tek uçtan, tek tabloda
 
 1. Karşılama ekranı (ad seçilmemişse girişten sonra ad sorulur).
 2. **Aile Sohbeti:** giriş yoksa yazı kutusu şifre kutusuna dönüşür, düğme **Giriş** olur.
-3. **Rehber:** "🔑 Aile şifresiyle giriş yap" düğmesi kutuyu bir kerelik şifre moduna alır.
+3. **Asistan (Çınar):** "🔑 Aile şifresiyle giriş yap" düğmesi kutuyu bir kerelik şifre moduna alır.
 
 Jeton `localStorage.kok_session` içinde saklanır. Panel 15 sn'de bir (sekme görünürken) yenilenir.
 Mobilde sohbet açıkken mikrofon düğmesi gizlenir (`body.sohbet-acik`).

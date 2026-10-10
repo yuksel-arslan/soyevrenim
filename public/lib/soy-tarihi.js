@@ -1,7 +1,7 @@
 // ÜRETİLMİŞ DOSYA — düzenleme. Kaynak: api/_lib/soy-tarihi.js (npm run build)
 // SOY TARİHİ — Fahri Arslan'ın 1956 çiziminin notu (birincil kaynak) + internetten
 // derlenen bağlam. Hem sunucu (asistan aracı `soy_tarihi`) hem istemci (Köken ekranı,
-// ücretsiz Rehber) kullanır. public/lib/soy-tarihi.js bu dosyanın kopyasıdır
+// hazır bilgi yanıtı) kullanır. public/lib/soy-tarihi.js bu dosyanın kopyasıdır
 // (npm run build). Her bilgi bir GÜVEN etiketi taşır:
 //   'aile'     → Fahri Arslan'ın notu / aile hafızası (birincil, ama tarihî belgeyle doğrulanmadı)
 //   'kaynak'   → yayımlanmış kaynakta geçiyor (bağlantısı verilmiştir)

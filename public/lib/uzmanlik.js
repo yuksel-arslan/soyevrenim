@@ -3,14 +3,14 @@
 // public/lib/uzmanlik.js bu dosyanın kopyasıdır (npm run build).
 //
 //   bolge  → Doğu Karadeniz / Arhavi–Fındıklı bölge tarihi uzmanı
-//   site   → soyevrenim.com kullanım uzmanı (Rehber, ağaç, öneri, hikâye…)
+//   site   → soyevrenim.com kullanım uzmanı (asistan, ağaç, öneri, hikâye…)
 //   lazca  → Lazca (Lazuri) — selamlaşma, akrabalık adları, yazım notları
 //   (soy   → Abdurrahman Oğulları kökeni: ayrı modül, api/_lib/soy-tarihi.js)
 //
 // Kullanım: asistan modeli `uzman_bilgi({sorgu, beceri})` aracıyla çağırır; model yokken
-// (kota / anahtar yok) ücretsiz Rehber aynı bilgiyi anahtar sözcük eşleşmesiyle yanıtlar.
+// (kota / anahtar yok) istemci aynı bilgiyi anahtar sözcük eşleşmesiyle yanıtlar.
 // Güven etiketleri soy-tarihi.js ile aynı: kaynak · yorum · belirsiz · genel (yaygın bilgi).
-// Ayrıntı: docs/asistan.md → "Rehberin becerileri"
+// Ayrıntı: docs/asistan.md → "Becerileri"
 
 export const BECERI_KAYNAKLARI = {
   lazenstitu: { ad: 'Laz Enstitüsü — Lazcada genel ifadeler', url: 'https://www.lazenstitu.com/lazcada-genel-ifadeler/' },
@@ -60,14 +60,14 @@ export const BECERILER = {
     ad: 'soyevrenim.com rehberi',
     aciklama: 'Sitenin nasıl kullanılacağı: ağaç, arama, öneri, hikâye, tema, kota.',
     konular: [
-      { baslik: 'Rehber ne yapabilir?', anahtar: ['ne yapabilirsin', 'neler yapabilirsin', 'yardım', 'sorulara', 'soru sor', 'yanıt verebilir', 'cevap verebilir', 'nasıl kullan', 'merhaba', 'selam'],
+      { baslik: 'Neler yapabilirim?', anahtar: ['ne yapabilirsin', 'neler yapabilirsin', 'yardım', 'sorulara', 'soru sor', 'yanıt verebilir', 'cevap verebilir', 'nasıl kullan', 'merhaba', 'selam'],
         metin: 'Soyumuz, bölgemizin tarihi ve bu sitenin kullanımı hakkında soruları yanıtlarım. Örnekler: “Emine ile Fahri nasıl akraba?”, “Nereden geldik?”, “Molla Memiş kimdir?”, “Lazca teşekkür nasıl denir?”, “Nasıl kişi eklerim?”. Bir isim yazarsan o kişiyi ağaçta gösteririm. Akıllı asistan açıkken her soruyu anlarım; ücretsiz günlük kota dolunca bildiğim konularda yine yanıt veririm.',
         guven: 'genel', kaynak: [] },
       { baslik: 'Ağaçta gezinmek', anahtar: ['dokun', 'tıkla', 'uzun bas', 'ayrıntı', 'aile', 'gezin', 'yakınlaş', 'döndür'],
         metin: 'Bir kişiye dokununca yalnızca o ve yakın ailesi görünür. Uzun basınca (yarım saniye) ayrıntı paneli açılır. Boşluğa dokununca tüm ağaç geri gelir. Sürükleyerek döndürür, iki parmakla yakınlaşırsın. Altın çizgi senin köke uzanan soy hattındır.',
         guven: 'genel', kaynak: [] },
       { baslik: 'Kişi eklemek ve düzeltmek', anahtar: ['kişi ekle', 'ekle', 'düzelt', 'yanlış', 'hata', 'öneri', 'onay', 'değiştir', 'nasıl eklerim'],
-        metin: 'Ağaca kimse doğrudan yazmaz; her değişiklik öneri olarak yöneticinin onayına gider. Yol 1: kişinin kartında (uzun bas) “Çocuk / Kardeş / Ebeveyn ekle” ya da bilgileri düzelt, sonra “Onaya gönder”. Yol 2: Rehber’e yaz — örn. “Ayşe, Fahri’nin kız kardeşi” — asistan öneriyi senin yerine hazırlar.',
+        metin: 'Ağaca kimse doğrudan yazmaz; her değişiklik öneri olarak yöneticinin onayına gider. Yol 1: kişinin kartında (uzun bas) “Çocuk / Kardeş / Ebeveyn ekle” ya da bilgileri düzelt, sonra “Onaya gönder”. Yol 2: asistana yaz — örn. “Ayşe, Fahri’nin kız kardeşi” — öneriyi senin yerine hazırlar.',
         guven: 'genel', kaynak: [] },
       { baslik: 'Sesli hikâye', anahtar: ['hikâye', 'hikaye', 'ses', 'kayıt', 'anlat', 'anı', 'mikrofon'],
         metin: 'Kişinin kartında “🎙 Hikâye anlat” ile kendi sesinle anlatırsın. Kayıt saklanır, yazıya çevrilir ve anı olarak onaya gider; anıda sesi dinleyip indirebilirsin. Günlük ses kotası doluysa kayıt kaybolmaz, gece yazıya çevrilir.',
@@ -76,7 +76,7 @@ export const BECERILER = {
         metin: 'Açılışta adını seçersin; ağaç seni merkezine alır. Değişiklik önermek, sohbet etmek ve akıllı asistanı kullanmak için aile şifresiyle giriş gerekir. Şifreyi aile büyüklerinden alabilirsin.',
         guven: 'genel', kaynak: [] },
       { baslik: 'Kota ve “Ailemizin bu ayı”', anahtar: ['kota', 'hak', 'mesaj hakkı', 'ailemizin bu ayı', 'kullanım', 'ücretsiz'],
-        metin: 'Asistan tamamen ücretsiz katmanda çalışır; tüm ailenin ortak günlük kotası ve kişi başı mesaj hakkı vardır, her gün 03:00’te yenilenir. Rehber’in üstündeki ince çubuğa dokununca “Ailemizin bu ayı” açılır: anlatılan hikâyeler, eklenen kişiler, ses arşivi.',
+        metin: 'Asistan tamamen ücretsiz katmanda çalışır; tüm ailenin ortak günlük kotası ve kişi başı mesaj hakkı vardır, her gün 03:00’te yenilenir. Asistan panelindeki ince çubuğa dokununca “Ailemizin bu ayı” açılır: anlatılan hikâyeler, eklenen kişiler, ses arşivi.',
         guven: 'genel', kaynak: [] },
       { baslik: 'Görünüm ve temalar', anahtar: ['tema', 'karanlık', 'gece', 'gündüz', 'yadigar', 'yadigâr', 'renk', 'nasıl okunur'],
         metin: 'Sol menüdeki tema düğmesi yadigâr (1956 çizimine uygun kâğıt), gece ve gündüz arasında geçiş yapar. “Ağaç nasıl okunur?” kutusu renklerin anlamını açıklar: erkek, kadın, rahmetli, sen, soy hattı, evlilik, anne bağı.',

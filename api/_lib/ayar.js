@@ -23,6 +23,7 @@ export const SAGLAYICI = {
 
 // — Asistan —
 export const ASISTAN = {
+  ad: 'Çınar',             // asistanın adı (tek kaynak: sunucu istemi + istemci başlığı)
   maxTur: 4,               // sunucu tarafı araç döngüsü üst sınırı
   ciktiMaxToken: 1200,     // tek yanıt (gerekçe dahil) üst sınırı
   gerekce: 'low',          // gpt-oss reasoning_effort — kısa düşün, kota harcama
@@ -73,6 +74,6 @@ export function kamuAyar() {
     SES: { mime: SES.mime, mimeYedek: SES.mimeYedek, bitHizi: SES.bitHizi, parcaSn: SES.parcaSn,
       parcaMaxMb: SES.parcaMaxMb, maxKayitDk: SES.maxKayitDk },
     DEPOLAMA: { kotaBayt: DEPOLAMA.kotaBayt },
-    ASISTAN: { mesajMaxKarakter: ASISTAN.mesajMaxKarakter, gecmisTur: ASISTAN.gecmisTur },
+    ASISTAN: { ad: ASISTAN.ad, mesajMaxKarakter: ASISTAN.mesajMaxKarakter, gecmisTur: ASISTAN.gecmisTur },
   };
 }

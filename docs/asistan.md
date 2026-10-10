@@ -1,12 +1,12 @@
 # Asistan — `POST /api/asistan`
 
 Soy ağacı hakkında soru yanıtlayan ve konuşarak kişi/ilişki ekleme **önerisi** oluşturan LLM asistanı.
-Tamamen ücretsiz katmanda çalışır (Groq). Kota dolunca mevcut Rehber (`KOMUTLAR` / `calistirKomut()`) yedek olarak yanıtlar.
+Tamamen ücretsiz katmanda çalışır (Groq). Kota dolunca hazır bilgi katmanı (`KOMUTLAR` / `calistirKomut()`) yanıtlar.
 
 ## Akış
 
 ```
-Rehber girişi / 🎤 ─► arayüz komutu mu? (köken, istatistik, kol, "3-6 nesil", tümünü göster…)
+Asistan girişi / 🎤 ─► arayüz komutu mu? (köken, istatistik, kol, "3-6 nesil", tümünü göster…)
                         ├─ evet ─► calistirKomut() (yerel, kota harcamaz)
                         └─ hayır ─► POST /api/asistan
                                      ├─ kimlik yok / kota dolu / Groq 429 ─► {yedek:true, mesaj}
@@ -15,8 +15,8 @@ Rehber girişi / 🎤 ─► arayüz komutu mu? (köken, istatistik, kol, "3-6 n
 ```
 
 - **Kimlik:** "adını seç" kişi id'si (`kisi_id`) + aile oturum jetonu (`jeton`). Jeton, ücretsiz kotayı internetteki
-  rastgele isteklere karşı korur. Jeton yoksa Rehber yedeği: "Asistan için aile şifresiyle giriş yap…"
-  - Seçilen kişi tarayıcıda `kok_ben` anahtarında saklanır (karşılamada ad seçimi, Rehber'de **"Ben Yüksel"**
+  rastgele isteklere karşı korur. Jeton yoksa hazır bilgi + not: "Her soruyu anlayabilmem için aile şifresiyle giriş yap…"
+  - Seçilen kişi tarayıcıda `kok_ben` anahtarında saklanır (karşılamada ad seçimi, asistana **"Ben Yüksel"**
     — adaşta **"Ben Fahri oğlu Yüksel"** — ya da kişi kartında **🙋 Bu benim**).
   - Şifreyle girişte kişi seçilmemişse karşılama kapanmaz, ad sorulur. Jeton var ama kişi yoksa not:
     "Asistan için kim olduğunu yaz: “Ben Yüksel” gibi…". Yönetici de bu kurala tabidir.
@@ -29,33 +29,37 @@ Rehber girişi / 🎤 ─► arayüz komutu mu? (köken, istatistik, kol, "3-6 n
 - **Kaynak:** yanıt sonunda `Kaynak: <kişi>'in anısı, <tarih>` ya da `Kaynak: soy ağacı kaydı`.
 - **Görsel:** `yol_bul` çağrıldıysa istemci yolu ağaçta çizer (`gorsel.yol`), tek kişi getirildiyse kişiyi seçer (`gorsel.kisi`).
 
-## Rehberin adı
+## Tek asistan: Çınar
 
-Rehber, ailenin **yaşayan en büyüğünün** adını taşır (örn. "Naziye Nine · Rehber").
-Hesap `api/_lib/agac.js → enBuyukYasayan()` (istemci aynı kodu `public/lib/agac.js`'ten kullanır):
+Asistan ve eski "Rehber" **birleştirildi**: tek panel, tek ad, talebe göre uygun olan yanıtlar.
+Ad `api/_lib/ayar.js → ASISTAN.ad` (**Çınar**). İstemciye `/api/kullanim?adim=ayar` ile gelir;
+panel başlığı "Çınar · Asistan".
 
-1. Profilinde **Doğum yılı** girilmiş yaşayanlar arasında en eskisi (`yontem: 'dogum'`);
-2. yoksa en eski nesildeki yaşayan; aynı nesilde kimlik sırası (kayıtlarda büyük kardeş önce) (`yontem: 'nesil'`).
+| Talep | Kim yanıtlar |
+|---|---|
+| Ekran komutu (köken, istatistik, kol, "3-6 nesil", tümünü göster), "Ben …", yalnızca bir ad | Hazır bilgi (yerel, kota harcamaz) |
+| Serbest soru, akrabalık, öneri, Lazca | Yapay zekâ (giriş + kota); olmazsa hazır bilgi + kısa not |
 
-Rehber o kişi **değildir**: sistem istemi modelin o büyüğün ağzından konuşmasını, onun adına
-anı/söz uydurmasını yasaklar; ad yalnızca saygı ifadesidir. Doğum yılı girildikçe seçim kesinleşir.
+Eskiden asistan ailenin yaşayan en büyüğünün adını taşıyordu ("Naziye Nine · Rehber"); bu fikirden
+vazgeçildi (`enBuyukYasayan` kaldırıldı). İstem: kendini aile büyüğü gibi tanıtma, kimsenin
+ağzından konuşma, kimse adına anı/söz uydurma.
 
-## Rehberin becerileri (`uzman_bilgi` aracı)
+## Becerileri (`uzman_bilgi` aracı)
 
-`api/_lib/uzmanlik.js` (→ `public/lib/uzmanlik.js`) — Rehber'in uzmanlık modülleri:
+`api/_lib/uzmanlik.js` (→ `public/lib/uzmanlik.js`) — uzmanlık modülleri:
 
 | Beceri | İçerik |
 |---|---|
 | `bolge` | Doğu Karadeniz · Arhavi–Fındıklı (Viçe) tarihi: Lazlar, Osmanlı'ya katılış (1461), tahrir kayıtları, 17. yy göçleri, Viçe→Fındıklı, Lazistan, 1959 köy adı değişiklikleri |
-| `site` | soyevrenim.com kullanımı: Rehber ne yapar, ağaçta gezinme (dokun / uzun bas), kişi ekleme ve öneri, sesli hikâye, giriş, kota, temalar, Köken ve araştırma köşesi |
+| `site` | soyevrenim.com kullanımı: neler yapabilir, ağaçta gezinme (dokun / uzun bas), kişi ekleme ve öneri, sesli hikâye, giriş, kota, temalar, Köken ve araştırma köşesi |
 | `lazca` | Lazca (Lazuri): dil hakkında, selamlaşma, teşekkür, akrabalık adları — Laz Enstitüsü ve lazca.org'dan, yazım farkları belirtilerek |
 
 - **Model açıkken:** asistan bu modülleri `uzman_bilgi({sorgu, beceri})` ile çağırır. Kullanıcı Lazca yazarsa (`lazcaMi`) istemde
   Lazca kuralı devreye girer: kısa Lazca yanıt + **her zaman Türkçe karşılık**; bilinmeyen sözcük uydurulmaz.
   Not: Lazca az kaynaklı bir dildir; model Lazcayı akıcı konuşamaz, bilinen ifadelerle sınırlı kalır.
-- **Model kapalıyken (kota/anahtar yok):** ücretsiz Rehber aynı modülleri anahtar sözcükle eşler (`uzmanYaniti`, eşik `UZMAN_ESIK`).
+- **Model kapalıyken (kota/anahtar yok):** hazır bilgi katmanı aynı modülleri anahtar sözcükle eşler (`uzmanYaniti`, eşik `UZMAN_ESIK`).
   Lazca becerisi yalnızca soruda "Lazca" geçerse ya da metin Lazca yazılmışsa çalışır; ağaçta bulunan bir kişinin adı geçen
-  sorular ("Fahri'nin annesi kim?") akrabalık komutuna bırakılır. Hiçbir şey eşleşmezse "kimseyi bulamadım" yerine Rehber'in neler
+  sorular ("Fahri'nin annesi kim?") akrabalık komutuna bırakılır. Hiçbir şey eşleşmezse "kimseyi bulamadım" yerine neler
   yapabildiği anlatılır.
 - Yeni bilgi eklemek: ilgili becerinin `konular` listesine `{baslik, anahtar[], metin, guven, kaynak[]}` ekle → `npm run build`.
 
@@ -68,7 +72,7 @@ anı/söz uydurmasını yasaklar; ad yalnızca saygı ifadesidir. Doğum yılı 
 Asistan köken/göç/yer/kol sorularında bu aracı çağırır; araç ayrıca ağacın sayılarını
 (kişi, yaşayan, nesil, kök, kolların soy büyüklüğü) döndürür. Sonuç `ASISTAN.soyTarihiMaxKarakter`
 ile sınırlı, istem yine `MESAJ_MAX_TOKEN` altında. Aynı içerik Köken ekranında
-**📜 Kökenimizin hikâyesi** panelinde gösterilir; kota yokken ücretsiz Rehber `tarih` komutuyla
+**📜 Kökenimizin hikâyesi** panelinde gösterilir; kota yokken hazır bilgi katmanı `tarih` komutuyla
 Fahri Arslan'ın notunu söyler ve paneli açar.
 
 ## Uç
@@ -89,6 +93,40 @@ Yanıt (her zaman HTTP 200):
   "oneriler": [{"id": 12, "ozet": "+ Ayşe (Fahri'in kardeşi)"}], "kota": { … } }
 { "ok": false, "yedek": true, "sebep": "sistem|kisi|saglayici|hata", "mesaj": "Bugünkü ücretsiz asistan kotası doldu, yarın 03:00'te yenilenir." }
 ```
+
+## Kişi sorusu: önce ne istendiğini sorar
+
+Asistana yalnızca bir ad yazılınca ("Yüksel", "Hamit kim?", "Yüksel'i göster", en fazla üç sözcük)
+soru yapay zekâya gitmez, yerelde yanıtlanır:
+
+1. **Adaş varsa** önce hangisi olduğunu sorar: "Fahri oğlu Yüksel · 7. nesil | Hasan oğlu Yüksel · 6. nesil".
+2. Kişiyi kısaca tanıtır: "Yüksel — Fahri oğlu, 7. nesil, hayatta. Onun hakkında ne öğrenmek istersin?"
+3. Seçenek çipleri sunar; seçilen türde ayrıntı verir:
+   - 👪 **Ailesi:** anne, baba, eşler, çocuklar, kardeşler; aile ağaçta odaklanır.
+   - 🌳 **Soy zinciri:** köke kaç kuşak olduğu ve aradaki atalar; hat ağaçta yanar.
+   - 🔗 **Benimle akrabalığı:** `akrabalikAnlatisi(ben, kişi)`; yol çizilir. Kim olduğu bilinmiyorsa "Ben …" ister.
+   - 📋 **Bilgileri:** doğum, meslek, eğitim, medeni durum, çalışma.
+   - 📖 **Anıları:** ilk üç anı (tarih, başlık, kısa metin).
+   - 🗂 **Ayrıntı kartı:** kişinin ayrıntı panelini açar.
+   - ↩ **Diğer sorular:** genel örnek sorulara döner.
+
+Seçenekler kota harcamaz. Komutlar `{metin, secenekler:[{etiket, eylem}]}` döndürebilir
+(`kisiTanit`, `kisiSecenekleri`, `secenekleriKur`).
+
+## Akrabalık anlatısı (`akrabalikAnlatisi`)
+
+`api/_lib/agac.js` (istemciye `public/lib/agac.js` olarak kopyalanır). Yol kartı, yerel yanıt ve
+`yol_bul` aracı (`anlati` alanı) **aynı** metni kullanır. "A → B → C · 12 adım" listesi yerine
+aile büyüğünün anlatacağı gibi:
+
+- **Başlık:** Kardeş · Amca/Dayı/Hala/Teyze ile yeğeni · Kuzen · Aynı kökün iki dalı ·
+  Baba/Anne ile evladı · Dede/Nine ile torunu · Eşler · Evlilikle akraba
+- **Özet:** "Fahri, Emine'nin amcası: Emine'nin babası Ömer ile Fahri kardeş, ikisi de Hamit'in çocukları."
+- **Soy cümleleri:** "Soy, Molla Memiş'ten Abdurrahman, Mehmet Yazıcı ve Hamit üzerinden Fahri'ye iniyor."
+- Ölçü (N. dereceden kuzen, kuşak farkı) en sonda; adım adım yol kartta katlanmış.
+- Türkçe ekler `ilgiEki` / `yonelmeEki` / `ayrilmaEki` (ünlü uyumu, kesme işareti).
+- Adaşlar baba adıyla ayrılır: "Fahri oğlu Yüksel ile Hasan oğlu Yüksel …".
+- Model kuralı 6: yanıtı `anlati` üzerine kur, liste ve "N adım" gibi mekanik ifade kullanma.
 
 ## Araçlar (sunucuda çalışır)
 
@@ -131,7 +169,7 @@ Araç sonuçları ayrıca `ASISTAN.aracSonucMaxKarakter` ile kırpılır. Son tu
 
 Ücretsiz kota hesabı: bir mesaj tipik olarak 2–3 Groq isteği ve ~3–6K token harcar → günde kabaca **30–60 asistan mesajı**
 (token sınırı önce dolar). 20 mesaj/kişi sınırı, birkaç kişinin tüm kotayı tüketmesini engeller. Groq ayrıca dakikalık
-sınır uygular; 429 gelirse kullanıcıya hata gösterilmez, Rehber yanıtlar.
+sınır uygular; 429 gelirse kullanıcıya hata gösterilmez, hazır bilgi yanıtlar.
 
 Kayıt: her `/api/asistan` çağrısı **gerçek** `usage` (prompt/completion token toplamı ve istek sayısı) ile bir `kullanim` satırı
 yazar (yarıda 429 olsa bile harcanan kısım yazılır).

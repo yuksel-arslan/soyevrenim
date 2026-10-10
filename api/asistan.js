@@ -3,7 +3,7 @@
 //
 // Ücretsiz katman: Groq (ayar.js → LLM). Sunucu tarafı araç döngüsü (en fazla ASISTAN.maxTur).
 // Çağrı öncesi sistem + kişi günlük kotası kontrol edilir; dolu ya da sağlayıcı 429 verirse
-// {yedek:true} döner → istemci mevcut Rehber'i (calistirKomut) çalıştırır.
+// {yedek:true} döner → istemci hazır bilgilerle (calistirKomut) yanıtlar.
 // Model ağaca YAZMAZ: ekleme/düzeltme oneri_olustur ile onay kuyruğuna düşer.
 //
 // Env: GROQ_API_KEY, DATABASE_URL, OTURUM_GIZLI   · Ayrıntı: docs/asistan.md
@@ -12,12 +12,13 @@ import { LLM, ASISTAN, MESAJ_MAX_TOKEN, tahminiToken } from './_lib/ayar.js';
 import { kimlikCoz, KimlikHatasi } from './_lib/kimlik.js';
 import { kotaDurumu, llmIzin, kullanimKaydet, KOTA_MESAJI } from './_lib/kota.js';
 import { sohbet, SaglayiciKotaHatasi } from './_lib/groq.js';
-import { grafKur, kisiAra, kisiKisa, yakinlar, yolBul, adiGoster, normalize, nesilHaritasi, enBuyukYasayan } from './_lib/agac.js';
+import { grafKur, kisiAra, kisiKisa, yakinlar, yolBul, adiGoster, normalize, nesilHaritasi, akrabalikAnlatisi, ilgiEki } from './_lib/agac.js';
 import { soyTarihiOzet } from './_lib/soy-tarihi.js';
 import { uzmanBilgi, lazcaMi } from './_lib/uzmanlik.js';
 import { oneriEkle, yamaHatasiMi } from './_lib/oneri.js';
 
-const SISTEM = `Sen "Kök" soy ağacının asistanısın (Abdurrahman Oğulları, 1615'ten beri). Türkçe, kısa ve sıcak yaz.
+const SISTEM = `Adın ${ASISTAN.ad}. Abdurrahman Oğullarının (1615'ten beri) soy evreninin asistanısın; çınar gibi kökleri derin, gölgesinde aileyi toplayan bir bilgesin. Türkçe, kısa ve sıcak yaz.
+Kendini bir aile büyüğü gibi tanıtma; kimsenin ağzından konuşma, kimse adına anı ya da söz uydurma.
 Üç uzmanlığın var: (1) bu ailenin soyu ve kökeni, (2) Doğu Karadeniz — Arhavi ve Fındıklı (Viçe) — bölge tarihi, (3) soyevrenim.com sitesinin kullanımı. Ayrıca temel Lazca biliyorsun.
 Kurallar:
 1. Bilgiyi YALNIZCA araç sonuçlarından ver; uydurma. Bilmiyorsan söyle.
@@ -25,7 +26,7 @@ Kurallar:
 3. Yanıtın sonunda kaynak göster: anıdan gelen bilgi için "Kaynak: <kişi>'in anısı, <tarih>"; ağaç kaydından gelen için "Kaynak: soy ağacı kaydı".
 4. Ağaca doğrudan yazamazsın. Kişi ekleme, ilişki kurma, bilgi düzeltme isteğinde oneri_olustur kullan ve değişikliğin yönetici onayına gittiğini söyle.
 5. Yeni kişi eklerken: hedef kişiyi kisi_ara ile kesinleştir; cinsiyeti ifadeden çıkar ("kız kardeşi", "kızı", "annesi" → K); aynı adda bir kişi zaten o ilişkideyse eklemeden önce sor.
-6. Akrabalık sorusunda yol_bul kullan, yolu adım adım anlat (ör. "Emine, Ali'nin kızı; Ali, Fahri'nin kardeşi…").
+6. Akrabalık sorusunda yol_bul kullan. Yanıtı aracın "anlati" alanı üzerine kur: bir aile büyüğünün anlatacağı gibi sıcak ve akıcı anlat (kim kimin nesi, ortak ata kim, dallar nerede ayrılmış); "A → B → C" gibi liste ya da "12 adım" gibi mekanik ifade kullanma.
 7. Soyun kökeni, göçü, tarihi, yerler (Arhavi, Potocur, Derbent), Molla Memiş, kollar ya da ağacın genel sayıları sorulursa soy_tarihi kullan. Fahri Arslan'ın notunu (aile kaydı) kaynaklı bilgiden ayır; "Teyit gerekli" ya da "Yorum" etiketli bilgiyi kesinmiş gibi söyleme.
 8. Bölge tarihi (Lazlar, Osmanlı dönemi, Lazistan, köy adları), site kullanımı (kişi ekleme, öneri, hikâye kaydı, temalar, kota) ya da Lazca sorularında uzman_bilgi kullan (beceri: bolge | site | lazca). Bilgi yoksa uydurma, bilmediğini söyle.
 9. Lazca: kullanıcı Lazca yazarsa ya da isterse kısa Lazca cümleler kur ve her zaman Türkçe karşılığını ver. Emin olmadığın Lazca sözcüğü uydurma; uzman_bilgi(lazca) ifadelerini kullan, gerisini Türkçe söyle.
@@ -43,7 +44,7 @@ const ARACLAR = [
   { type: 'function', function: { name: 'ani_ara', description: 'Anılarda sözcük arar (isteğe bağlı tek kişiyle sınırlı).',
     parameters: { type: 'object', properties: { sorgu: { type: 'string' }, kisi_id: { type: 'string' } }, required: ['sorgu'] } } },
   { type: 'function', function: { name: 'uzman_bilgi', description:
-    'Rehberin uzmanlık modülleri: bolge (Arhavi–Fındıklı/Doğu Karadeniz tarihi), site (soyevrenim.com kullanımı), lazca (selamlaşma, teşekkür, akrabalık adları). Kaynaklı ve güven etiketli bilgi döner.',
+    'Uzmanlık modülleri: bolge (Arhavi–Fındıklı/Doğu Karadeniz tarihi), site (soyevrenim.com kullanımı), lazca (selamlaşma, teşekkür, akrabalık adları). Kaynaklı ve güven etiketli bilgi döner.',
     parameters: { type: 'object', properties: { sorgu: { type: 'string' }, beceri: { type: 'string', enum: ['bolge', 'site', 'lazca'] } }, required: ['sorgu'] } } },
   { type: 'function', function: { name: 'soy_tarihi', description:
     'Soyun kökeni ve tarihi (Fahri Arslan\'ın 1956 notu, zaman çizelgesi, yerler, kaynaklar ve güven etiketleri) ile ağacın genel sayıları (kişi, nesil, yaşayan, kollar).',
@@ -97,10 +98,13 @@ function aracCalistirici(ctx) {
       const y = yolBul(g, a_id, b_id);
       if (!y) return { sonuc: 'bu iki kişi arasında kayıtlı bağ yok' };
       ctx.gorsel.yol = [a_id, b_id];
+      const an = akrabalikAnlatisi(g, a_id, b_id);
       return {
         akrabalik: y.etiket,
+        // sıcak anlatım: yanıtı bunun üzerine kur (yol kartı ve yerel yanıt da aynı metni gösterir)
+        anlati: [an.ozet, ...an.cumleler].join(' '),
         ortak_ata: y.ata ? { id: y.ata.id, ad: adi(y.ata.id), kusak: [y.ata.da, y.ata.db] } : null,
-        adimlar: y.adimlar.map((s) => `${adi(s.kime)}, ${adi(s.kimden)}'in ${s.iliski}`),
+        adimlar: y.adimlar.map((s) => `${adi(s.kime)}, ${ilgiEki(adi(s.kimden))} ${s.iliski}`),
       };
     },
     ani_ara: ({ sorgu, kisi_id }) => {
@@ -194,7 +198,7 @@ export default async function handler(req, res) {
     .map((m) => ({ role: m.rol === 'asistan' ? 'assistant' : 'user', content: m.metin.slice(0, ASISTAN.mesajMaxKarakter), gecmis: true }));
   const messages = [
     { role: 'system', content: SISTEM },
-    { role: 'system', content: rehberKimligi({ ...kim, lazca: lazcaMi(mesaj) }) },
+    { role: 'system', content: konusanKisi({ ...kim, lazca: lazcaMi(mesaj) }) },
     ...gecmis,
     { role: 'user', content: mesaj },
   ];
@@ -231,15 +235,10 @@ export default async function handler(req, res) {
   return res.status(200).json({ ok: true, yanit, gorsel: ctx.gorsel, oneriler: ctx.oneriler, kota: yeniKota });
 }
 
-// Rehber, ailenin yaşayan en büyüğünün adını taşır — ama o kişi DEĞİLDİR.
-// Gerçek bir aile büyüğünün ağzından konuşmak, onun söylemediği sözleri ona
-// söyletmek olur; bu yüzden adı yalnızca bir saygı ifadesi olarak kullanılır.
-function rehberKimligi(kim) {
-  const eb = enBuyukYasayan(kim.veri);
-  const ad = eb ? `${eb.tamAd} Rehberi` : 'Kök Rehberi';
+// Konuşan kişi (kimlik) ve dil notu — her istekte ikinci sistem mesajı
+function konusanKisi(kim) {
   const laz = kim.lazca ? ' Kullanıcı Lazca yazdı: Lazca selamla, kısa yanıtla ve Türkçe karşılığını mutlaka ekle.' : '';
-  return `Adın "${ad}". Adını ailenin yaşayan en büyüğünden${eb ? ` (${eb.ad})` : ''} alıyorsun; ama sen o kişi değilsin: onun ağzından konuşma, onun adına anı ya da söz uydurma. `
-    + `Konuşan kişi: ${kim.ad} (kisi_id: ${kim.kisiId}). "ben", "babam" gibi ifadeler bu kişiye göredir.${laz}`;
+  return `Konuşan kişi: ${kim.ad} (kisi_id: ${kim.kisiId}). "ben", "babam" gibi ifadeler bu kişiye göredir.${laz}`;
 }
 
 async function kayit(ctx, t) {
