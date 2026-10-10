@@ -104,6 +104,10 @@ export const BECERILER = {
         metin: 'Anne: Nana · Baba: Baba · Dede: P’ap’u · Nine (babaanne/anneanne): Bedi ya da Didinana · Erkek kardeş: Cuma · Kız kardeş: Da · Ağabey: Didi-cuma · Abla: Didi-da · Amca/dayı: Cumadi · Kuzen: Eksale · Yeğen: Animse. Teyze ve hala için kaynaklar farklı söylüyor (Mbula, Dadi, Bula) — büyüklerine sor.',
         guven: 'kaynak', kaynak: ['lazenstituAkraba'] },
     ],
+    // "Lazca konuşalım" gibi, belirli bir konu içermeyen Lazca istekleri için karşılama
+    karsilama: 'Xelaǩaoba! (Merhaba!) Muç̌ore? (Nasılsın?) — Lazcam sınırlı ama birlikte deneyelim. '
+      + 'Bildiklerim: selamlaşma (Ǩai moxti = Hoş geldin, Ǩaobate = Görüşürüz), teşekkür (Didi mardi) ve akrabalık adları (Nana = anne, P’ap’u = dede, Bedi = nine). '
+      + 'Bir sözcüğün Lazcasını sorabilirsin: “Lazca kardeş ne demek?” Bilmediğimi uydurmam; büyüklerimiz daha doğrusunu bilir.',
     model_notu: 'Kullanıcı Lazca yazarsa ya da Lazca yanıt isterse kısa Lazca cümleler kur ve HER ZAMAN Türkçe karşılığını ver. Lazca bilgin sınırlıdır: emin olmadığın sözcüğü uydurma; bilinen ifadeleri bu beceriden kullan, gerisini Türkçe söyle ve “Lazcam sınırlı, büyüklerine sorarsan daha doğrusunu öğrenirsin” de.',
   },
 };

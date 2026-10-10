@@ -1789,9 +1789,22 @@ let sessionToken=null, sessionKisiId=null, sessionRol=null;
 // (sunucu jetonsuz yazmayı 401 ile reddediyor, "Onaya gönder" çubuğu da
 // sessionToken olmadan görünmüyor). Veri riski değildi ama yanıltıcıydı.
 // Kural: kimlik = şifreyle girmiş olmak + kim olduğunu seçmiş olmak.
+//
+// "Ben kimim" (benId) karşılamada ad seçilince ya da Rehber'de "Ben Yüksel" / kartta
+// "Bu benim" ile belirlenir ve tarayıcıda saklanır: sonraki ziyarette, ya da şifreyle
+// girince karşılama atlanırsa asistan yine kim olduğunu bilir.
+const BEN_KEY="kok_ben";
+let benId=null;
+try{ benId=localStorage.getItem(BEN_KEY)||null; }catch(e){}
+function benAta(id){
+  benId=id||null;
+  try{ if(benId) localStorage.setItem(BEN_KEY,benId); else localStorage.removeItem(BEN_KEY); }catch(e){}
+}
 function kimlikId(){
   if(sessionKisiId) return sessionKisiId;
-  return (sessionToken || isAdmin) ? (viewerId || null) : null;
+  if(!(sessionToken || isAdmin)) return null;
+  if(benId && byId[benId]) return benId;
+  return viewerId || null;
 }
 
 // Eş/çocuk özetini TAM CÜMLE olarak üretir. Hem hover kartı hem sağ üst kart
@@ -3082,6 +3095,12 @@ function renderProfileSections(n){
     mem.appendChild(card);
   });
   // bu kişi için kaydedilmiş, henüz onaylanmamış sesli hikâyeler
+  if((sessionToken||isAdmin) && benId!==n.id){
+    const bb=document.createElement("button"); bb.className="tbtn"; bb.style.cssText="width:100%;justify-content:center;margin-bottom:8px";
+    bb.textContent="🙋 Bu benim"; bb.title="Asistan ve hikâyeler seni bu kişi olarak tanısın";
+    bb.onclick=()=>{ benAta(n.id); bb.remove(); toast(`Seni ${dispName(n.name)} olarak tanıyorum`); };
+    mem.appendChild(bb);
+  }
   const bekleyen=document.createElement("div"); mem.appendChild(bekleyen);
   bekleyenHikayeler(n, bekleyen);
   const addMem=document.createElement("button"); addMem.className="tbtn"; addMem.style.width="100%";
@@ -3914,7 +3933,10 @@ function uzmanYaniti(metin){
   const U=window.Uzmanlik; if(!U) return null;
   const lazca = /laz(ca|uri)/i.test(metin) || U.lazcaMi(metin);
   const l = lazca ? U.uzmanAra(metin,"lazca",1) : U.uzmanAra(metin,null,2).filter(k=>k.beceri!=="lazca");
-  const k=l[0]; if(!k || k.puan<UZMAN_ESIK) return null;
+  const k=l[0];
+  // Lazca istendi ama belirli bir konu yok ("Lazca konuşalım", "Lazca biliyor musun?") → Lazca karşılama
+  if((!k || k.puan<UZMAN_ESIK) && lazca) return U.BECERILER.lazca.karsilama;
+  if(!k || k.puan<UZMAN_ESIK) return null;
   const kay=(k.kaynak||[]).map(x=>U.BECERI_KAYNAKLARI[x]?.ad).filter(Boolean).join(" · ");
   const selam = U.lazcaMi(metin) ? "Xelaǩaoba! (Merhaba!) " : "";
   return `${selam}${k.metin}${kay?`\n\nKaynak: ${kay}`:""}`;
@@ -3930,6 +3952,21 @@ const KOMUTLAR=[
         if(adlar.some(a=>nodes.some(n=>dispName(n.name).toLocaleLowerCase("tr").split(/\s+/)[0]===a))) return null;
       }
       return uzmanYaniti(metin);
+    } },
+  { ad:"ben", desen:/^\s*(?:ben|benim adım|adım)\s+([^\s?.!]{2,}(?:\s+[^\s?.!]{2,}){0,3})\s*[.!]?\s*$/i,
+    calistir:(m)=>{
+      const liste=benAdaylari(m[1]);
+      if(!liste.length) return null;   // ad değilse ("ben de merak ettim") diğer komutlara kalsın
+      if(liste.length>1){
+        const s=liste.slice(0,4).map(n=>(typeof kimlikSatiri==="function"?kimlikSatiri(n)+" ":"")+dispName(n.name)).join(" · ");
+        const ilk=liste[0], ks=(typeof kimlikSatiri==="function")?kimlikSatiri(ilk):"";
+        return `Bu adla ${liste.length} kişi var: ${s}. “Ben ${ks?ks+" ":""}${dispName(ilk.name)}” gibi yaz ya da kendi kartını aç (uzun bas) ve “Bu benim”e dokun.`;
+      }
+      const k=liste[0]; benAta(k.id);
+      selectNode(k); if(typeof merkezeAl==="function") merkezeAl(k);
+      return (sessionToken||isAdmin)
+        ? `Tamam, seni ${dispName(k.name)} olarak tanıyorum. Artık sorularını asistan yanıtlar.`
+        : `Tamam, seni ${dispName(k.name)} olarak tanıyorum. Asistan için aile şifresiyle giriş yapman da gerekiyor.`;
     } },
   { ad:"kaynakca", desen:/kaynakça|kaynaklar|nasıl araştır|araştırma (köşe|kaynak|yap)|arşiv(de|e)? (ara|bak)|tahrir defter/i,
     calistir:()=>{
@@ -4137,7 +4174,8 @@ const KOMUTLAR=[
       const liste=rehberKisiAra(temiz||metin);
       // Uzun bir cümle (soru) isim değildir: "kimseyi bulamadım" demek yerine yardım mesajına bırak
       const sozcuk=(temiz||metin).trim().split(/\s+/).length;
-      if(!liste.length) return sozcuk>2 || /\?$/.test(metin.trim()) ? null : `“${(temiz||metin).trim()}” için kimseyi bulamadım.`;
+      // Yalnızca tek sözcük (bir ad) yazıldıysa "bulamadım" de; cümleler yardım mesajına kalsın
+      if(!liste.length) return sozcuk>1 || /\?$/.test(metin.trim()) ? null : `“${(temiz||metin).trim()}” için kimseyi bulamadım.`;
       const k=liste[0];
       selectNode(k); if(typeof merkezeAl==="function") merkezeAl(k);
       const kim=(typeof kimlikSatiri==="function") ? kimlikSatiri(k) : "";
@@ -4211,6 +4249,16 @@ function kolBul(metin){
 // İsimden kişi(ler) bul: tam eşleşme > baştan eşleşme > içinde geçen.
 // TÜM eşleşmeleri döndürür; adaş seçimini çağıran yapar (bu ağaçta 37 tekrarlı
 // ad var, sessizce birini seçmek yanlış kişiyi getiriyordu).
+// "Ben Yüksel" / adaş varsa "Ben Fahri oğlu Yüksel": son sözcük ad, öncesi kimlik satırıyla süzülür
+function benAdaylari(metin){
+  const q=String(metin||"").trim();
+  const tum=rehberKisiAra(q);
+  if(tum.length) return tum;
+  const w=q.split(/\s+/); if(w.length<2) return [];
+  const kucuk=x=>String(x||"").toLocaleLowerCase("tr");
+  return rehberKisiAra(w[w.length-1]).filter(n=>
+    kucuk(((typeof kimlikSatiri==="function")?kimlikSatiri(n):"")+" "+dispName(n.name)).includes(kucuk(q)));
+}
 function rehberKisiAra(ad){
   const q=String(ad||"").toLocaleLowerCase("tr").replace(/[’']/g,"").trim();
   if(q.length<2 || !nodes.length) return [];
@@ -4277,13 +4325,18 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   }
   function yaz(t){ mesaj.textContent=t; }
 
+  // JS düzenli ifadelerinde /i bayrağı Türkçe "İ"yi "i" saymaz ("İstatistikleri aç"
+  // /istatistik/i ile eşleşmez). Önce olduğu gibi, olmazsa Türkçe küçük harfle dene.
+  function komutEslesir(t,desen){
+    return t.match(desen) || t.toLocaleLowerCase("tr").match(desen);
+  }
   function calistirKomut(metin){
     const t=String(metin||"").trim();
     if(!t) return;
     // Bir komut null döndürürse "ben bakmadım" demektir → sıradakine geçilir.
     // (Kol komutu böyle çalışıyor: metin kol adı değilse kişi aramasına düşsün.)
     for(const k of KOMUTLAR){
-      const m=t.match(k.desen);
+      const m=komutEslesir(t,k.desen);
       if(!m) continue;
       let c=null;
       try{ c=k.calistir(m,t); }catch(e){ yaz("Bunu yapamadım."); return; }
@@ -4373,12 +4426,13 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   // calistirKomut() ücretsiz yedek olarak yanıtlar ve bir satırla söylenir.
   // Yalnızca ARAYÜZ komutları (köken, istatistik, kol, nesil aralığı…) doğrudan
   // yerelde çalışır: asistanın ekranı yönetme aracı yok, kota harcamaya da gerek yok.
-  const YEREL=new Set(["koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
+  const YEREL=new Set(["ben","koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
   function yerelArayuzMu(t){
     for(const k of KOMUTLAR){
       if(k.ad==="uzman") continue;   // bilgi becerisi arayüz komutu değil: asistan önce denesin
       if(k.ad==="kol") return typeof kolBul==="function" && !!kolBul(t);
-      if(!k.desen.test(t)) continue;
+      if(!komutEslesir(t,k.desen)) continue;
+      if(k.ad==="ben"){ const m=komutEslesir(t,k.desen); if(benAdaylari(m[1]).length) return true; continue; }
       if(YEREL.has(k.ad)) return true;
       if(k.ad==="nesil" && /(\d+)\D+(\d+)/.test(t)) return true;
       return false;
@@ -4394,7 +4448,13 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     notYaz("");
     if(yerelArayuzMu(t) || !CLOUD.on){ calistirKomut(t); return; }
     const kisi=kimlikId();
-    if(!kisi){ calistirKomut(t); notYaz("Asistan için adını seçip aile şifresiyle giriş yap — şimdilik ücretsiz Rehber yanıtladı."); return; }
+    if(!kisi){
+      calistirKomut(t);
+      notYaz((sessionToken||isAdmin)
+        ? "Asistan için kim olduğunu yaz: “Ben Yüksel” gibi — şimdilik ücretsiz Rehber yanıtladı."
+        : "Asistan için aile şifresiyle giriş yap — şimdilik ücretsiz Rehber yanıtladı.");
+      return;
+    }
     mesgul=true; yaz("Düşünüyorum…");
     try{
       const r=await fetch("/api/asistan",{method:"POST",headers:{"Content-Type":"application/json"},
@@ -5025,7 +5085,7 @@ const welcome=document.getElementById("welcome");
 const whoInput=document.getElementById("whoInput");
 const whoResults=document.getElementById("whoResults");
 function startAs(id){
-  if(id){ setViewer(id); }
+  if(id){ setViewer(id); benAta(id); }
   else { layoutRadial(); }        // nötr: kimse merkez değil
   welcome.style.transition="opacity .5s"; welcome.style.opacity="0";
   setTimeout(()=>welcome.remove(),500);
@@ -5309,7 +5369,14 @@ function smsShowIfCloud(){
           tohumla();
         }
         try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:j.rol})); }catch(e){}
-        const w=document.getElementById("welcome"); if(w) w.style.display="none";
+        const w=document.getElementById("welcome");
+        if(benId && byId[benId]){ if(w) w.style.display="none"; }
+        else{
+          // Asistan ve hikâye için kim olduğunu bilmeliyiz: girişten sonra adını seçtir
+          const sl=$("smsLogin"); if(sl) sl.style.display="none";
+          const wi=document.getElementById("whoInput");
+          if(wi){ wi.placeholder="Giriş tamam — şimdi adını yaz…"; wi.focus(); }
+        }
         if(typeof chatShowBtn==="function") chatShowBtn();
         toast(j.rol==="admin" ? "Yönetici olarak girildi" : "Aile üyesi olarak girildi");
         if(typeof cloudLoad==="function") cloudLoad();

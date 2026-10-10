@@ -118,3 +118,9 @@ test('Rehber becerileri: sorular doğru uzmanlığa gider, Lazca yalnız istenin
   const o = U.uzmanBilgi('Lazca merhaba', 'lazca');
   assert.ok(o.konular[0].bilgi.includes('Xelaǩaoba') && o.lazca_notu);
 });
+
+test('Lazca karşılama: konu içermeyen Lazca isteği için hazır yanıt var', async () => {
+  const U = await import('../api/_lib/uzmanlik.js');
+  assert.match(U.BECERILER.lazca.karsilama, /Xelaǩaoba/);
+  assert.match(U.BECERILER.lazca.karsilama, /Merhaba/);
+});

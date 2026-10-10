@@ -15,7 +15,11 @@ Rehber girişi / 🎤 ─► arayüz komutu mu? (köken, istatistik, kol, "3-6 n
 ```
 
 - **Kimlik:** "adını seç" kişi id'si (`kisi_id`) + aile oturum jetonu (`jeton`). Jeton, ücretsiz kotayı internetteki
-  rastgele isteklere karşı korur. Jeton yoksa Rehber yedeği: "Asistan için adını seçip aile şifresiyle giriş yap…"
+  rastgele isteklere karşı korur. Jeton yoksa Rehber yedeği: "Asistan için aile şifresiyle giriş yap…"
+  - Seçilen kişi tarayıcıda `kok_ben` anahtarında saklanır (karşılamada ad seçimi, Rehber'de **"Ben Yüksel"**
+    — adaşta **"Ben Fahri oğlu Yüksel"** — ya da kişi kartında **🙋 Bu benim**).
+  - Şifreyle girişte kişi seçilmemişse karşılama kapanmaz, ad sorulur. Jeton var ama kişi yoksa not:
+    "Asistan için kim olduğunu yaz: “Ben Yüksel” gibi…". Yönetici de bu kurala tabidir.
 - **Model ağaca yazmaz.** Ekleme/düzeltme `oneri_olustur` aracıyla `oneri` tablosuna **yama** (`islem`) olarak düşer;
   yönetici mevcut onay kutusundan onaylar. Onayda yama **o anki** ağaca uygulanır (araya giren onayları ezmez).
 - **Belirsiz isim:** sistem istemi, birden çok eşleşmede tahmin yerine soru sormayı zorunlu kılar (ağaçta 37 tekrarlı ad var).
