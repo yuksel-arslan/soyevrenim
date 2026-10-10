@@ -31,6 +31,18 @@ Aile şifresi / yönetici şifresiyle giriş; veritabanı gerekmez. Jeton HMAC i
   girilince bekleyen değişiklikler onaysız, doğrudan kaydedilir. Aile olarak gönderilmiş öneriler
   yönetici girişinden sonra onay kutusunda görünür (sayaç rozetiyle).
 
+## Çıkış (hesap menüsü)
+
+Durum satırındaki rol rozetine (**🔓 Yönetici** / **👤 Aile üyesi**) dokununca hesap menüsü açılır:
+kim olarak girildiği ("Fahri oğlu Yüksel olarak") ve
+
+- **🔓 Yönetici olarak gir** (aile üyesiyken) — yönetici şifresi penceresi,
+- **🔄 Ben değilim — kişiyi değiştir** — `kok_ben` temizlenir; "Ben …" ya da kartta "Bu benim" ile yeniden seçilir,
+- **⎋ Çıkış yap** — oturum (`kok_session`), "ben kimim" (`kok_ben`) ve **bu cihazın push bildirim
+  aboneliği** kaldırılır (ortak kullanılan telefonda başkasının adına bildirim gelmesin).
+
+Soldaki 🔑 düğmesi de yönetici modunu açar/kapatır.
+
 ## Ortam değişkenleri
 
 `AILE_SIFRESI`, `ADMIN_SIFRESI`, `OTURUM_GIZLI` (uzun, rastgele; Sensitive işaretle).
