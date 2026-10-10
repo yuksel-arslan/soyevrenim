@@ -162,3 +162,61 @@ export function kisiAra(g, sorgu, limit = 10) {
   sonuc.sort((a, b) => a.puan - b.puan);
   return sonuc.slice(0, limit).map((s) => kisiKisa(g, s.id));
 }
+
+// Nesil haritası (kök = 0). Eşler aynı nesle, anne bağları ebeveyn-çocuk olarak yayılır —
+// istemcideki reindex() ile aynı kural (ağaca evlilikle katılanlar da nesil alır).
+export function nesilHaritasi(g) {
+  const d = new Map();
+  const kokler = (g.veri.nodes || []).filter((n) => !(g.veri.edges || []).some((e) => e.to === n.id && g.byId[e.from]));
+  const kok = kokler.find((n) => (g.CHILDREN.get(n.id) || new Set()).size) || kokler[0];
+  if (kok) {
+    const yigin = [[kok.id, 0]];
+    while (yigin.length) {
+      const [id, k] = yigin.pop();
+      if (d.has(id)) continue;
+      d.set(id, k);
+      (g.veri.edges || []).forEach((e) => { if (e.from === id && !d.has(e.to)) yigin.push([e.to, k + 1]); });
+    }
+  }
+  for (let tur = 0; tur < 12; tur++) {
+    let degisti = false;
+    for (const m of g.veri.marriages || []) {
+      if (d.has(m.from) && !d.has(m.to)) { d.set(m.to, d.get(m.from)); degisti = true; }
+      if (d.has(m.to) && !d.has(m.from)) { d.set(m.from, d.get(m.to)); degisti = true; }
+    }
+    for (const e of [...(g.veri.edges || []), ...(g.veri.motherEdges || [])]) {
+      if (d.has(e.from) && !d.has(e.to)) { d.set(e.to, d.get(e.from) + 1); degisti = true; }
+      if (d.has(e.to) && !d.has(e.from)) { d.set(e.from, d.get(e.to) - 1); degisti = true; }
+    }
+    if (!degisti) break;
+  }
+  return d;
+}
+
+// Doğum yılı: profil bilgisinde "dogum" (örn. "1938" ya da "12.03.1938")
+export function dogumYili(n) {
+  const m = /(\d{4})/.exec(String(n?.profile?.info?.dogum || ''));
+  return m ? Number(m[1]) : null;
+}
+
+// AİLENİN YAŞAYAN EN BÜYÜĞÜ — Rehber bu kişinin adını taşır.
+// 1) Doğum yılı girilmiş yaşayanlar arasında en eskisi; 2) yoksa en eski nesildeki
+// yaşayan (aynı nesilde kimlik sırası: kayıtlarda büyük kardeş önce gelir).
+// Doğum yılı girilmemişse bu bir yaklaşımdır (yontem: 'nesil').
+export function enBuyukYasayan(veri) {
+  const g = grafKur(veri);
+  const yasayan = (veri.nodes || []).filter((n) => n.alive !== false);
+  let n = null, yontem = null;
+  const yilli = yasayan.filter((x) => dogumYili(x)).sort((a, b) => dogumYili(a) - dogumYili(b));
+  if (yilli.length) { n = yilli[0]; yontem = 'dogum'; }
+  if (!n) {
+    const d = nesilHaritasi(g);
+    const sirali = yasayan.filter((x) => d.has(x.id))
+      .sort((a, b) => d.get(a.id) - d.get(b.id) || String(a.id).localeCompare(String(b.id), 'en', { numeric: true }));
+    if (sirali.length) { n = sirali[0]; yontem = 'nesil'; }
+  }
+  if (!n) return null;
+  const ad = adiGoster(n.name).split(' ')[0];
+  const unvan = n.sex === 'K' ? 'Nine' : 'Dede';
+  return { id: n.id, ad, unvan, tamAd: `${ad} ${unvan}`, yontem };
+}

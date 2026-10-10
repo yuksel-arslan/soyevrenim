@@ -112,6 +112,32 @@ istenen his kayboldu. İstenen görünüm: **"belli bir açıyla yukarıdan gün
 sistemine bakmak"**. Bu yüzden eğim ve perspektif her iki modda da uygulanır ve
 düzlem modunda da yatay sürükleme diski döndürür (yaw) — o his kasten korunuyor.
 
+### 3b. Kadraj ve okunurluk (görselleştirme dili)
+
+- **Kadraj (`fit`)**: ağacın *ekrandaki* gerçek izdüşümü (koni yüksekliği + perspektif
+  + eğim) ölçülür ve arayüz şeritleri dışında kalan alana (`KADRAJ_PAY.masa/mobil`)
+  ortalanır. Perspektif ölçeğe bağlı olduğu için ölçek birkaç adımda yakınsatılır.
+  Dünya koordinatından tahmin yapmak koniyi masaüstünde kesiyor, mobilde kaydırıyordu.
+- **Odak (`focus`)**: kamera yalnızca düğüm ekran dışındaysa ya da sağ üst kişi
+  kartının *gerçek* alanının altındaysa oynar (sabit 300×300 varsayımı mobilde
+  ortalanmış ağacı kaydırıyordu).
+- **Kenarlar — gövdeden dala**: ebeveyn→çocuk bağı `dalCiz()` ile yumuşak eğri;
+  kalınlık eski nesilden genç nesile incelir. Bakanın köke inen soy hattı her zaman
+  altın iz (`--spine`, ışıltı + net çizgi); akrabalık yolu `--edge-lit`.
+- **İsimler (`isimleriYerlestir`)**: düğümlerden sonra, öncelikle yerleşir —
+  0 bakan/seçili/üzerinde · 1 soy hattı · 2 bakanın yakınları (`ETIKET_ESIK.yakin`)
+  · 3 herkes (`ETIKET_ESIK.herkes`). Her isim için sağ/sol/alt/üst denenir;
+  çakışan düşük öncelikli isim o karede çizilmez.
+- **Nesil etiketleri**: halkanın ekranda en sol noktasında küçük zemin üzerinde;
+  yer yoksa (dar ekran) ya da bir öncekine `NESIL_ETIKET_ARA`'dan yakınsa atlanır.
+- **"Ağaç nasıl okunur?"**: varsayılan katmanda katlanabilir açıklama (renkler,
+  çizgi türleri); mobilde katlı başlar, tercih `kok_okuma_kapali` ile hatırlanır.
+- **Performans**: `getVar()` tema token'larını önbellekte tutar; `data-theme`
+  değişince `MutationObserver` önbelleği boşaltır (kare başına yüzlerce
+  `getComputedStyle` çağrısı kalktı).
+- **Hata düzeltmesi**: seçili/aktif düğüm vurgusu yüksekliksiz `w2s` ile çiziliyordu;
+  halka ve isim düğümden uzakta, boşlukta görünüyordu. Artık `project(…, nodeHeight)`.
+
 ---
 
 ## 4. `zoomK()` tabanı neden 0.28
@@ -284,13 +310,21 @@ tam/baştan/içinde eşleşme hiç tutmazsa. Gerçek veriyle sınandı:
 ## 7. Etkileşim modeli
 
 ```
-tık (moved ≤ TAP_SLOP, süre ≤ TAP_TIME) → seç + merkeze yaklaştır
-çift tık                                → merkeze al + yakınlarını göster
-merkezdeyken tekrar dokun               → düzenleme paneli
-uzun bas (~450ms, kademeli açılımda)    → alt ağacı aç/kapat
-sürükleme                               → pan / yaw döndürme
-iki parmak                              → pinch zoom
+dokun / tık (moved ≤ TAP_SLOP)    → ODAK: yalnızca o kişi + yakın ailesi (anne-baba,
+                                    kardeş, eş, çocuk) ve aralarındaki bağlar görünür;
+                                    kamera aileyi çerçeveler (kadrajaGit), adlar yazılır
+uzun bas (UZUN_BAS_MS = 500ms)    → ayrıntı paneli (parmak kaldırılmadan açılır;
+                                    basılıyken düğüm çevresinde dolan halka)
+çift tık                          → ayrıntı (masaüstü kolaylığı) · kademeli açılımda alt ağaç aç/kapat
+boşluğa dokun / Esc               → odağı kapat, tüm ağaca dön (animasyonlu)
+sürükleme                         → pan / yaw döndürme (uzun bası iptal eder)
+iki parmak                        → pinch zoom
 ```
+
+Odak `nodeVisible()` içinde uygulanır: odak dışı düğüm ve bağlar çizilmez, tıklanmaz
+(`pick`, `pickEdge`) ve kadraj yalnızca görünenleri çerçeveler. Durum çubuğu
+"7 / 245 kişi · filtreli" gösterir. Dokunmada küçük önizleme kartı (hoverCard) artık
+açılmıyor — uzun bas halkasını örtüyordu ve dokunuş zaten aileyi gösteriyor.
 
 `TAP_SLOP=10 px`, `TAP_TIME=600 ms`.
 

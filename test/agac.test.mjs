@@ -67,3 +67,54 @@ test('hikâye: uzun döküm parçalanır, düzenleme sözcük değiştirirse red
   assert.ok(icerikKorundu('dedem tarlaya gitti sonra eve döndü', 'Dedem tarlaya gitti. Sonra eve döndü.'));
   assert.ok(!icerikKorundu('dedem tarlaya gitti sonra eve döndü', 'Büyükbabam bahçeye yürüdü.'));
 });
+
+test('enBuyukYasayan: doğum yılı yoksa en eski nesildeki yaşayan; doğum yılı girilince ona göre', async () => {
+  const { enBuyukYasayan } = await import('../api/_lib/agac.js');
+  const eb = enBuyukYasayan(veri);
+  assert.equal(eb.yontem, 'nesil');
+  assert.ok(eb.tamAd.endsWith(eb.unvan));
+  const v2 = structuredClone(veri);
+  const yuksel = v2.nodes.find((n) => n.id === 'p12222123');
+  yuksel.profile = { info: { dogum: '1901' } };
+  const eb2 = enBuyukYasayan(v2);
+  assert.deepEqual([eb2.id, eb2.tamAd, eb2.yontem], ['p12222123', 'Yüksel Dede', 'dogum']);
+  // vefat edenin doğum yılı dikkate alınmaz
+  const v3 = structuredClone(v2);
+  v3.nodes.find((n) => n.id === 'p12222123').alive = false;
+  assert.notEqual(enBuyukYasayan(v3).id, 'p12222123');
+});
+
+test('soy tarihi: Fahri Arslan notu birebir, her bilgi güven etiketli, kaynaklar geçerli', async () => {
+  const T = await import('../api/_lib/soy-tarihi.js');
+  assert.match(T.FAHRI_NOTU.metin, /Aşağı Potocur \(Üçırmak\).*UZUNALOĞULLARI.*1615.*DERBENT.*Molla Memiş/);
+  for (const x of [...T.ZAMAN, ...T.YERLER, ...T.ADLAR, ...T.ARSIV]) {
+    assert.ok(T.GUVEN_ETIKETI[x.guven], x.ad || x.baslik);
+    for (const k of x.kaynak) assert.ok(T.KAYNAKLAR[k]?.url?.startsWith('https://'), k);
+  }
+  for (const [k, v] of Object.entries(T.KAYNAKLAR)) {
+    assert.ok(T.KAYNAK_GRUPLARI[v.kat], `${k}: kategori`);
+    assert.ok(v.not && v.url.startsWith('https://'), `${k}: not/url`);
+  }
+  assert.ok(T.SOZLUK.length >= 8 && T.ARASTIRMA_REHBERI.length >= 5);
+  const o = T.soyTarihiOzet();
+  assert.ok(o.fahri_arslan_notu.includes('1956'));
+  assert.ok(o.osmanli_arsivi.some((a) => a.yil === '1835' && /1165/.test(a.defter)));
+});
+
+test('Rehber becerileri: sorular doğru uzmanlığa gider, Lazca yalnız istenince', async () => {
+  const U = await import('../api/_lib/uzmanlik.js');
+  const ilk = (q, b) => U.uzmanAra(q, b, 1)[0];
+  assert.equal(ilk('sorulara yanıt verebilir misin?').baslik, 'Rehber ne yapabilir?');
+  assert.equal(ilk('Nasıl kişi eklerim?').beceri, 'site');
+  assert.equal(ilk('Fındıklı’nın eski adı ne?').baslik, 'Viçe’den Fındıklı’ya');
+  assert.equal(ilk('Lazca teşekkür nasıl denir', 'lazca').baslik, 'Teşekkür');
+  assert.equal(ilk('Lazca anne ne demek', 'lazca').baslik, 'Akrabalık adları');
+  assert.ok(U.lazcaMi('Xelaǩaoba, muç̌ore?'));
+  assert.ok(!U.lazcaMi('Fahri’nin annesi kim?'));
+  for (const b of Object.values(U.BECERILER)) for (const k of b.konular) {
+    assert.ok(U.GUVEN[k.guven], k.baslik);
+    for (const x of k.kaynak) assert.ok(U.BECERI_KAYNAKLARI[x], x);
+  }
+  const o = U.uzmanBilgi('Lazca merhaba', 'lazca');
+  assert.ok(o.konular[0].bilgi.includes('Xelaǩaoba') && o.lazca_notu);
+});
