@@ -277,6 +277,29 @@ canvas{display:block;position:fixed;inset:0;
   .search input{width:96px}
   .dock button{width:42px;height:42px}
 }
+
+/* ===== Ailemizin bu ayı (kullanım paneli) + sesli hikâye — yalnızca tema token'ları ===== */
+.aaUst{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 24px;border-bottom:1px solid var(--line);flex:none}
+.aaGovde{flex:1;overflow-y:auto;overflow-x:hidden;padding:24px}
+.aaIc{max-width:1000px;margin:0 auto}
+.aaAy{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.aaCumle{font-size:clamp(19px,2.6vw,26px);font-weight:600;line-height:1.35;margin:8px 0 22px;color:var(--text);max-width:760px;text-wrap:balance}
+.aaIzgara{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr));gap:16px}
+.aaKart{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0}
+.aaKart h3{margin:0 0 14px;font-size:12px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-soft)}
+.aaGenis{grid-column:1/-1}
+.aaKatki{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
+.aaKatki:first-of-type{border-top:none}
+.aaCubuk{display:flex;height:6px;border-radius:3px;background:var(--bg2);overflow:hidden;margin-top:6px}
+.aaCubuk span{display:block;height:100%}
+.aaRozet{font-size:10px;font-weight:600;letter-spacing:.4px;color:var(--spine);border:1px solid var(--spine);border-radius:10px;padding:1px 7px}
+.aaGosterge{display:flex;gap:14px;font-size:11px;color:var(--muted);margin:-6px 0 8px}
+.aaGosterge i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.aaBos{font-size:13px;color:var(--muted);padding:8px 0}
+.aaIpucu{display:none;position:fixed;z-index:46;max-width:min(280px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line2);
+  border-radius:9px;padding:8px 11px;font-size:12px;line-height:1.45;box-shadow:0 10px 30px var(--shadow);pointer-events:none}
+.hkKart{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;width:min(440px,100%);box-shadow:0 20px 60px var(--shadow)}
+@media (max-width:640px){ .aaUst{padding:14px 16px} .aaGovde{padding:16px} .aaKart{padding:14px} }
 </style>
 </head>
 <body>
@@ -460,7 +483,16 @@ canvas{display:block;position:fixed;inset:0;
     <button id="rehberKapat" title="Kapat" style="background:none;border:none;color:var(--muted);
       font-size:16px;line-height:1;cursor:pointer;padding:2px 6px">✕</button>
   </div>
-  <div id="rehberMesaj" style="padding:0 14px;font-size:13.5px;line-height:1.55;color:var(--text)"></div>
+  <!-- Ücretsiz asistan kotası (ince çubuk) — tıklayınca "Ailemizin bu ayı" açılır -->
+  <button id="rehberKota" title="Ailemizin bu ayı" style="display:none;width:calc(100% - 28px);margin:0 14px 10px;
+    background:none;border:none;padding:0;cursor:pointer;text-align:left">
+    <div style="height:4px;border-radius:2px;background:var(--line);overflow:hidden">
+      <div id="rehberKotaDolu" style="height:100%;width:0;background:var(--spine);transition:width .4s"></div></div>
+    <div id="rehberKotaYazi" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px"></div>
+  </button>
+  <div id="rehberMesaj" style="padding:0 14px;font-size:13.5px;line-height:1.55;color:var(--text);
+    max-height:min(46vh,380px);overflow-y:auto;white-space:pre-line"></div>
+  <div id="rehberNot" style="display:none;padding:6px 14px 0;font-size:11.5px;color:var(--muted);line-height:1.45"></div>
   <div id="rehberCipler" style="display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px 4px"></div>
   <div style="display:flex;gap:6px;padding:10px 14px 14px">
     <input id="rehberGiris" placeholder="yaz ya da 🎤 ile söyle" autocomplete="off"
@@ -580,6 +612,8 @@ canvas{display:block;position:fixed;inset:0;
   <div id="hoverMeta" style="font-size:11px;color:var(--text-soft);line-height:1.5"></div>
 </div>
 
+<!-- Ortak ağaç kütüphanesi (yol bulma / ortak ata) — sunucudaki asistanla aynı kod -->
+<script type="module">import * as L from "/lib/agac.js"; window.AgacLib = L;</script>
 <script>
 // Fahri Arslan'ın 1956 el çizimi soy ağacı — ayrı dosya (public/koken.jpg).
 // Eskiden base64 olarak buraya gömülüydü: 556 KB, her ziyarette Köken ekranı
@@ -1250,53 +1284,13 @@ function edgeKey(a,b){ return a<b ? a+"|"+b : b+"|"+a; }
 function edgeOnPath(a,b){ return !!(BLOOM.pathEdges && BLOOM.pathEdges.has(edgeKey(a,b))); }
 
 // ---- ÖZELLİK 1: yol bulma ----
-function shortestPath(aId,bId){
-  if(aId===bId) return [aId];
-  const prev=new Map([[aId,null]]); const q=[aId];
-  while(q.length){
-    const cur=q.shift();
-    for(const nb of (ADJ.get(cur)||[])){
-      if(!prev.has(nb)){
-        prev.set(nb,cur);
-        if(nb===bId){ const yol=[bId]; let p=cur;
-          while(p!==null){ yol.push(p); p=prev.get(p); }
-          return yol.reverse(); }
-        q.push(nb);
-      }
-    }
-  }
-  return null;
-}
-function ancestorsOf(id){                 // köke kadar atalar (mesafeyle)
-  const res=new Map([[id,0]]); const kuyruk=[[id,0]];
-  while(kuyruk.length){
-    const [cur,d]=kuyruk.shift();
-    for(const pid of (PARENTS.get(cur)||[])){
-      if(!res.has(pid)){ res.set(pid,d+1); kuyruk.push([pid,d+1]); }
-    }
-  }
-  return res;
-}
-function lcaOf(aId,bId){                  // en yakın ortak ata
-  const A=ancestorsOf(aId), B=ancestorsOf(bId);
-  let best=null,bestSum=Infinity,bestA=0,bestB=0;
-  for(const [id,da] of A) if(B.has(id)){
-    const db=B.get(id), sum=da+db;
-    if(sum<bestSum){ bestSum=sum; best=id; bestA=da; bestB=db; }
-  }
-  return best ? {id:best, da:bestA, db:bestB} : null;
-}
-function akrabalikEtiketi(o){
-  if(!o) return "ortak ata bulunamadı";
-  const {da,db}=o;
-  if(da===0) return "doğrudan ata–torun hattı";
-  if(db===0) return "doğrudan ata–torun hattı";
-  if(da===1&&db===1) return "kardeş";
-  if(da===1||db===1){ const k=Math.max(da,db)-1;
-    return k===1 ? "amca/dayı/hala/teyze – yeğen" : `${k}. dereceden amca/dayı – yeğen`; }
-  const derece=Math.min(da,db)-1, fark=Math.abs(da-db);
-  return fark===0 ? `${derece}. dereceden kuzen` : `${derece}. dereceden kuzen (${fark} kuşak uzaklıkla)`;
-}
+// Algoritmalar ortak kütüphanede: public/lib/agac.js (kaynak api/_lib/agac.js — asistan da
+// aynı kodu kullanır). Burada yalnızca bu sayfanın ADJ/PARENTS haritalarıyla çağrılır.
+const agacGraf=()=>({ADJ, PARENTS, CHILDREN, byId});
+function shortestPath(aId,bId){ return window.AgacLib ? AgacLib.enKisaYol(agacGraf(),aId,bId) : null; }
+function ancestorsOf(id){ return window.AgacLib ? AgacLib.atalar(agacGraf(),id) : new Map([[id,0]]); }
+function lcaOf(aId,bId){ return window.AgacLib ? AgacLib.ortakAta(agacGraf(),aId,bId) : null; }
+function akrabalikEtiketi(o){ return window.AgacLib ? AgacLib.akrabalikEtiketi(o) : ""; }
 function yolBul(aId,bId){
   const yol=shortestPath(aId,bId);
   if(!yol){ BLOOM.pathIds=null; BLOOM.pathEdges=null; yolKarti(null); toast("Bu iki kişi arasında bağ yok"); return; }
@@ -2840,7 +2834,13 @@ function renderProfileSections(n){
         <span style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">${escapeHtml(m.date||"")}</span>
       </div>
       ${m.photo?`<div style="margin:6px 0;border-radius:6px;aspect-ratio:16/10;background:center/cover url(${m.photo})"></div>`:""}
-      <div style="font-size:13px;line-height:1.5;margin-top:4px">${escapeHtml(m.text||"")}</div>`;
+      ${m.kaynak==="ses"?`<div style="font-size:12px;color:var(--muted);margin-top:4px">🎙 ${m.baslik?`<b style="color:var(--text)">${escapeHtml(m.baslik)}</b> · `:""}Anlatan: ${escapeHtml(m.anlatan||"")}${m.sure_sn?` · ${dkYaz(m.sure_sn)}`:""}</div>
+        ${sesOynaticiHtml(m.ses_parcalar&&m.ses_parcalar.length?m.ses_parcalar:[m.ses_anahtar])}`:""}
+      <div class="aniMetin" style="font-size:13px;line-height:1.5;margin-top:4px;white-space:pre-line">${escapeHtml(
+        m.kaynak==="ses" && (m.text||"").length>MEMORY_MAX_CHARS ? (m.text||"").slice(0,MEMORY_MAX_CHARS)+"…" : (m.text||""))}</div>
+      ${m.kaynak==="ses" && (m.text||"").length>MEMORY_MAX_CHARS?`<button class="aniDevam" style="background:none;border:none;color:var(--accent);font-size:12px;padding:4px 0;cursor:pointer">Devamını oku</button>`:""}`;
+    const devam=card.querySelector(".aniDevam");
+    if(devam) devam.onclick=()=>{ card.querySelector(".aniMetin").textContent=m.text||""; devam.remove(); };
     const row=document.createElement("div"); row.style.cssText="display:flex;gap:8px;margin-top:8px";
     const shareBtn=document.createElement("button"); shareBtn.className="tbtn"; shareBtn.style.flex="1";
     shareBtn.style.justifyContent="center"; shareBtn.style.fontSize="12px"; shareBtn.textContent="↗ Paylaş";
@@ -2850,10 +2850,19 @@ function renderProfileSections(n){
     row.appendChild(shareBtn); row.appendChild(delBtn); card.appendChild(row);
     mem.appendChild(card);
   });
+  // bu kişi için kaydedilmiş, henüz onaylanmamış sesli hikâyeler
+  const bekleyen=document.createElement("div"); mem.appendChild(bekleyen);
+  bekleyenHikayeler(n, bekleyen);
   const addMem=document.createElement("button"); addMem.className="tbtn"; addMem.style.width="100%";
   addMem.style.justifyContent="center"; addMem.textContent="＋ Anı ekle";
   addMem.onclick=()=>addMemory(n);
   mem.appendChild(addMem);
+  if(CLOUD.on){
+    const hk=document.createElement("button"); hk.className="tbtn"; hk.style.cssText="width:100%;justify-content:center;margin-top:6px";
+    hk.textContent="🎙 Hikâye anlat"; hk.title="Sesinle anlat — kaydedilir, yazıya çevrilir, anı olarak onaya gider";
+    hk.onclick=()=>hikayeAnlat(n);
+    mem.appendChild(hk);
+  }
   wrap.appendChild(mem);
 
   // — Yorumlar (bu kişi hakkında sohbet) — yalnız bulut modunda —
@@ -3966,7 +3975,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       b.textContent=t;
       b.style.cssText="background:var(--panel2);border:1px solid var(--line);color:var(--text);"+
         "font-size:12px;padding:7px 11px;border-radius:16px;cursor:pointer";
-      b.onclick=()=>{ giris.value=t; calistirKomut(t); };
+      b.onclick=()=>{ giris.value=t; rehberGonder(t); };
       cipler.appendChild(b);
     });
   }
@@ -3994,6 +4003,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       : "Tekrar hoş geldin! Ne yapmak istersin?");
     ciplerKur();
     panel.style.display="block";
+    if(typeof kotaTazele==="function") kotaTazele();
   }
   // Panel kapanınca dinleme de dursun: panel dışına tıklayınca panel kapanıyor
   // ama tanıma arka planda çalışmaya devam ediyordu (mikrofon açık kalıyordu).
@@ -4030,7 +4040,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
         giris.value=metin;                                  // canlı göster
         if(e.results[e.results.length-1].isFinal && metin){
           micDurum("kapali");
-          calistirKomut(metin);                             // MEVCUT akışa ver
+          rehberGonder(metin);                              // asistan → yoksa Rehber yedeği
         }
       };
       taniyici.onerror=(e)=>{
@@ -4057,9 +4067,54 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     }
   }
 
+  // ---- ASİSTAN (ücretsiz kota, sunucuda araç döngüsü) ----
+  // Girdi önce asistana gider. Kimlik/kota yoksa ya da sağlayıcı yoğunsa mevcut
+  // calistirKomut() ücretsiz yedek olarak yanıtlar ve bir satırla söylenir.
+  // Yalnızca ARAYÜZ komutları (köken, istatistik, kol, nesil aralığı…) doğrudan
+  // yerelde çalışır: asistanın ekranı yönetme aracı yok, kota harcamaya da gerek yok.
+  const YEREL=new Set(["koken","istat","yasayan","tumu","bakim","kollar"]);
+  function yerelArayuzMu(t){
+    for(const k of KOMUTLAR){
+      if(k.ad==="kol") return typeof kolBul==="function" && !!kolBul(t);
+      if(!k.desen.test(t)) continue;
+      if(YEREL.has(k.ad)) return true;
+      if(k.ad==="nesil" && /(\d+)\D+(\d+)/.test(t)) return true;
+      return false;
+    }
+    return false;
+  }
+  function notYaz(t){ const n=el("rehberNot"); if(!n) return; n.textContent=t||""; n.style.display=t?"block":"none"; }
+  const gecmis=[];
+  let mesgul=false;
+  async function rehberGonder(metin){
+    const t=String(metin||"").trim();
+    if(!t || mesgul) return;
+    notYaz("");
+    if(yerelArayuzMu(t) || !CLOUD.on){ calistirKomut(t); return; }
+    const kisi=kimlikId();
+    if(!kisi){ calistirKomut(t); notYaz("Asistan için adını seçip aile şifresiyle giriş yap — şimdilik ücretsiz Rehber yanıtladı."); return; }
+    mesgul=true; yaz("Düşünüyorum…");
+    try{
+      const r=await fetch("/api/asistan",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ jeton:sessionToken||"", kisi_id:kisi, mesaj:t, gecmis:gecmis.slice(-((AYAR&&AYAR.ASISTAN.gecmisTur)||0)) })});
+      const j=await r.json();
+      if(j.kota) kotaGoster(j.kota);
+      if(!j.ok){ calistirKomut(t); notYaz(j.mesaj||"Asistan şu an yanıt veremedi, ücretsiz Rehber yanıtladı."); return; }
+      gecmis.push({rol:"kullanici",metin:t},{rol:"asistan",metin:j.yanit});
+      yaz(j.yanit);
+      const g=j.gorsel||{};
+      if(g.yol && typeof yolBul==="function") yolBul(g.yol[0], g.yol[1]);
+      else if(g.kisi && byId[g.kisi]){ selectNode(byId[g.kisi]); if(typeof merkezeAl==="function") merkezeAl(byId[g.kisi]); }
+      if(j.oneriler && j.oneriler.length) notYaz("✓ Öneri yönetici onayına gitti: "+j.oneriler.map(o=>o.ozet).join(" · "));
+    }catch(e){ calistirKomut(t); notYaz("Asistana ulaşılamadı, ücretsiz Rehber yanıtladı."); }
+    finally{ mesgul=false; }
+  }
+  window.__rehberGonder=rehberGonder;
+
   el("rehberKapat").onclick=kapat;   // kapat() dinlemeyi de durduruyor
-  el("rehberGonder").onclick=()=>calistirKomut(giris.value);
-  giris.addEventListener("keydown",e=>{ if(e.key==="Enter") calistirKomut(giris.value); });
+  el("rehberGonder").onclick=()=>rehberGonder(giris.value);
+  giris.addEventListener("keydown",e=>{ if(e.key==="Enter") rehberGonder(giris.value); });
+  const kb=el("rehberKota"); if(kb) kb.onclick=()=>{ if(typeof aileAyiAc==="function") aileAyiAc(); };
   const rb=el("rehberBtn");
   if(rb) rb.onclick=()=>{ if(panel.style.display==="block") kapat(); else ac(false); };
 
@@ -4090,6 +4145,342 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     },{passive:true, once:false});
   });
 })();
+
+// ============================ ÜCRETSİZ ASİSTAN · SESLİ HİKÂYE · AİLEMİZİN BU AYI ============================
+// Sınırlar/kotalar sunucudaki tek kaynaktan (api/_lib/ayar.js) gelir: /api/kullanim?adim=ayar.
+// Ayrıntı: docs/asistan.md · docs/hikaye.md · docs/kullanim.md
+var AYAR=null;
+async function ayarYukle(){
+  if(AYAR) return AYAR;
+  try{ const r=await fetch("/api/kullanim?adim=ayar"); const j=await r.json(); if(j.ok) AYAR=j.ayar; }catch(e){}
+  return AYAR;
+}
+if(typeof fetch==="function") ayarYukle();
+const trSayi=(x,b)=>Number(x||0).toLocaleString("tr-TR",{maximumFractionDigits:b==null?0:b});
+const dkYaz=sn=>{ const d=Math.round((sn||0)/60); return d<1 && sn>0 ? "1 dk'dan az" : `${trSayi(d)} dk`; };
+function gbYaz(b){ const gb=b/1024**3; return gb>=1 ? `${trSayi(gb,1)} GB` : `${trSayi(b/1024**2)} MB`; }
+// Kota UTC gece yarısı yenilenir; Türkiye saatiyle gösterilir (03:00)
+const yenilenmeSaati=iso=>{ try{ return new Date(iso).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Istanbul"}); }catch(e){ return ""; } };
+
+// ---- kota (Rehber'deki ince çubuk) ----
+let sonKota=null;
+function ortakOran(k){ const s=k.sistem, l=k.limit.sistem; return Math.min(1, Math.max(s.token/l.token, s.istek/l.istek)); }
+function kotaGoster(k){
+  sonKota=k;
+  const b=document.getElementById("rehberKota"); if(!b||!k) return;
+  const oran=ortakOran(k), kalan=Math.max(0,k.limit.kisi.mesaj-k.kisi.mesaj);
+  document.getElementById("rehberKotaDolu").style.width=`${Math.round(oran*100)}%`;
+  document.getElementById("rehberKotaYazi").textContent =
+    `Ortak ücretsiz kota %${trSayi(oran*100)}` + (kimlikId()? ` · bugünkü hakkın ${kalan}/${k.limit.kisi.mesaj} mesaj` : "") + " · ayrıntı ›";
+  b.style.display="block";
+}
+async function kotaTazele(){
+  if(!CLOUD.on) return;
+  try{ const r=await fetch("/api/kullanim?adim=durum",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({kisi_id:kimlikId()})}); const j=await r.json(); if(j.ok) kotaGoster(j.kota); }catch(e){}
+}
+
+// ---- küçük avatar (fotoğraf yoksa baş harf, düğüm renginde) ----
+function avatarHtml(id, boy){
+  const n=byId[id], p=PROFILES[id]||{}, ad=n?dispName(n.name):"?";
+  const s=`width:${boy}px;height:${boy}px;border-radius:50%;flex:none;border:1px solid var(--line2);`;
+  if(p.photo) return `<span style="${s}background:center/cover url(${escapeHtml(p.photo)})"></span>`;
+  const renk=n?nodeColor(n):"var(--muted)";
+  return `<span style="${s}display:inline-flex;align-items:center;justify-content:center;background:var(--bg2);
+    color:${renk};font-weight:700;font-size:${Math.round(boy*0.42)}px">${escapeHtml(ad.charAt(0))}</span>`;
+}
+
+// ---- ses oynatıcı + indir ----
+function sesOynaticiHtml(anahtarlar){
+  return (anahtarlar||[]).filter(Boolean).map((a,i,l)=>{
+    const u="/api/ses/oku?anahtar="+encodeURIComponent(a);
+    return `<div style="margin-top:6px">
+      <audio controls preload="none" src="${u}" style="display:block;width:100%;height:36px"></audio>
+      <div style="text-align:right;margin-top:3px"><a href="${u}&indir=1" download
+        style="font-size:12px;color:var(--accent);text-decoration:none">⇩ İndir${l.length>1?` (${i+1}. parça)`:""}</a></div></div>`;
+  }).join("");
+}
+
+// ============================ AİLEMİZİN BU AYI ============================
+async function aileAyiAc(){
+  let ekran=document.getElementById("aileAyi");
+  if(!ekran){
+    ekran=document.createElement("div"); ekran.id="aileAyi";
+    ekran.style.cssText="position:fixed;inset:0;z-index:45;background:var(--bg);display:flex;flex-direction:column;overflow:hidden";
+    ekran.innerHTML=`<div class="aaUst">
+        <div style="min-width:0"><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:3px;
+          text-transform:uppercase;color:var(--spine)">Kullanım</div>
+          <div style="font-weight:700;font-size:20px">Ailemizin bu ayı</div></div>
+        <button id="aaKapat" class="tbtn">← Ağaca dön</button></div>
+      <div id="aaGovde" class="aaGovde"></div>
+      <div id="aaIpucu" class="aaIpucu"></div>`;
+    document.body.appendChild(ekran);
+    ekran.querySelector("#aaKapat").onclick=()=>{ ekran.style.display="none"; };
+    addEventListener("resize",()=>{ if(ekran.style.display!=="none" && ekran._veri) aileAyiCiz(ekran._veri); });
+  }
+  ekran.style.display="flex";
+  const govdeEl=ekran.querySelector("#aaGovde");
+  govdeEl.innerHTML=`<div style="color:var(--muted);padding:30px 0">Yükleniyor…</div>`;
+  try{
+    await ayarYukle();
+    const r=await fetch("/api/kullanim?adim=ay",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({kisi_id:kimlikId()})});
+    const j=await r.json();
+    if(!j.ok) throw new Error(j.hata||"");
+    ekran._veri=j; aileAyiCiz(j);
+    if(j.kota) kotaGoster(j.kota);
+  }catch(e){ govdeEl.innerHTML=`<div style="color:var(--muted);padding:30px 0">Veriye ulaşılamadı. Bağlantını kontrol et.</div>`; }
+}
+
+function aileAyiCiz(v){
+  const g=document.getElementById("aaGovde"); if(!g) return;
+  const ay=new Date(v.ay+"-01T00:00:00Z");
+  const ayAdi=ay.toLocaleDateString("tr-TR",{month:"long",year:"numeric",timeZone:"UTC"});
+  const o=v.ozet;
+  const cumle = o.hikaye||o.yeni_kisi
+    ? `Bu ay ailemiz ${trSayi(o.hikaye)} hikâye anlattı, ${trSayi(Math.round(o.ses_sn/60))} dakika ses, ${trSayi(o.yeni_kisi)} yeni kişi ekledi.`
+    : "Bu ay henüz hikâye anlatılmadı. İlk hikâyeyi sen anlat — bir kişinin kartında “🎙 Hikâye anlat”.";
+  const k=v.kota, oran=ortakOran(k);
+  const benim=kimlikId();
+  const kalanMesaj=Math.max(0,k.limit.kisi.mesaj-k.kisi.mesaj);
+  const kalanSesDk=Math.max(0,Math.floor(k.limit.kisi.sesDk-k.kisi.sesSn/60));
+  // halka
+  const R=52, C=2*Math.PI*R;
+  const halka=`<svg viewBox="0 0 132 132" width="132" height="132" role="img" aria-label="Ortak kota yüzde ${Math.round(oran*100)}">
+    <circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--line)" stroke-width="10"/>
+    <circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--spine)" stroke-width="10" stroke-linecap="round"
+      stroke-dasharray="${(C*oran).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 66 66)"/>
+    <text x="66" y="64" text-anchor="middle" font-size="24" font-weight="700" fill="var(--text)" font-family="Inter, system-ui, sans-serif">%${trSayi(oran*100)}</text>
+    <text x="66" y="84" text-anchor="middle" font-size="10.5" fill="var(--muted)" font-family="Inter, system-ui, sans-serif">kullanıldı</text></svg>`;
+  // katkılar
+  const katki=(v.katki||[]).filter(x=>byId[x.kisi_id]);
+  const puan=x=>x.hikaye_sn/60 + x.eklenen;
+  const enCok=Math.max(1,...katki.map(puan));
+  const anlatici=katki.slice().sort((a,b)=>b.hikaye_sn-a.hikaye_sn)[0];
+  const satirlar=katki.length ? katki.slice(0,12).map(x=>{
+    const w1=(x.hikaye_sn/60)/enCok*100, w2=x.eklenen/enCok*100;
+    const rozet = anlatici && anlatici.hikaye_sn>0 && x.kisi_id===anlatici.kisi_id
+      ? `<span class="aaRozet">bu ayın anlatıcısı</span>` : "";
+    const parca=[]; if(x.hikaye_sn) parca.push(`${dkYaz(x.hikaye_sn)} hikâye`); if(x.eklenen) parca.push(`${trSayi(x.eklenen)} kişi`);
+    return `<div class="aaKatki">
+      ${avatarHtml(x.kisi_id,34)}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <b style="font-size:13.5px">${escapeHtml(dispName(byId[x.kisi_id].name))}</b>
+          <span style="font-size:11px;color:var(--muted)">${escapeHtml(typeof kimlikSatiri==="function"?kimlikSatiri(byId[x.kisi_id]):"")}</span>${rozet}
+          <span style="margin-left:auto;font-size:11.5px;color:var(--muted)">${parca.join(" · ")}</span></div>
+        <div class="aaCubuk"><span style="width:${w1}%;background:var(--spine)"></span><span style="width:${w2}%;background:var(--accent)"></span></div>
+      </div></div>`;
+  }).join("") : `<div class="aaBos">Bu ay henüz katkı yok. Hikâyeler ve onaylanan yeni kişiler burada görünür.</div>`;
+  const dep=v.depolama, depOran=Math.min(1,dep.bayt/dep.kota);
+  g.innerHTML=`
+    <div class="aaIc">
+      <div class="aaAy">${escapeHtml(ayAdi)}</div>
+      <p class="aaCumle">${escapeHtml(cumle)}</p>
+      <div class="aaIzgara">
+        <section class="aaKart">
+          <h3>Bugünkü ortak kota</h3>
+          <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+            ${halka}
+            <div style="flex:1;min-width:150px;font-size:13px;line-height:1.6;color:var(--text-soft)">
+              ${benim?`<div style="color:var(--text);font-size:15px;font-weight:600">Senin bugünkü hakkın: ${kalanMesaj}/${k.limit.kisi.mesaj} mesaj</div>
+                <div>Ses: ${kalanSesDk}/${k.limit.kisi.sesDk} dk</div>`
+                :`<div>Asistanı kullanmak için adını seç ve aile şifresiyle gir.</div>`}
+              <div style="margin-top:6px;font-size:12px;color:var(--muted)">Ücretsiz kota tüm ailenin ortak hakkı; her gün ${escapeHtml(yenilenmeSaati(k.yenilenme))}'te yenilenir.</div>
+            </div>
+          </div>
+        </section>
+        <section class="aaKart">
+          <h3>Ses arşivi</h3>
+          <div style="font-size:22px;font-weight:700">${gbYaz(dep.bayt)} <span style="font-size:13px;font-weight:500;color:var(--muted)">/ ${gbYaz(dep.kota)}</span></div>
+          <div class="aaCubuk" style="height:8px;margin-top:12px"><span style="width:${(depOran*100).toFixed(1)}%;background:var(--spine)"></span></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:8px">Ailenin sesleri güvenle saklanıyor — her hikâye anlatanın kendi sesiyle.</div>
+        </section>
+        <section class="aaKart aaGenis">
+          <h3>Kim neler kattı</h3>
+          <div class="aaGosterge"><span><i style="background:var(--spine)"></i>hikâye (dk)</span><span><i style="background:var(--accent)"></i>eklenen kişi</span></div>
+          ${satirlar}
+        </section>
+        <section class="aaKart aaGenis">
+          <h3>Ayın hikâyeleri</h3>
+          <div id="aaSerit"></div>
+        </section>
+      </div>
+    </div>`;
+  seritCiz(v, ay);
+}
+
+// Zaman şeridi — elle SVG. Gün ekseni, her hikâye bir nokta (süreye göre büyür).
+function seritCiz(v, ay){
+  const kap=document.getElementById("aaSerit"); if(!kap) return;
+  const gunSayi=new Date(Date.UTC(ay.getUTCFullYear(), ay.getUTCMonth()+1, 0)).getUTCDate();
+  const W=Math.max(260, kap.clientWidth||600), H=96, sol=10, sag=10, taban=H-24;
+  const x=g=>sol+(g-0.5)*(W-sol-sag)/gunSayi;
+  const gunler={};
+  (v.seridi||[]).forEach(h=>{ const g=new Date(h.olusturma).getUTCDate(); (gunler[g]=gunler[g]||[]).push(h); });
+  const enUzun=Math.max(60,...(v.seridi||[]).map(h=>h.saniye));
+  let noktalar="";
+  Object.entries(gunler).forEach(([g,l])=>{
+    let y=taban-8;
+    l.forEach((h,i)=>{
+      const r=4+6*Math.sqrt(h.saniye/enUzun);
+      y-= i? (r*2+2):r;
+      noktalar+=`<circle class="aaNokta" data-i="${v.seridi.indexOf(h)}" cx="${x(+g).toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}"
+        fill="var(--spine)" fill-opacity="${h.durum==="islendi"?0.9:0.45}" stroke="var(--panel)" stroke-width="1.5"/>`;
+    });
+  });
+  const bugun=new Date(); const buAyMi=bugun.getUTCFullYear()===ay.getUTCFullYear()&&bugun.getUTCMonth()===ay.getUTCMonth();
+  let etiket="";
+  for(let gn=1; gn<=gunSayi; gn++){
+    if(gn===1||gn%5===0||gn===gunSayi) etiket+=`<text x="${x(gn).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono, monospace">${gn}</text>`;
+    etiket+=`<line x1="${x(gn).toFixed(1)}" x2="${x(gn).toFixed(1)}" y1="${taban}" y2="${taban+4}" stroke="var(--line2)"/>`;
+  }
+  const bugunCizgi = buAyMi ? `<line x1="${x(bugun.getUTCDate()).toFixed(1)}" x2="${x(bugun.getUTCDate()).toFixed(1)}" y1="6" y2="${taban}" stroke="var(--line2)" stroke-dasharray="3 3"/>` : "";
+  kap.innerHTML = (v.seridi||[]).length ? `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%">
+      ${bugunCizgi}<line x1="${sol}" x2="${W-sag}" y1="${taban}" y2="${taban}" stroke="var(--line2)"/>${etiket}${noktalar}</svg>`
+    : `<div class="aaBos">Bu ay henüz hikâye anlatılmadı.</div>`;
+  const ipucu=document.getElementById("aaIpucu");
+  kap.querySelectorAll(".aaNokta").forEach(c=>{
+    const goster=e=>{
+      const h=v.seridi[+c.dataset.i]; const anlatan=byId[h.kisi_id]?dispName(byId[h.kisi_id].name):"";
+      const kimin=byId[h.hedef_kisi_id]?dispName(byId[h.hedef_kisi_id].name):"";
+      ipucu.innerHTML=`<b>${escapeHtml(h.baslik||(h.durum==="islendi"?"Hikâye":"Yazıya çevrilmeyi bekliyor"))}</b><br>
+        <span style="color:var(--text-soft)">Anlatan: ${escapeHtml(anlatan)}${kimin&&kimin!==anlatan?` · ${escapeHtml(kimin)} hakkında`:""}<br>
+        ${new Date(h.olusturma).toLocaleDateString("tr-TR",{day:"numeric",month:"long"})} · ${dkYaz(h.saniye)}</span>`;
+      const b=c.getBoundingClientRect();
+      ipucu.style.display="block";
+      const iw=ipucu.offsetWidth;
+      ipucu.style.left=Math.max(16,Math.min(innerWidth-iw-16, b.left+b.width/2-iw/2))+"px";
+      ipucu.style.top=(b.top-ipucu.offsetHeight-8)+"px";
+    };
+    c.addEventListener("pointerenter",goster); c.addEventListener("pointerdown",goster);
+    c.addEventListener("pointerleave",()=>{ ipucu.style.display="none"; });
+  });
+}
+
+// ============================ SESLİ HİKÂYE ============================
+function hikayeDestekleniyor(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); }
+function sesMime(){
+  const S=AYAR.SES;
+  if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(S.mime)) return S.mime;
+  if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(S.mimeYedek)) return S.mimeYedek;
+  return "";
+}
+async function hikayeAnlat(n){
+  if(!kimlikId()){ toast("Hikâye anlatmak için adını seç ve aile şifresiyle gir"); return; }
+  if(!hikayeDestekleniyor()){ toast("Bu tarayıcı ses kaydını desteklemiyor"); return; }
+  await ayarYukle(); if(!AYAR){ toast("Bağlantı hatası"); return; }
+  const S=AYAR.SES;
+  const ov=document.createElement("div");
+  ov.style.cssText="position:fixed;inset:0;z-index:60;background:var(--overlay);display:flex;align-items:center;justify-content:center;padding:16px";
+  ov.innerHTML=`<div class="hkKart">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--spine)">Sesli hikâye</div>
+    <h3 style="margin:4px 0 6px;font-size:18px">${escapeHtml(dispName(n.name))} hakkında anlat</h3>
+    <div id="hkAcik" style="font-size:13px;color:var(--text-soft);line-height:1.5">Acele etme; aklına geldiği gibi anlat. Kayıt uzun olabilir, kendi sesin saklanır ve yazıya çevrilir.</div>
+    <div id="hkSure" style="font-family:'IBM Plex Mono',monospace;font-size:38px;text-align:center;margin:18px 0 6px;color:var(--text)">00:00</div>
+    <div id="hkDurum" style="text-align:center;font-size:12px;color:var(--muted);min-height:18px"></div>
+    <div id="hkOn" style="margin-top:8px"></div>
+    <div id="hkDugmeler" style="display:flex;gap:8px;margin-top:14px">
+      <button id="hkVazgec" class="tbtn" style="flex:1;justify-content:center">Vazgeç</button>
+      <button id="hkAna" class="tbtn primary" style="flex:2;justify-content:center">● Kaydı başlat</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+  const $=s=>ov.querySelector(s);
+  let akis=null, rec=null, sayac=0, parcalar=[], bas=0, zaman=null, durdu=false, mime="";
+  const kapat=()=>{ clearInterval(zaman); try{ rec&&rec.state!=="inactive"&&rec.stop(); }catch(e){} if(akis) akis.getTracks().forEach(t=>t.stop()); ov.remove(); };
+  $("#hkVazgec").onclick=()=>{ if(parcalar.length && !confirm("Kayıt silinsin mi?")) return; kapat(); };
+  const sureYaz=sn=>`${String(Math.floor(sn/60)).padStart(2,"0")}:${String(Math.floor(sn%60)).padStart(2,"0")}`;
+  function yeniKayit(){
+    const r=new MediaRecorder(akis, mime?{mimeType:mime,audioBitsPerSecond:S.bitHizi}:{audioBitsPerSecond:S.bitHizi});
+    const sira=sayac++, parca=[]; r._bas=performance.now();
+    r.ondataavailable=e=>{ if(e.data && e.data.size) parca.push(e.data); };
+    r.onstop=()=>{
+      const tip=(mime||r.mimeType||parca[0]?.type||"").split(";")[0];
+      parcalar[sira]={ blob:new Blob(parca,{type:tip}), sn:(performance.now()-r._bas)/1000, tip };
+      if(durdu && parcalar.filter(Boolean).length===sayac) kayitBitti();
+    };
+    r.start();
+    return r;
+  }
+  async function baslat(){
+    try{ akis=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}}); }
+    catch(e){ $("#hkDurum").textContent="Mikrofon izni gerekiyor."; return; }
+    mime=sesMime(); bas=performance.now(); rec=yeniKayit();
+    $("#hkAna").textContent="■ Bitir"; $("#hkAna").onclick=bitir;
+    $("#hkDurum").textContent="Kayıtta…";
+    zaman=setInterval(()=>{
+      const sn=(performance.now()-bas)/1000;
+      $("#hkSure").textContent=sureYaz(sn);
+      // uzun kayıt: parçalara böl (her parça ayrı dosya → whisper sınırının altında)
+      if((performance.now()-rec._bas)/1000 >= S.parcaSn){ const eski=rec; rec=yeniKayit(); eski.stop(); }
+      if(sn >= S.maxKayitDk*60) bitir();
+    },500);
+  }
+  function bitir(){ if(durdu) return; durdu=true; clearInterval(zaman); $("#hkAna").disabled=true; $("#hkDurum").textContent="Kayıt hazırlanıyor…"; rec.stop(); }
+  async function kayitBitti(){
+    if(akis) akis.getTracks().forEach(t=>t.stop());
+    const toplam=parcalar.reduce((a,p)=>a+p.sn,0);
+    const buyuk=parcalar.find(p=>p.blob.size > S.parcaMaxMb*1024*1024);
+    if(buyuk){ $("#hkDurum").textContent="Kayıt parçası çok büyük, kaydedilemedi."; return; }
+    // kota: yazıya çevirme bugün mü yarın mı?
+    await kotaTazele();
+    const k=sonKota;
+    const bugun = k && (k.kisi.sesSn+toplam <= k.limit.kisi.sesDk*60) && (k.sistem.sesSn+toplam <= k.limit.sistem.sesSn);
+    $("#hkSure").textContent=sureYaz(toplam);
+    $("#hkDurum").textContent = bugun ? `${dkYaz(toplam)} kayıt · kaydedince hemen yazıya çevrilecek`
+                                      : `${dkYaz(toplam)} kayıt · bugünkü ses kotası dolu: kaydın saklanacak, yazıya çevirme yarın yapılacak`;
+    $("#hkOn").innerHTML=`<audio controls src="${URL.createObjectURL(parcalar[0].blob)}" style="width:100%;height:34px"></audio>`;
+    $("#hkAna").disabled=false; $("#hkAna").textContent="Kaydet"; $("#hkAna").onclick=kaydet;
+  }
+  async function kaydet(){
+    $("#hkAna").disabled=true; $("#hkVazgec").disabled=true;
+    const gonder=[];
+    try{
+      for(let i=0;i<parcalar.length;i++){
+        const p=parcalar[i];
+        $("#hkDurum").textContent=`Yükleniyor ${i+1}/${parcalar.length}…`;
+        const u=await (await fetch("/api/ses/yukle-url",{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({jeton:sessionToken||"",kisi_id:kimlikId(),tip:p.tip})})).json();
+        if(!u.ok) throw new Error(u.hata||"Yükleme adresi alınamadı");
+        const put=await fetch(u.url,{method:"PUT",headers:{"Content-Type":u.tip},body:p.blob});
+        if(!put.ok) throw new Error("Ses depoya yüklenemedi");
+        gonder.push({anahtar:u.anahtar, sn:Math.round(p.sn)});
+      }
+      $("#hkDurum").textContent="Yazıya çevriliyor… (uzun kayıtlarda biraz sürebilir)";
+      const r=await (await fetch("/api/hikaye?adim=olustur",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({jeton:sessionToken||"",kisi_id:kimlikId(),hedef_kisi_id:n.id,parcalar:gonder})})).json();
+      if(!r.ok) throw new Error(r.hata||"Kaydedilemedi");
+      kapat();
+      if(r.durum==="islendi") toast(`Yazıya çevrildi — “${r.baslik||"hikâye"}” onaya gönderildi`);
+      else toast(r.mesaj||"Kaydın saklandı, yazıya çevirme yarın yapılacak.");
+      kotaTazele();
+      if(selNode && selNode.id===n.id && renderProfileSections._rerun) renderProfileSections._rerun(n);
+    }catch(e){
+      $("#hkDurum").textContent=String(e.message||e); $("#hkAna").disabled=false; $("#hkVazgec").disabled=false;
+      $("#hkAna").textContent="Tekrar dene";
+    }
+  }
+  $("#hkAna").onclick=baslat;
+}
+
+// Kişi kartında: bu kişi için kaydedilmiş ama henüz ağaçta görünmeyen sesli hikâyeler
+async function bekleyenHikayeler(n, kap){
+  if(!CLOUD.on || !kap) return;
+  try{
+    const r=await fetch("/api/hikaye?adim=liste",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({hedef_kisi_id:n.id})});
+    const j=await r.json(); if(!j.ok) return;
+    const agacta=new Set(((PROFILES[n.id]||{}).memories||[]).map(m=>m.ses_anahtar).filter(Boolean));
+    const l=j.kayitlar.filter(h=>!agacta.has(h.ses_anahtar));
+    if(!l.length){ kap.innerHTML=""; return; }
+    const etiket={bekliyor:"yazıya çevrilmeyi bekliyor", islendi:"yazıya çevrildi · onay bekliyor", hata:"işlenemedi — yönetici bakacak"};
+    kap.innerHTML=`<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 6px">Kaydedilen sesli hikâyeler</div>`+
+      l.map(h=>`<div style="background:var(--bg2);border:1px dashed var(--line2);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <div style="display:flex;gap:8px;align-items:center">${avatarHtml(h.kisi_id,22)}
+          <span style="font-size:12.5px"><b>${escapeHtml(h.baslik||"Sesli hikâye")}</b>
+          <span style="color:var(--muted)"> · ${escapeHtml(byId[h.kisi_id]?dispName(byId[h.kisi_id].name):"")} · ${dkYaz(h.saniye)} · ${etiket[h.durum]||h.durum}</span></span></div>
+        ${sesOynaticiHtml((h.parcalar||[]).map(p=>p.anahtar))}</div>`).join("");
+  }catch(e){}
+}
 
 // ============================ LENS SEÇİCİ ============================
 let branchFilter=null;   // null=tümü, ya da kol kök id → sadece o kol vurgulu
@@ -4416,7 +4807,7 @@ async function sendForApproval(){
     const kk = kimlikId();
   const kim = kk ? dispName((byId[kk]||{}).name||"") : "";
     const r=await fetch("/api/oneri?adim=gonder",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ veri: currentGraphJSON(), jeton: sessionToken||"", gonderen_ad: kim })});
+      body:JSON.stringify({ veri: currentGraphJSON(), jeton: sessionToken||"", gonderen_ad: kim, kisi_id: kk||null })});
     const j=await r.json();
     if(j.ok){
       pendingChanges=false; dirty=false; updatePendingBar(); updateStatus();

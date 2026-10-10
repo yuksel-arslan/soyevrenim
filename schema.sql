@@ -68,3 +68,49 @@ create table if not exists sohbet (
 create index if not exists sohbet_kapsam_idx on sohbet(kapsam, zaman desc);
 
 
+
+-- =====================================================================
+-- ASİSTAN + SESLİ HİKÂYE — ücretsiz katman (docs/asistan.md · hikaye.md · kullanim.md)
+-- Hepsi idempotent: tekrar çalıştırmak güvenli. Kimlik = "adını seç" kişi id'si.
+-- =====================================================================
+
+-- KULLANIM: her asistan mesajı / yazıya çevirme işi bir satır (gerçek usage)
+create table if not exists kullanim (
+  id          bigserial primary key,
+  kisi_id     text not null,                      -- "adını seç" kimliği (p123…)
+  tur         text not null check (tur in ('llm','stt')),
+  model       text not null,
+  girdi_tok   int not null default 0,
+  cikti_tok   int not null default 0,
+  istek       int not null default 1,             -- bu işte sağlayıcıya giden istek sayısı
+  saniye      numeric(10,2) not null default 0,   -- stt: faturalanan ses süresi
+  islem       text not null check (islem in ('soru','ekleme','hikaye','duzenle')),
+  olusturma   timestamptz not null default now()
+);
+create index if not exists kullanim_zaman_idx on kullanim(olusturma desc);
+create index if not exists kullanim_kisi_idx on kullanim(kisi_id, olusturma desc);
+
+-- HİKÂYE KUYRUĞU: ses R2'de saklanır; yazıya çevirme kota varsa hemen, yoksa cron
+create table if not exists hikaye_kuyruk (
+  id           bigserial primary key,
+  kisi_id      text not null,                     -- anlatan
+  hedef_kisi_id text not null,                    -- hikâyesi anlatılan (anının ekleneceği kişi)
+  ses_anahtar  text not null,                     -- ilk parçanın R2 anahtarı
+  parcalar     jsonb not null,                    -- [{anahtar, sn, bayt}] — kayıt sırasında bölünmüş
+  saniye       numeric(10,2) not null default 0,
+  bayt         bigint not null default 0,
+  durum        text not null default 'bekliyor' check (durum in ('bekliyor','islendi','hata')),
+  baslik       text,
+  transkript   text,
+  hata         text,
+  oneri_id     bigint,
+  olusturma    timestamptz not null default now(),
+  islenme      timestamptz
+);
+create index if not exists hikaye_kuyruk_durum_idx on hikaye_kuyruk(durum, olusturma);
+create index if not exists hikaye_kuyruk_hedef_idx on hikaye_kuyruk(hedef_kisi_id, olusturma desc);
+
+-- ÖNERİ: yama (patch) desteği. Yamalı öneri onaylanınca GÜNCEL ağaca uygulanır.
+alter table oneri add column if not exists islem jsonb;
+alter table oneri add column if not exists kaynak text;     -- 'elle' | 'asistan' | 'hikaye'
+alter table oneri add column if not exists kisi_id text;    -- öneren kişinin ağaç id'si

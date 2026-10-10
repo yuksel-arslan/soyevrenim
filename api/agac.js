@@ -4,10 +4,8 @@
 // Ortam değişkeni gerekir: DATABASE_URL  (Neon bağlantı dizesi)
 // Vercel panel → Project → Settings → Environment Variables → DATABASE_URL ekle.
 
-import { neon } from '@neondatabase/serverless';
 import { jetonDogrula } from './giris.js';
-
-const sql = neon(process.env.DATABASE_URL);
+import { db } from './_lib/db.js';
 
 export default async function handler(req, res) {
   // CORS (aynı site zaten sorunsuz; yine de açık tutuyoruz)
@@ -16,6 +14,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const sql = db();
   try {
     if (req.method === 'GET') {
       // ağacı oku
