@@ -1990,6 +1990,7 @@ function esCocukCumlesi(n){
   if(cocuk>0) parcalar.push(`${cocuk} çocuğu var`);
   return parcalar.join(", ");
 }
+setTimeout(()=>{ if(typeof oturumDogrula==="function") oturumDogrula(); }, 0);
 try{ const s=JSON.parse(localStorage.getItem("kok_session")||"null");
   if(s){ sessionToken=s.jeton||s.token||null; sessionRol=s.rol||null; if(sessionRol==="admin"){ isAdmin=true; window.__adminRol="admin"; } } }catch(e){}
 function relativesOf(id){
@@ -2863,10 +2864,12 @@ async function uploadMedia(file, maxW){
     // buluta yükle
     let blob = file;
     if(!isVideo && maxW){ blob = await shrinkImage(file, maxW); }   // fotoğrafı küçült
-    const q = new URLSearchParams({ ad:file.name||"medya", jeton:sessionToken||"" });
-    const r = await fetch("/api/medya?"+q.toString(), { method:"POST",
-      headers:{"Content-Type":file.type||"application/octet-stream"}, body:blob });
-    const j = await r.json();
+    const r = await yetkiliIstek(()=>fetch("/api/medya?"+new URLSearchParams({ ad:file.name||"medya", jeton:sessionToken||"" }).toString(),
+      { method:"POST", headers:{"Content-Type":file.type||"application/octet-stream"}, body:blob }),
+      "Fotoğraf yüklemek için oturumunu yenile: aile ya da yönetici şifreni gir.");
+    // Vercel çok büyük gövdeyi JSON olmayan 413 ile reddeder; anlaşılır mesaj ver
+    if(r.status===413) throw new Error("Dosya çok büyük — daha kısa bir video ya da fotoğraf dene");
+    const j = await r.json().catch(()=>({ ok:false, hata:`Sunucu yanıtı okunamadı (${r.status})` }));
     if(j.ok) return { url:j.url, video:isVideo };
     throw new Error(j.hata||"Yükleme başarısız");
   } else {
@@ -5593,8 +5596,9 @@ async function sendForApproval(){
   try{
     const kk = kimlikId();
   const kim = kk ? dispName((byId[kk]||{}).name||"") : "";
-    const r=await fetch("/api/oneri?adim=gonder",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ veri: currentGraphJSON(), jeton: sessionToken||"", gonderen_ad: kim, kisi_id: kk||null })});
+    const r=await yetkiliIstek(()=>fetch("/api/oneri?adim=gonder",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ veri: currentGraphJSON(), jeton: sessionToken||"", gonderen_ad: kim, kisi_id: kk||null })}),
+      "Değişikliği göndermek için oturumunu yenile.");
     const j=await r.json();
     if(j.ok){
       pendingChanges=false; dirty=false; updatePendingBar(); updateStatus();
@@ -5650,6 +5654,62 @@ function smsShowIfCloud(){
 // Ortak giriş: karşılama ekranı, Aile Sohbeti ve Rehber aynı yolu kullanır.
 // Eskiden şifre kutusu yalnızca karşılamadaydı; ad seçince ekran kapandığı için
 // sonradan giriş yapmanın yolu yoktu (sohbet ve asistan hep kilitli kalıyordu).
+// OTURUM: saklı jeton sunucuda geçersizse (30 gün doldu, OTURUM_GIZLI değişti) arayüz
+// "girişli" görünüp her işlemde "Giriş gerekli" alıyordu. Açılışta doğrulanır ve
+// tazelenir; bir istek yine 401 alırsa küçük bir şifre penceresi açılır, girişten
+// sonra istek kendiliğinden yeniden denenir.
+function oturumKapat(mesaj){
+  sessionToken=null; sessionRol=null;
+  if(isAdmin){ isAdmin=false; window.__adminRol="";
+    const ab=document.getElementById("approvalBtn"); if(ab) ab.style.display="none"; }
+  try{ localStorage.removeItem("kok_session"); }catch(e){}
+  if(selNode && typeof openInspector==="function") openInspector(selNode);
+  if(mesaj) toast(mesaj);
+}
+async function oturumDogrula(){
+  if(!sessionToken) return;
+  try{
+    const r=await fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({adim:"dogrula", jeton:sessionToken})});
+    const j=await r.json();
+    if(j.ok){ sessionToken=j.jeton; try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:j.rol})); }catch(e){} }
+    else if(r.status===401) oturumKapat("Oturumun süresi dolmuş — devam etmek için yeniden giriş yap");
+  }catch(e){}   // ağ hatası oturumu düşürmesin
+}
+// Şifre penceresi → true (giriş yapıldı) / false (vazgeçildi)
+function girisPenceresi(neden){
+  return new Promise(coz=>{
+    const ort=document.createElement("div");
+    ort.style.cssText="position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px";
+    ort.innerHTML=`<div style="width:min(360px,100%);background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:18px;box-shadow:0 16px 50px var(--shadow)">
+      <div style="font-weight:700;font-size:16px;margin-bottom:6px">Giriş gerekli</div>
+      <div style="font-size:13px;color:var(--text-soft);line-height:1.5;margin-bottom:12px">${escapeHtml(neden||"Bu işlem için aile ya da yönetici şifresiyle giriş yap.")}</div>
+      <input type="password" placeholder="Aile ya da yönetici şifresi" autocomplete="current-password"
+        style="width:100%;box-sizing:border-box;font-size:16px;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg2);color:var(--text)">
+      <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+        <button data-iptal class="tbtn">Vazgeç</button>
+        <button data-gir class="tbtn" style="background:var(--accent);color:var(--on-accent);border-color:var(--accent)">Giriş</button>
+      </div></div>`;
+    document.body.appendChild(ort);
+    const inp=ort.querySelector("input"), gir=ort.querySelector("[data-gir]");
+    const bitir=v=>{ ort.remove(); coz(v); };
+    const dene=async()=>{ gir.disabled=true; const j=await sifreyleGir(inp.value); gir.disabled=false;
+      if(j.ok) bitir(true); else { toast(j.hata); inp.select(); } };
+    gir.onclick=dene; inp.addEventListener("keydown",e=>{ if(e.key==="Enter") dene(); if(e.key==="Escape") bitir(false); });
+    ort.querySelector("[data-iptal]").onclick=()=>bitir(false);
+    ort.addEventListener("click",e=>{ if(e.target===ort) bitir(false); });
+    setTimeout(()=>inp.focus(), 50);
+  });
+}
+// Yetki isteyen istek: 401 gelirse oturumu kapat, şifre sor, olursa bir kez yeniden dene.
+// yap() her çağrıda GÜNCEL sessionToken ile isteği kurmalı.
+async function yetkiliIstek(yap, neden){
+  let r=await yap();
+  if(r.status!==401) return r;
+  oturumKapat();
+  if(await girisPenceresi(neden)) r=await yap();
+  return r;
+}
 async function sifreyleGir(sifre){
   sifre=String(sifre||"").trim();
   if(!sifre) return {ok:false, hata:"Şifreyi yaz"};
@@ -5865,8 +5925,9 @@ async function chatSend(kapsam, input, container){
   const kid = kimlikId();
   const ad = kid ? dispName((byId[kid]||{}).name||"")
                  : (isAdmin ? "Yönetici" : "Aile üyesi");
-    const r=await fetch("/api/sohbet?adim=yaz",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({kapsam, mesaj, jeton:sessionToken||"", yazan_ad:ad, kisi_id:kid||""})});
+    const r=await yetkiliIstek(()=>fetch("/api/sohbet?adim=yaz",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({kapsam, mesaj, jeton:sessionToken||"", yazan_ad:ad, kisi_id:kid||""})}),
+      "Mesajını göndermek için oturumunu yenile.");
     const j=await r.json();
     if(j.ok) chatLoad(kapsam, container);
     else toast(j.hata||"Gönderilemedi");
