@@ -351,6 +351,22 @@ canvas{display:block;position:fixed;inset:0;
 .khOneri li{margin-bottom:6px}
 .khBul{margin-top:8px !important;padding-top:8px;border-top:1px dashed var(--line2);color:var(--text-soft) !important;font-size:12.5px}
 .khBos{padding:30px;color:var(--muted)}
+.khKoseGit{font-size:12px;color:var(--accent);text-decoration:none;white-space:nowrap}
+.khKose{margin-top:24px;padding:16px;border:1px solid var(--spine);border-radius:14px;background:var(--bg2)}
+.khAdim{margin:0;padding-left:20px}
+.khAdim li{margin-bottom:8px}
+.khAdim li b{display:block;color:var(--text)}
+.khAdim li span{color:var(--text-soft)}
+.khSozluk{margin:0;display:grid;grid-template-columns:minmax(110px,34%) 1fr;gap:6px 12px;font-size:12.5px}
+.khSozluk dt{font-weight:600;color:var(--text)}
+.khSozluk dd{margin:0;color:var(--text-soft)}
+.khGrup{margin:14px 0 6px;font-size:11px;font-weight:600;letter-spacing:.4px;color:var(--spine);text-transform:uppercase}
+.khKaynakca{margin:0;padding-left:18px;font-size:12.5px}
+.khKaynakca li{margin-bottom:8px;overflow-wrap:anywhere}
+.khKaynakca a{color:var(--accent);text-decoration:none;font-weight:500}
+.khKaynakca a:hover{text-decoration:underline}
+.khKaynakca span{display:block;color:var(--text-soft);margin-top:2px}
+@media (max-width:640px){ .khSozluk{grid-template-columns:1fr} .khSozluk dd{margin-bottom:6px} }
 @media (max-width:640px){ .kokHikaye{width:100%;top:auto;height:82%;border-left:none;border-top:1px solid var(--line);
   border-radius:16px 16px 0 0;transform:translateY(105%)} .kokHikaye.acik{transform:none} .khIc{padding:18px 16px 40px} }
 </style>
@@ -3877,6 +3893,12 @@ const REHBER_KEY="kok_rehber_gorildi";
 
 // Komut tablosu: desen → çalıştırıcı. Sıra önemli (özel olan önce).
 const KOMUTLAR=[
+  { ad:"kaynakca", desen:/kaynakça|kaynaklar|nasıl araştır|araştırma (köşe|kaynak|yap)|arşiv(de|e)? (ara|bak)|tahrir defter/i,
+    calistir:()=>{
+      setTimeout(()=>{ if(typeof window.__kokenHikayeAc==="function"){ window.__kokenHikayeAc();
+        setTimeout(()=>document.getElementById("arastirmaKosesi")?.scrollIntoView({behavior:"smooth"}),400); } }, 900);
+      return "Araştırma köşesini açıyorum: adım adım rehber, arşiv sözlüğü ve kaynakça orada — istersen hepsini tek dosya olarak indirebilirsin.";
+    } },
   { ad:"tarih",  desen:/nereden gel|nereli|nereden geliyor|kökenimiz ne|kökenimiz nere|soyumuz|1615|arhavi|potocur|derbent|uzunal|molla memiş kim|ilk ata|atamız|fahri arslan.*(not|yaz)/i,
     calistir:()=>{
       const T=window.SoyTarihi; if(!T) return null;
@@ -4189,6 +4211,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     "Nereden geldik?",
     "Emine ile Fahri nasıl akraba?",
     "Molla Memiş kimdir?",
+    "Araştırma kaynakları",
     "Yüksel'i göster",
     "Aslanişi kolunu göster",
     "Kollar neler?",
@@ -4303,7 +4326,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   // calistirKomut() ücretsiz yedek olarak yanıtlar ve bir satırla söylenir.
   // Yalnızca ARAYÜZ komutları (köken, istatistik, kol, nesil aralığı…) doğrudan
   // yerelde çalışır: asistanın ekranı yönetme aracı yok, kota harcamaya da gerek yok.
-  const YEREL=new Set(["koken","istat","yasayan","tumu","bakim","kollar"]);
+  const YEREL=new Set(["koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
   function yerelArayuzMu(t){
     for(const k of KOMUTLAR){
       if(k.ad==="kol") return typeof kolBul==="function" && !!kolBul(t);
@@ -4413,7 +4436,9 @@ function kokenHikayesiCiz(kap){
       <p>${escapeHtml(x.metin)}</p>${x.kaynak&&x.kaynak.length?`<div class="khKaynak">Kaynak: ${kay(x.kaynak)}</div>`:""}</div>`;
   kap.innerHTML=`
     <div class="khIc">
-      <div class="khUst">Kökenimizin hikâyesi</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+        <div class="khUst">Kökenimizin hikâyesi</div>
+        <a href="#arastirmaKosesi" id="koseGit" class="khKoseGit">🔎 Araştırma köşesi</a></div>
       <blockquote class="khNot">
         <p>“${escapeHtml(T.FAHRI_NOTU.metin)}”</p>
         <footer>${escapeHtml(T.FAHRI_NOTU.imza)} <span>· çizimin sağ alt köşesindeki not</span></footer>
@@ -4430,11 +4455,53 @@ function kokenHikayesiCiz(kap){
         <p>${escapeHtml(a.metin)}</p>
         <p class="khBul"><b>Ne bulunabilir:</b> ${escapeHtml(a.bulunabilir)}</p>
         ${a.kaynak&&a.kaynak.length?`<div class="khKaynak">Kaynak: ${kay(a.kaynak)}</div>`:""}</div></li>`).join("")}</ol>
-      <h4>Daha derine inmek için</h4>
+      <h4>Somut ipuçları</h4>
       <ul class="khOneri">${T.ARASTIRMA_ONERILERI.map(o=>`<li>${escapeHtml(o)}</li>`).join("")}</ul>
+
+      <section class="khKose" id="arastirmaKosesi">
+        <div class="khUst" style="margin:0 0 6px">Gençler için araştırma köşesi</div>
+        <p class="khAcik" style="margin-top:0">Soyumuzun izini sürmek bir dedektiflik işi. Aşağıdaki adımlar, sözlük ve kaynakça yol gösterir — bulduğun her şey ailenin ortak hafızasına eklenir.</p>
+        <h4>Adım adım</h4>
+        <ol class="khAdim">${(T.ARASTIRMA_REHBERI||[]).map(a=>`<li><b>${escapeHtml(a.adim)}</b><span>${escapeHtml(a.metin)}</span></li>`).join("")}</ol>
+        <h4>Arşiv sözlüğü</h4>
+        <dl class="khSozluk">${(T.SOZLUK||[]).map(([t,a])=>`<dt>${escapeHtml(t)}</dt><dd>${escapeHtml(a)}</dd>`).join("")}</dl>
+        <h4>Kaynakça</h4>
+        ${Object.entries(T.KAYNAK_GRUPLARI||{}).map(([g,baslik])=>{
+          const l=Object.values(T.KAYNAKLAR).filter(k=>k.kat===g);
+          return l.length ? `<div class="khGrup">${escapeHtml(baslik)}</div><ul class="khKaynakca">${l.map(k=>
+            `<li><a href="${escapeHtml(k.url)}" target="_blank" rel="noopener">${escapeHtml(k.ad)}</a>${k.not?`<span>${escapeHtml(k.not)}</span>`:""}</li>`).join("")}</ul>` : "";
+        }).join("")}
+        <div class="khGrup">${escapeHtml((T.KAYNAK_GRUPLARI||{}).birincil||"Birincil kaynak")}</div>
+        <ul class="khKaynakca"><li><b>Fahri Arslan — Abdurrahman Oğullarının Soy Ağacı (1956, el çizimi)</b><span>Bu sayfadaki çizim ve sağ alt köşesindeki not. Ailede saklanan asıl kâğıt.</span></li></ul>
+        <button class="tbtn" id="kaynakcaIndir" style="margin-top:12px;width:100%;justify-content:center">⇩ Kaynakçayı ve rehberi indir (.md)</button>
+      </section>
       <p class="khAcik">Aile büyüklerinin bildikleri bu sayfadaki her şeyden değerlidir: bir kişinin kartında <b>🎙 Hikâye anlat</b> ile kaydedebilirsin.</p>
     </div>`;
   kap.dataset.dolu="1";
+  const ind=kap.querySelector("#kaynakcaIndir"); if(ind) ind.onclick=()=>kaynakcaIndir(T);
+  const git=kap.querySelector("#koseGit");
+  if(git) git.onclick=e=>{ e.preventDefault(); kap.querySelector("#arastirmaKosesi").scrollIntoView({behavior:"smooth"}); };
+}
+// Kaynakça + rehber + sözlük + arşiv kayıtları tek bir Markdown dosyası olarak (çevrimdışı okumak, paylaşmak için)
+function kaynakcaIndir(T){
+  const s=[];
+  s.push(`# Abdurrahman Oğulları — Kökenimiz ve Araştırma Kaynakları`,``);
+  s.push(`> “${T.FAHRI_NOTU.metin}”  `,`> ${T.FAHRI_NOTU.imza}`,``);
+  s.push(`## Adım adım araştırma`,``); (T.ARASTIRMA_REHBERI||[]).forEach((a,i)=>s.push(`${i+1}. **${a.adim}** — ${a.metin}`)); s.push(``);
+  s.push(`## Osmanlı Arşivi kayıtları`,``);
+  (T.ARSIV||[]).forEach(a=>{ s.push(`### ${a.yil} — ${a.ad} (${T.GUVEN_ETIKETI[a.guven]})`,``,a.metin,``,`**Ne bulunabilir:** ${a.bulunabilir}`,``); });
+  s.push(`## Somut ipuçları`,``); T.ARASTIRMA_ONERILERI.forEach(o=>s.push(`- ${o}`)); s.push(``);
+  s.push(`## Arşiv sözlüğü`,``); (T.SOZLUK||[]).forEach(([t,a])=>s.push(`- **${t}:** ${a}`)); s.push(``);
+  s.push(`## Kaynakça`,``);
+  Object.entries(T.KAYNAK_GRUPLARI||{}).forEach(([g,b])=>{
+    const l=Object.values(T.KAYNAKLAR).filter(k=>k.kat===g); if(!l.length) return;
+    s.push(`### ${b}`,``); l.forEach(k=>s.push(`- [${k.ad}](${k.url})${k.not?` — ${k.not}`:""}`)); s.push(``);
+  });
+  s.push(`### Birincil kaynak`,``,`- Fahri Arslan — Abdurrahman Oğullarının Soy Ağacı (1956, el çizimi)`,``);
+  s.push(`---`,`soyevrenim.com · ${new Date().toLocaleDateString("tr-TR")}`);
+  const u=URL.createObjectURL(new Blob([s.join("\n")],{type:"text/markdown;charset=utf-8"}));
+  const a=document.createElement("a"); a.href=u; a.download="abdurrahman-ogullari-kaynakca.md"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(u),1000);
 }
 
 // ============================ ÜCRETSİZ ASİSTAN · SESLİ HİKÂYE · AİLEMİZİN BU AYI ============================

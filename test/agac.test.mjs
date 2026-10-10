@@ -91,6 +91,11 @@ test('soy tarihi: Fahri Arslan notu birebir, her bilgi güven etiketli, kaynakla
     assert.ok(T.GUVEN_ETIKETI[x.guven], x.ad || x.baslik);
     for (const k of x.kaynak) assert.ok(T.KAYNAKLAR[k]?.url?.startsWith('https://'), k);
   }
+  for (const [k, v] of Object.entries(T.KAYNAKLAR)) {
+    assert.ok(T.KAYNAK_GRUPLARI[v.kat], `${k}: kategori`);
+    assert.ok(v.not && v.url.startsWith('https://'), `${k}: not/url`);
+  }
+  assert.ok(T.SOZLUK.length >= 8 && T.ARASTIRMA_REHBERI.length >= 5);
   const o = T.soyTarihiOzet();
   assert.ok(o.fahri_arslan_notu.includes('1956'));
   assert.ok(o.osmanli_arsivi.some((a) => a.yil === '1835' && /1165/.test(a.defter)));
