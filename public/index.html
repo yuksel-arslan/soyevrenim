@@ -537,6 +537,7 @@ body:has(.inspector.show) #activeCard{display:none !important}
     </div>
     <button id="skipWho" style="margin-top:16px;background:none;border:none;color:var(--muted);
       font-size:13px;cursor:pointer;text-decoration:underline">Sadece bakmak istiyorum</button>
+    <a href="/kilavuz.html" target="_blank" rel="noopener" style="display:block;margin-top:10px;font-size:13px;color:var(--text-soft);text-decoration:none">📖 Siteyi nasıl kullanırım? <span style="text-decoration:underline">Kullanma kılavuzu</span></a>
 
     <!-- KAYIT: ağaçta yoksan kendini MEVCUT bir kişiye bağlayarak ekle (bağsız kayıt yok) -->
     <form id="kayitForm" autocomplete="off" onsubmit="return false">
@@ -613,6 +614,7 @@ body:has(.inspector.show) #activeCard{display:none !important}
   <button id="statsBtn" title="İstatistikler"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></button>
   <button id="kokenBtn" title="Köken — 1956, Fahri Arslan'ın eseri"><svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v4h4M8.5 13h7M8.5 16.5h7M8.5 9.5h2"/></svg></button>
   <button id="lensBtn" title="Katman / renklendirme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg></button>
+  <button id="kilavuzBtn" title="Kullanma kılavuzu" onclick="window.open('/kilavuz.html','_blank','noopener')"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M8 7h8M8 11h6"/></svg></button>
   <button id="themeBtn" title="Gece / Gündüz modu"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
   <button id="chatBtn" title="Aile sohbeti" style="display:none;position:relative"><svg viewBox="0 0 24 24"><path d="M20 12a7 7 0 0 1-9.5 6.5L4 20l1.5-4.5A7 7 0 1 1 20 12z"/></svg><span id="chatRozet" style="display:none;position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--on-accent);font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--panel)"></span></button>
   <button id="adminBtn" title="Yönetici girişi"><svg viewBox="0 0 24 24"><circle cx="8" cy="10" r="4"/><path d="M11 12l7 7M16 20l2-2M18 18l2-2"/></svg></button>
@@ -6039,7 +6041,7 @@ applyEvren();
 (function dockEtiketleri(){
   const E={ fitBtn:"Sığdır", zinBtn:"Yakın", zoutBtn:"Uzak", physBtn:"Fizik", reparentBtn:"Bağ",
     rehberBtn:"Çınar", duzBtn:"Görünüm", kafesBtn:"Örgü", pathBtn:"Yol bul", focusBtn:"Odak",
-    genBtn:"Nesil", statsBtn:"Sayılar", kokenBtn:"Köken", lensBtn:"Katman", themeBtn:"Tema",
+    genBtn:"Nesil", statsBtn:"Sayılar", kokenBtn:"Köken", lensBtn:"Katman", kilavuzBtn:"Kılavuz", themeBtn:"Tema",
     chatBtn:"Sohbet", adminBtn:"Yönetici", approvalBtn:"Onay" };
   document.querySelectorAll(".dock button").forEach(b=>{
     const e=E[b.id] || (b.title||"").split(/[—(/]/)[0].trim().split(" ")[0];
