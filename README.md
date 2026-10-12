@@ -13,7 +13,7 @@ onayından geçer.
 - **Foto & video** — Cloudflare R2'de (sesli hikâyelerle aynı depo) ortak saklanır, herkes görür
 - **Fotoğraflı avatarlar, iletişim, sosyal medya, anılar**
 - **Mobil uyumlu, dark/light/yadigâr**
-- **Asistan** — soru yanıtlar, konuşarak kişi ekleme önerir (Groq, ücretsiz katman) · [docs/asistan.md](docs/asistan.md)
+- **Asistan** — soru yanıtlar, konuşarak kişi ekleme önerir (OpenAI GPT, günlük harcama tavanlı) · [docs/asistan.md](docs/asistan.md) · beceri: [docs/cinar-beceri.md](docs/cinar-beceri.md)
 - **Sesli hikâye** — kendi sesinle anlat; saklanır, yazıya çevrilir, anı olarak onaya gider · [docs/hikaye.md](docs/hikaye.md)
 - **Kökenimiz ve araştırma köşesi** — Fahri Arslan'ın 1956 notu, Osmanlı arşiv kayıtları, gençler için adım adım rehber, sözlük ve kaynakça · [docs/kaynakca.md](docs/kaynakca.md)
 - **Ailemizin bu ayı** — kota, katkılar, hikâye şeridi · [docs/kullanim.md](docs/kullanim.md)

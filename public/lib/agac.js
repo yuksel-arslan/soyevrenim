@@ -408,6 +408,7 @@ export function kisiBirlestir(veri0, tutId, silId) {
   const veri = JSON.parse(JSON.stringify(veri0));
   const tut = (veri.nodes || []).find((n) => n.id === tutId), sil = (veri.nodes || []).find((n) => n.id === silId);
   if (!tut || !sil) throw new Error('Kişi bulunamadı');
+  if ((tut.sex || '') !== (sil.sex || '')) throw new Error('Farklı cinsiyetteki iki kayıt aynı kişi olamaz');
   const ad = (s) => String(s || '').replace(' (aileden)', '').trim();
   const tasi = (liste, tur) => {
     const gor = new Set(), out = [];
@@ -472,8 +473,8 @@ export function olasiKopyalar(veri, id) {
 }
 
 // ---- KURAL: anne-babası aynı iki kişi aynı adı taşıyamaz ----
-// Aynı baba (edges) ve aynı anne (motherEdges) altında aynı adlı iki kardeş = aynı kişinin iki
-// kaydı. Anahtar: baba|anne|ad (ad: soyad ve sıra numarası dahil, harf/aksan duyarsız).
+// Aynı baba (edges) ve aynı anne (motherEdges) altında aynı adlı, aynı cinsiyette iki kardeş = aynı
+// kişinin iki kaydı. Anahtar: baba|anne|cinsiyet|ad (ad: soyad ve sıra numarası dahil, harf/aksan duyarsız).
 // Anne-babası hiç bilinmeyenler ve "Yeni kişi" taslağı kural dışı. Ad anahtarı: adAnahtari (sıra no korunur).
 const TASLAK_AD = 'yeni kisi';
 export function ayniAdliKardesler(veri) {
@@ -483,7 +484,7 @@ export function ayniAdliKardesler(veri) {
   for (const n of veri.nodes || []) {
     const b = baba.get(n.id) || '', a = anne.get(n.id) || '', ad = adAnahtari(n.name);
     if ((!b && !a) || !ad || ad === TASLAK_AD) continue;
-    const k = `${b}|${a}|${ad}`;
+    const k = `${b}|${a}|${n.sex || ''}|${ad}`;   // kız ve oğlan aynı adı taşısa da ayrı kişidir
     if (!gruplar.has(k)) gruplar.set(k, []);
     gruplar.get(k).push(n);
   }
@@ -498,3 +499,29 @@ export function yeniKardesIhlali(eski, yeni) {
 }
 export const kardesIhlaliMetni = (l) =>
   `Anne-babası aynı iki kişi aynı adı taşıyamaz: ${l.map((x) => `“${x.ad}”`).join(', ')}. Aynı kişiyse kayıtları birleştir; farklı kişilerse adın sonuna sıra numarası ekle (ör. ${l[0].ad}2 — ekranda yine “${l[0].ad}” görünür).`;
+
+// ---- ÇİFT KAYIT TARAMASI (yönetici "Çift kayıtlar" ekranı) ----
+// Aynı kişinin iki kaydı olabilecek çiftler, güçlüden zayıfa:
+//   kural   → anne-babası aynı, adı aynı (ayniAdliKardesler) — ya birleştirilmeli ya sıra no almalı
+//   tam-ad  → ad + soyad sözcükleri biri ötekinde tümüyle geçiyor ("Nevin Kaya" ⊂ "Nevin Arslan (Kaya)"),
+//             aynı cinsiyet, babaları çelişmiyor (biri bilinmiyor ya da aynı)
+// Tek sözcüklü adaşlar (çok sayıda Mehmet, Ali) önerilmez; karar her zaman yöneticinin.
+export function ciftKayitlar(veri) {
+  const by = Object.fromEntries((veri.nodes || []).map((n) => [n.id, n]));
+  const baba = new Map((veri.edges || []).map((e) => [e.to, e.from]));
+  const gor = new Set(), out = [];
+  const ekle = (a, b, neden) => { const k = [a, b].sort().join('|'); if (gor.has(k) || a === b) return; gor.add(k); out.push({ ids: [a, b], neden }); };
+  for (const g of ayniAdliKardesler(veri)) for (let i = 1; i < g.ids.length; i++) ekle(g.ids[0], g.ids[i], 'kural');
+  const sozcuk = (n) => adAnahtari(n.name).replace(/\d+/g, '').split(' ').filter(Boolean);
+  const l = (veri.nodes || []).filter((n) => sozcuk(n).length >= 2);
+  for (const a of l) for (const b of veri.nodes || []) {
+    if (a.id === b.id || a.sex !== b.sex) continue;
+    const sa = sozcuk(a), sb = sozcuk(b);
+    if (sa[0] !== sb[0] || !sa.every((w) => sb.includes(w))) continue;
+    const ba = baba.get(a.id), bb = baba.get(b.id);
+    if (ba && bb && ba !== bb) continue;
+    if (ba === b.id || bb === a.id) continue;
+    ekle(a.id, b.id, 'tam-ad');
+  }
+  return out.map((c) => ({ ...c, adlar: c.ids.map((i) => by[i] && by[i].name) }));
+}

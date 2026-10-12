@@ -25,7 +25,7 @@ export function cors(res, yontemler = 'POST, OPTIONS') {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
-// Gün = UTC günü (Groq sayaçları UTC 00:00'da sıfırlanır = TR 03:00)
+// Gün = UTC günü (günlük kota UTC 00:00'da sıfırlanır = TR 03:00)
 export function gunBasi(d = new Date()) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString();
 }

@@ -32,17 +32,17 @@ Mobil: 16 px kenar, tek sütun, yatay kaydırma yok (Playwright ile 390 px geni�
 - `hikaye_kuyruk` — hikâyeler, süre, boyut
 - `oneri` — `durum='onaylandi'` ve `karar_zaman` bu ay; `fark.eklenen` uzunluğu, `kisi_id` (öneren)
 
-## Ücretsiz kota hesabı (özet)
+## Kota ve maliyet (özet)
 
-| Kaynak | Ücretsiz sınır | Sistemin kullandığı | Pratikte |
+| Kaynak | Sınır | Sistemin kullandığı | Pratikte |
 |---|---|---|---|
-| Groq `openai/gpt-oss-120b` | 1K istek, 200K token / gün | %95 (950 / 190K) | ~30–60 asistan mesajı / gün |
-| Groq `whisper-large-v3-turbo` | 28.800 sn / gün | %95 (27.000 sn) | ~7,5 saat ses / gün |
+| OpenAI `gpt-5-mini` (ücretli) | günlük tavan 950 istek, 190K token | tavan = harcama sınırı | ~30–60 asistan mesajı / gün |
+| OpenAI `whisper-1` (ücretli) | günlük tavan 27.000 sn | tavan = harcama sınırı | ~7,5 saat ses / gün |
 | Cloudflare R2 | 10 GB | `DEPOLAMA.kotaBayt` | ~700 saat ses (32 kbps) |
 | Vercel Hobby | 12 fonksiyon | 9 fonksiyon | `agac, giris, medya, oneri, sohbet, asistan, ses, hikaye, kullanim` |
 | Neon | mevcut | — | tablolar küçük |
 
-Ödeme sistemi yoktur (Vercel Hobby ticari kullanımı yasaklar).
+Sitede kullanıcıdan ödeme alınmaz (Vercel Hobby ticari kullanımı yasaklar); OpenAI faturası yöneticinin hesabına gelir.
 
 ## Dosyalar
 

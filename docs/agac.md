@@ -94,6 +94,21 @@ cinsiyet; babaları farklı adaşlar önerilmez). Pencerede hangi adın kalacağ
   (`kayitEkle`; çift kayıt böyle oluşuyordu).
 - Test: `test/agac.test.mjs`, `test/kayit.test.mjs`.
 
+## Çift kayıtlar ekranı (veritabanı temizliği, yönetici)
+
+Hesap menüsü → **🧹 Çift kayıtlar (N)** ya da Çınar'a "çift kayıtları bul". `ciftKayitlar(veri)` iki tür çift bulur:
+
+| Tür | Ölçüt |
+|---|---|
+| `kural` | Anne-babası, cinsiyeti ve adı aynı (sıra numarası farklı ad sayılır) |
+| `tam-ad` | Ad + soyad sözcükleri biri ötekinde tümüyle geçiyor ("Nevin Kaya" ⊂ "Nevin Arslan (Kaya)"), aynı cinsiyet, babaları çelişmiyor |
+
+Tek sözcüklü adaşlar (çok sayıda Mehmet, Ali) ve farklı babalılar önerilmez. Her çift için:
+**⇄ Birleştir** (hangi ad kalsın penceresi) ya da **Farklı kişiler**: `kural` çiftinde ikinci kayda ilk boş
+sıra numarası eklenir (Ali → Ali2; ekranda yine "Ali"), `tam-ad` çiftinde bu tarayıcıda gizlenir
+(`localStorage.kok_cift_farkli`). Farklı cinsiyetteki kayıtlar asla birleştirilmez (kız ve oğlan aynı adı taşısa da ayrı kişidir).
+Canlı veritabanı yalnız bu ekrandan (yönetici oturumuyla) temizlenir; işlemler `gunluk`'e yazılır, geri alınabilir.
+
 ## Ortam değişkenleri
 
 `DATABASE_URL`, `OTURUM_GIZLI`.

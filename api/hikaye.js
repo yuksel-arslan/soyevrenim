@@ -4,7 +4,7 @@
 // POST /api/hikaye?adim=liste   {hedef_kisi_id}  → o kişi için kayıtlar (bekleyen / işlenen)
 // GET  /api/hikaye?adim=kuyruk  (Vercel Cron, her gün 00:30 UTC = 03:30 TR; Bearer CRON_SECRET)
 //
-// Env: GROQ_API_KEY, R2_*, DATABASE_URL, OTURUM_GIZLI, CRON_SECRET   · Ayrıntı: docs/hikaye.md
+// Env: OPENAI_API_KEY, R2_*, DATABASE_URL, OTURUM_GIZLI, CRON_SECRET   · Ayrıntı: docs/hikaye.md
 import { db, cors, govde, sayi } from './_lib/db.js';
 import { SES } from './_lib/ayar.js';
 import { kimlikCoz, KimlikHatasi } from './_lib/kimlik.js';

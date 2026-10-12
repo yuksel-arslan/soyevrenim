@@ -11,7 +11,7 @@ MediaRecorder (webm/opus, mono, 32 kbps; iOS: mp4) ── her SES.parcaSn'de yen
    └─ PUT ─────────────────────► Cloudflare R2   (ses Vercel'den GEÇMEZ)
 POST /api/hikaye?adim=olustur {parcalar}
    ├─ R2 HEAD ile gerçek boyut, anahtar sahibi kontrolü → hikaye_kuyruk
-   ├─ kota var  → whisper (Groq, imzalı GET URL'den) → LLM düzenleme → anı + öneri  (durum: islendi)
+   ├─ kota var  → whisper (OpenAI `whisper-1`; sunucu sesi imzalı URL'den indirip yükler) → LLM düzenleme → anı + öneri  (durum: islendi)
    └─ kota yok  → "Kaydın saklandı, yazıya çevirme yarın yapılacak."            (durum: bekliyor)
 Vercel Cron 00:30 UTC (03:30 TR) → GET /api/hikaye?adim=kuyruk → kota elverdikçe sırayla işler
 ```
@@ -51,7 +51,7 @@ Aynı işin cron ve anlık istekle iki kez işlenmesini `islenme` kilidi (`SES.k
 
 | Sınır | Değer | Not |
 |---|---|---|
-| Sistem günlük ses | `GUNLUK_SISTEM.sesSn` = 27.000 sn (Groq 28.800'ün %95'i ≈ 7,5 saat) | whisper istek başına en az 10 sn sayar |
+| Sistem günlük ses | `GUNLUK_SISTEM.sesSn` = 27.000 sn (≈ 7,5 saat; harcama tavanı) | whisper istek başına en az 10 sn sayar |
 | Kişi günlük ses | `GUNLUK_KISI.sesDk` = 30 dk | anlatan kişiye yazılır |
 | LLM düzenleme | sistem token kotasından düşer, kişi mesaj hakkından **düşmez** | tahmin: `SES.tokenDk` × dk × 2 |
 | Depolama | R2 10 GB (`DEPOLAMA.kotaBayt`) | 32 kbps ≈ 0,24 MB/dk → **~700 saat** ses |
@@ -62,7 +62,7 @@ Kayıt: her yazıya çevirme bir `kullanim(tur='stt', saniye, islem='hikaye')`, 
 
 | Ad | Açıklama |
 |---|---|
-| `GROQ_API_KEY` | whisper + düzenleme |
+| `OPENAI_API_KEY` | whisper + düzenleme |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Cloudflare R2 (S3 uyumlu API jetonu, yalnızca bu kova: Object Read & Write) |
 | `CRON_SECRET` | Vercel Cron yetkisi (Vercel otomatik `Authorization: Bearer` gönderir) |
 
@@ -78,5 +78,5 @@ Kayıt: her yazıya çevirme bir `kullanim(tur='stt', saniye, islem='hikaye')`, 
 
 ## Dosyalar
 
-`api/ses.js` · `api/hikaye.js` · `api/_lib/hikaye-isle.js` · `api/_lib/r2.js` · `api/_lib/groq.js` ·
+`api/ses.js` · `api/hikaye.js` · `api/_lib/hikaye-isle.js` · `api/_lib/r2.js` · `api/_lib/llm.js` ·
 istemci: `hikayeAnlat()`, `bekleyenHikayeler()`, `sesOynaticiHtml()`

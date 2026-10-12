@@ -1,7 +1,7 @@
 # Asistan — `POST /api/asistan`
 
 Soy ağacı hakkında soru yanıtlayan ve konuşarak kişi/ilişki ekleme **önerisi** oluşturan LLM asistanı.
-Tamamen ücretsiz katmanda çalışır (Groq). Kota dolunca hazır bilgi katmanı (`KOMUTLAR` / `calistirKomut()`) yanıtlar.
+OpenAI GPT ile çalışır (`gpt-5-mini`, ücretli; günlük harcama tavanıyla sınırlı). Kota dolunca hazır bilgi katmanı (`KOMUTLAR` / `calistirKomut()`) yanıtlar.
 
 ## Akış
 
@@ -9,7 +9,7 @@ Tamamen ücretsiz katmanda çalışır (Groq). Kota dolunca hazır bilgi katman�
 Asistan girişi / 🎤 ─► arayüz komutu mu? (köken, istatistik, kol, "3-6 nesil", tümünü göster…)
                         ├─ evet ─► calistirKomut() (yerel, kota harcamaz)
                         └─ hayır ─► POST /api/asistan
-                                     ├─ kimlik yok / kota dolu / Groq 429 ─► {yedek:true, mesaj}
+                                     ├─ kimlik yok / kota dolu / sağlayıcı 429 ─► {yedek:true, mesaj}
                                      │        └─ istemci: calistirKomut() + tek satır not
                                      └─ araç döngüsü (≤ 4 tur) ─► {yanit, gorsel, oneriler, kota}
 ```
@@ -170,22 +170,31 @@ baba, bilinmeyen ilişki) araç sonucu olarak modele hata döner; öneri oluşma
 
 ## İstem boyutu
 
-`MESAJ_MAX_TOKEN` (4000): tüm ağaç **asla** isteme konmaz, araçla çekilir. Her istekten önce `sigdir()` kaba tahminle
+`MESAJ_MAX_TOKEN` (5000): tüm ağaç **asla** isteme konmaz, araçla çekilir. Her istekten önce `sigdir()` kaba tahminle
 (`ASISTAN.tokenKarakter` karakter ≈ 1 token) ölçer; aşarsa önce eski geçmiş, sonra en uzun araç sonucu kısaltılır.
 Araç sonuçları ayrıca `ASISTAN.aracSonucMaxKarakter` ile kırpılır. Son turda araç verilmez → model yanıt yazmak zorunda.
 
-## Kota (ücretsiz katman)
+## Kota (günlük harcama tavanı)
+
+OpenAI API'nin ücretsiz sürümü yoktur (ChatGPT'nin ücretsiz planı yalnız uygulama içindir); kullandıkça
+ödenir. Günlük sınırlar bu yüzden **harcama tavanıdır**: aşılırsa asistan ertesi güne kadar hazır bilgi
+katmanıyla yanıtlar.
 
 | Sınır | Değer (`api/_lib/ayar.js`) | Kontrol |
 |---|---|---|
-| Sistem günlük token | `GUNLUK_SISTEM.token` = 190.000 (Groq 200K'nın %95'i) | kalan < `MESAJ_MAX_TOKEN` ise başlatılmaz |
-| Sistem günlük istek | `GUNLUK_SISTEM.istek` = 950 (Groq 1K'nın %95'i) | her Groq çağrısı sayılır (`kullanim.istek`) |
+| Sistem günlük token | `GUNLUK_SISTEM.token` = 190.000 | kalan < `MESAJ_MAX_TOKEN` ise başlatılmaz |
+| Sistem günlük istek | `GUNLUK_SISTEM.istek` = 950 | her model çağrısı sayılır (`kullanim.istek`) |
 | Kişi günlük mesaj | `GUNLUK_KISI.mesaj` = 20 | `islem ∈ {soru, ekleme, duzenle}` satır sayısı |
-| Gün sınırı | UTC 00:00 = **TR 03:00** | Groq sayaçlarıyla aynı an |
+| Gün sınırı | UTC 00:00 = **TR 03:00** | |
 
-Ücretsiz kota hesabı: bir mesaj tipik olarak 2–3 Groq isteği ve ~3–6K token harcar → günde kabaca **30–60 asistan mesajı**
-(token sınırı önce dolar). 20 mesaj/kişi sınırı, birkaç kişinin tüm kotayı tüketmesini engeller. Groq ayrıca dakikalık
-sınır uygular; 429 gelirse kullanıcıya hata gösterilmez, hazır bilgi yanıtlar.
+Bir mesaj tipik olarak 2–3 model isteği ve ~3–6K token harcar → günde kabaca **30–60 asistan mesajı**
+(token tavanı önce dolar). Tavan tamamen dolsa bile günlük maliyet `gpt-5-mini` fiyatlarıyla birkaç
+on sentlik düzeydedir (güncel fiyat: platform.openai.com/pricing). 20 mesaj/kişi sınırı birkaç kişinin
+tüm tavanı tüketmesini engeller. 429 gelirse kullanıcıya hata gösterilmez, hazır bilgi yanıtlar.
+
+**Model seçimi:** `gpt-5-mini` — araç çağırma ve kurallara uyma (yalnız araç sonucundan bilgi ver,
+uydurma) güçlü, maliyeti düşük. `gpt-5-nano` daha ucuz ama zayıf; `gpt-5` daha güçlü ve pahalı.
+Değiştirmek: `LLM.model` (tek satır).
 
 Kayıt: her `/api/asistan` çağrısı **gerçek** `usage` (prompt/completion token toplamı ve istek sayısı) ile bir `kullanim` satırı
 yazar (yarıda 429 olsa bile harcanan kısım yazılır).
@@ -199,24 +208,44 @@ yazar (yarıda 429 olsa bile harcanan kısım yazılır).
 
 | Ad | Açıklama |
 |---|---|
-| `GROQ_API_KEY` | Groq API anahtarı (console.groq.com) |
+| `OPENAI_API_KEY` | OpenAI API anahtarı (platform.openai.com) |
 | `DATABASE_URL` | Neon (mevcut) |
 | `OTURUM_GIZLI` | jeton imzası (mevcut) |
 
-## Groq ayarı (yönetici yapar)
+## OpenAI ayarı (yönetici yapar)
 
-1. console.groq.com → API Keys → anahtar oluştur → Vercel → Settings → Environment Variables → `GROQ_API_KEY`.
-2. **Settings → Data Controls → Zero Data Retention: AÇ.** Aile anıları ve sorular Groq'ta saklanmaz.
-3. Model değiştirmek: `api/_lib/ayar.js` → `LLM.model` (tek satır). Sağlayıcı OpenAI uyumlu uç kullanır (`SAGLAYICI`).
+1. platform.openai.com → **Billing**: ödeme yöntemi ekle; **Limits** → aylık bütçe sınırı koy (ör. 5 $) — tavanın üstünde bir güvenlik ağı.
+2. **API keys** → anahtar oluştur → Vercel → Settings → Environment Variables → `OPENAI_API_KEY` → yeniden dağıt.
+3. API verisi varsayılan olarak modeli eğitmek için kullanılmaz. (Organization → Data controls'taki
+   "veri paylaşımı karşılığı ücretsiz günlük token" programı hesabında açıksa maliyeti düşürür; aile anıları
+   paylaşılacağı için açmak yöneticinin kararıdır.)
+4. Model değiştirmek: `api/_lib/ayar.js` → `LLM.model`; sağlayıcı: `LLM.saglayici` (`SAGLAYICI` içinde `openai`, eski `groq`).
+5. Eski `GROQ_API_KEY` artık kullanılmaz; Vercel'den silinebilir.
+
+## Beceri (bilgi tabanı)
+
+Köken, araştırma, bölge, Lazca ve site bilgisi tek bilgi tabanında; model `bilgi_ara` aracıyla yalnız
+ilgili parçaları alır. Ayrıntı: [docs/cinar-beceri.md](cinar-beceri.md).
 
 ## Dosyalar
 
-`api/asistan.js` · `api/_lib/ayar.js` · `api/_lib/groq.js` · `api/_lib/kota.js` · `api/_lib/kimlik.js` ·
+`api/asistan.js` · `api/_lib/ayar.js` · `api/_lib/llm.js` · `api/_lib/kota.js` · `api/_lib/kimlik.js` ·
 `api/_lib/agac.js` (→ `public/lib/agac.js`) · `api/_lib/oneri.js` · istemci: `public/index.html` → `rehberGonder()`
 
 ## Test
 
 `npm test` (birim) · `TEST_DATABASE_URL=postgres://… npm test` (uçtan uca; `npm i --no-save pg`).
 Senaryolar: "Ayşe, Fahri'nin kız kardeşi" → belirsizlikte soru, netleşince öneri + onayda ağaca ekleme;
-"Emine ile Fahri nasıl akraba?" → yol + kaynaklı yanıt; sistem/kişi kotası dolu → yedek; Groq 429 → yedek.
+"Emine ile Fahri nasıl akraba?" → yol + kaynaklı yanıt; sistem/kişi kotası dolu → yedek; sağlayıcı 429 → yedek.
 LLM testlerde **senaryolu taklittir**: tesisatı doğrular, modelin gerçek davranışını değil.
+
+
+## "X ile Y aynı kişi" → birleştirme
+
+Kullanıcı iki kaydın aynı kişi olduğunu söylerse ("Nevin Kaya ile Nevin Arslan (Kaya) aynı kişi",
+"… birleştir") istek **modele gitmez**; yerel komut (`birlestirKomutu`) iki kişiyi bulur:
+- Adaş varsa hangisi olduğu seçenekle sorulur (baba adı ve nesille).
+- **Yönetici:** "⇄ Evet, birleştir" → birleştirme penceresi (hangi ad kalsın) → `kisileriBirlestir`.
+- **Aile üyesi:** "⇄ Yöneticiye öner" → birleşmiş ağaç öneri olarak onaya gider.
+- Farklı cinsiyetteki iki kayıt birleştirilmez. Kural: `api/_lib/agac.js → kisiBirlestir`.
+Model yanıtlarında iç kimlikler (id) ve Markdown işaretleri gösterilmez (`yanitTemizle`; sistem istemi kural 12–13).
