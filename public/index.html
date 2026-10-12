@@ -547,6 +547,40 @@ body:has(.inspector.show) #activeCard{display:none !important}
 .ozelSohbet .osYaz{display:flex;gap:8px;margin-top:8px}
 .ozelSohbet .osYaz input{flex:1;min-width:0;font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
 .ozelSohbet .osYaz button{padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:var(--on-accent);font-weight:600;cursor:pointer}
+/* ===== AİLE MEYDANI ===== */
+.meydan{background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:14px;color:var(--text)}
+.meydan .mUst{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.meydan .mUst b{font-size:17px}
+.meydan .mSekmeler{display:flex;gap:6px;overflow-x:auto;margin:10px -2px 4px;padding:2px;scrollbar-width:none}
+.meydan .mSekmeler button{flex:none;font-size:13px;padding:7px 11px;border-radius:18px;border:1px solid var(--line);background:var(--bg2);color:var(--text-soft);cursor:pointer;white-space:nowrap}
+.meydan .mSekmeler button.sec{border-color:var(--spine);color:var(--text);background:var(--panel2);font-weight:600}
+.meydan .mIc{margin-top:8px}
+.meydan .mKart{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:8px;background:var(--bg2)}
+.meydan .mKart.bugun{border-color:var(--spine);box-shadow:inset 0 0 0 1px var(--spine)}
+.meydan .mSatir{display:flex;align-items:center;gap:10px}
+.meydan .mSatir .tlAv{width:40px;height:40px;border-radius:50%;flex:none;background:var(--bg2) center/cover no-repeat;border:1.5px solid var(--line2);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--on-accent)}
+.meydan .mMetin{flex:1;min-width:0;font-size:13.5px;line-height:1.4}
+.meydan .mMetin small{display:block;color:var(--muted);font-size:11.5px}
+.meydan .mBtn{flex:none;font-size:12.5px;padding:6px 10px;border-radius:9px;border:1px solid var(--spine);background:none;color:var(--text);cursor:pointer;font-weight:600}
+.meydan .mBtn.dolu{background:var(--spine);color:var(--on-accent)}
+.meydan input,.meydan textarea,.meydan select{width:100%;box-sizing:border-box;font:15px Inter,system-ui,sans-serif;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px;outline:none;margin-top:6px}
+.meydan textarea{min-height:64px;resize:vertical}
+.meydan .mSoru{font-size:17px;font-weight:700;line-height:1.35;margin:4px 0 2px}
+.meydan .mBos{font-size:13px;color:var(--muted);padding:10px 2px;line-height:1.5}
+.meydan .mTarih{flex:none;width:48px;text-align:center;border:1px solid var(--spine);border-radius:10px;padding:4px 0;line-height:1.1}
+.meydan .mTarih b{display:block;font-size:19px}
+.meydan .mTarih small{font-size:10.5px;color:var(--muted);text-transform:uppercase}
+.meydan .mIzgara{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.meydan .mIzgara div{aspect-ratio:1;border-radius:8px;background:var(--bg2) center/cover no-repeat;cursor:pointer;position:relative;border:1px solid var(--line)}
+.meydan .mIzgara span{position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;border-radius:8px;padding:1px 5px}
+.etiketPen{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;gap:10px}
+.etiketPen img{max-width:96%;max-height:62vh;border-radius:8px}
+.etiketPen .ePanel{width:min(520px,100%);background:var(--panel);border-radius:12px;padding:10px;color:var(--text)}
+.etiketPen .eCipler{display:flex;flex-wrap:wrap;gap:6px}
+.etiketPen .eCipler span{font-size:13px;border:1px solid var(--spine);border-radius:14px;padding:3px 9px;display:inline-flex;gap:6px;align-items:center}
+.etiketPen .eCipler button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0}
+.etiketPen input{width:100%;box-sizing:border-box;margin-top:8px;font-size:16px;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--text)}
+.etiketPen .eSonuc div{padding:7px 9px;cursor:pointer;font-size:13.5px;border-bottom:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -652,6 +686,7 @@ body:has(.inspector.show) #activeCard{display:none !important}
   <button id="statsBtn" title="İstatistikler"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></button>
   <button id="kokenBtn" title="Köken — 1956, Fahri Arslan'ın eseri"><svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v4h4M8.5 13h7M8.5 16.5h7M8.5 9.5h2"/></svg></button>
   <button id="lensBtn" title="Katman / renklendirme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg></button>
+  <button id="meydanBtn" title="Aile Meydanı — kutlamalar, haftanın sorusu, büyüğe sor, etkinlikler" onclick="meydanAc()"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg></button>
   <button id="kilavuzBtn" title="Kullanma kılavuzu" onclick="window.open('/kilavuz.html','_blank','noopener')"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M8 7h8M8 11h6"/></svg></button>
   <button id="themeBtn" title="Gece / Gündüz modu"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
   <button id="chatBtn" title="Aile sohbeti" style="display:none;position:relative"><svg viewBox="0 0 24 24"><path d="M20 12a7 7 0 0 1-9.5 6.5L4 20l1.5-4.5A7 7 0 1 1 20 12z"/></svg><span id="chatRozet" style="display:none;position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--on-accent);font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--panel)"></span></button>
@@ -3529,7 +3564,8 @@ function renderProfileSections(n){
   grid.style.cssText="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px";
   galItems.forEach((item,i)=>{
     const isVid = item && typeof item==="object" && item.video;
-    const src = isVid ? item.url : item;
+    const src = item && typeof item==="object" ? item.url : item;   // etiketli foto da nesne: {url, etiket:[id]}
+    const etiketSay = item && typeof item==="object" && Array.isArray(item.etiket) ? item.etiket.length : 0;
     const cell=document.createElement("div");
     cell.style.cssText=`aspect-ratio:1;border-radius:7px;position:relative;cursor:pointer;
       border:1px solid var(--line);overflow:hidden;background:var(--bg2)`;
@@ -3540,7 +3576,8 @@ function renderProfileSections(n){
     } else {
       cell.style.background=`center/cover url(${src})`;
     }
-    cell.onclick=()=>openLightbox(src, isVid);
+    if(etiketSay) cell.insertAdjacentHTML("beforeend", `<div style="position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;border-radius:8px;padding:1px 5px;pointer-events:none">👥 ${etiketSay}</div>`);
+    cell.onclick=()=>openLightbox(src, isVid, isVid?null:{kisiId:n.id, index:i});
     const del=document.createElement("button");
     del.textContent="×"; del.style.cssText=`position:absolute;top:2px;right:4px;background:rgba(0,0,0,.6);
       border:none;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;font-size:12px;line-height:1;z-index:2`;
@@ -3548,6 +3585,17 @@ function renderProfileSections(n){
     cell.appendChild(del); grid.appendChild(cell);
   });
   gal.appendChild(grid);
+  // Başkalarının galerisinde bu kişinin etiketlendiği fotoğraflar
+  const etiketli=[]; nodes.forEach(x=>{ if(x.id===n.id) return; ((PROFILES[x.id]||{}).gallery||[]).forEach((g,i)=>{
+    if(g && typeof g==="object" && Array.isArray(g.etiket) && g.etiket.includes(n.id)) etiketli.push({x,i,url:g.url}); }); });
+  if(etiketli.length){
+    const t=document.createElement("div"); t.innerHTML=`<div class="section-title">👥 Etiketlendiği fotoğraflar (${etiketli.length})</div>`;
+    const tg=document.createElement("div"); tg.style.cssText="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px";
+    etiketli.forEach(e=>{ const c=document.createElement("div"); c.title=`${dispName(e.x.name)} galerisinden`;
+      c.style.cssText=`aspect-ratio:1;border-radius:7px;cursor:pointer;border:1px solid var(--line);background:var(--bg2) center/cover url('${e.url}')`;
+      c.onclick=()=>fotoEtiketAc(e.url,{kisiId:e.x.id,index:e.i}); tg.appendChild(c); });
+    t.appendChild(tg); gal.appendChild(t);
+  }
   const addPhoto=document.createElement("button"); addPhoto.className="tbtn"; addPhoto.style.width="100%";
   addPhoto.style.justifyContent="center"; addPhoto.textContent="＋ Fotoğraf / Video ekle";
   addPhoto.onclick=()=>pickGallery(n);
@@ -3603,6 +3651,10 @@ function renderProfileSections(n){
     td.textContent=`🤝 ${dispName(n.name)} ile tanış — davet gönder`; td.title="Şık bir tanışma kartı gönder; kabul edince özel sohbet açılır";
     td.onclick=()=>tanismaDavetiAc(n);
     mem.appendChild(td);
+    const ss=document.createElement("button"); ss.className="tbtn"; ss.style.cssText="width:100%;justify-content:center;margin-bottom:8px";
+    ss.textContent=`❓ ${yonel(dispName(n.name))} soru sor`; ss.title="Aile Meydanı → Büyüğe sor: yanıtı ailenin hafızasında kalsın";
+    ss.onclick=()=>{ window.__soruKime=n.id; meydanAc("sor"); };
+    mem.appendChild(ss);
   }
   if((sessionToken||isAdmin) && benId!==n.id){
     const bb=document.createElement("button"); bb.className="tbtn"; bb.style.cssText="width:100%;justify-content:center;margin-bottom:8px";
@@ -3785,7 +3837,8 @@ function addMemory(n){
     saveProfile(n.id,p); overlay.remove(); renderProfileSections._rerun(n); toast("Anı eklendi");
   };
 }
-function openLightbox(src, isVideo){
+function openLightbox(src, isVideo, baglam){
+  if(baglam && !isVideo) return fotoEtiketAc(src, baglam);
   const o=document.createElement("div");
   o.style.cssText=`position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.92);display:flex;
     align-items:center;justify-content:center;cursor:zoom-out;padding:20px`;
@@ -4567,6 +4620,16 @@ function birlestirSor(a, b){
 
 const KOMUTLAR=[
   { ad:"birlestir", desen:BIRLESTIR_DESEN, calistir:(m,metin)=>birlestirKomutu(metin) },
+  { ad:"meydan", desen:/(aile\s+meydan|meydan[ıi]?\b|etkinlik|bulu[şs]ma|do[ğg]um\s+g[üu]n|kutla|haftan[ıi]n\s+sorusu|b[üu]y[üu][ğg]e\s+sor|foto[ğg]raf(ta|larda)?\s+kim)/i,
+    calistir:(m,metin)=>{
+      if(!(sessionToken||isAdmin)) return "Aile Meydanı için önce aile şifresiyle giriş yap.";
+      if(!kimlikId()) return "Önce kim olduğunu söyle: “Ben Yüksel” gibi yaz.";
+      const t=metin.toLocaleLowerCase("tr");
+      const sekme=/etkinlik|bulu[şs]ma/.test(t)?"etkinlik":/do[ğg]um|kutla/.test(t)?"kutla":/haftan/.test(t)?"hafta":/b[üu]y[üu][ğg]e/.test(t)?"sor":/foto/.test(t)?"foto":null;
+      setTimeout(()=>meydanAc(sekme||undefined), 150);
+      const d=dogumGunleri(0);
+      return d.length ? `🎂 Bugün ${d.map(x=>dispName(x.n.name)).join(", ")} doğdu! Aile Meydanı'nı açtım.` : "Aile Meydanı'nı açtım: kutlamalar, haftanın sorusu, büyüğe sor, etkinlikler ve fotoğraflar.";
+    } },
   { ad:"tanis", desen:/(tan[ıi][şs]ma|tan[ıi][şs]abilece[ğg]im|tan[ıi]mad[ıi][ğg][ıi]m\s+akraba|kimlerle\s+tan[ıi][şs])/i,
     calistir:()=>{
       if(!(sessionToken||isAdmin)) return "Tanışma daveti için önce aile şifresiyle giriş yap.";
@@ -4740,19 +4803,19 @@ const KOMUTLAR=[
       const yok=(ne)=>`${kimlik(k)} için kayıtlı ${ne} yok.`;
       switch(tur){
         case "ogul": { const l=cocuklar.filter(c=>c.sex!=="K");
-          return l.length ? `${kimlik(k)}'nin oğlu: ${say(l)}.` : yok("oğul"); }
+          return l.length ? `${ilgi(kimlik(k))} oğlu: ${say(l)}.` : yok("oğul"); }
         case "kiz": { const l=cocuklar.filter(c=>c.sex==="K");
-          return l.length ? `${kimlik(k)}'nin kızı: ${say(l)}.` : yok("kız"); }
+          return l.length ? `${ilgi(kimlik(k))} kızı: ${say(l)}.` : yok("kız"); }
         case "cocuk":
           return cocuklar.length
-            ? `${kimlik(k)}'nin ${cocuklar.length} çocuğu var: ${say(cocuklar)}.`
+            ? `${ilgi(kimlik(k))} ${cocuklar.length} çocuğu var: ${say(cocuklar)}.`
             : yok("çocuk");
         case "anne":
-          return anneDugum ? `${kimlik(k)}'nin annesi: ${ad(anneDugum)}.`
+          return anneDugum ? `${ilgi(kimlik(k))} annesi: ${ad(anneDugum)}.`
                            : (k.fatherExt ? yok("anne") : yok("anne"));
         case "baba":
-          return babaDugum ? `${kimlik(k)}'nin babası: ${ad(babaDugum)}.`
-                 : (k.fatherExt ? `${kimlik(k)}'nin babası: ${k.fatherExt} (ağaç dışından).`
+          return babaDugum ? `${ilgi(kimlik(k))} babası: ${ad(babaDugum)}.`
+                 : (k.fatherExt ? `${ilgi(kimlik(k))} babası: ${k.fatherExt} (ağaç dışından).`
                                 : yok("baba"));
         case "ebeveyn": {
           const p=[]; if(babaDugum) p.push("baba: "+ad(babaDugum));
@@ -4760,23 +4823,23 @@ const KOMUTLAR=[
           if(anneDugum) p.push("anne: "+ad(anneDugum));
           return p.length ? `${kimlik(k)} — ${p.join(" · ")}.` : yok("ebeveyn"); }
         case "es":
-          return esler.length ? `${kimlik(k)}'nin eşi: ${esler.join(", ")}.` : yok("eş");
+          return esler.length ? `${ilgi(kimlik(k))} eşi: ${esler.join(", ")}.` : yok("eş");
         case "kardes":
           return kardesler.length
-            ? `${kimlik(k)}'nin ${kardesler.length} kardeşi var: ${say(kardesler)}.`
+            ? `${ilgi(kimlik(k))} ${kardesler.length} kardeşi var: ${say(kardesler)}.`
             : yok("kardeş");
         case "dede": {
           const d=k._parent && k._parent._parent;
-          return d ? `${kimlik(k)}'nin dedesi: ${ad(d)}.` : yok("dede"); }
+          return d ? `${ilgi(kimlik(k))} dedesi: ${ad(d)}.` : yok("dede"); }
         case "nine": {
           const p=k._parent; const n=p && p.mother ? byId[p.mother] : null;
-          return n ? `${kimlik(k)}'nin ninesi: ${ad(n)}.` : yok("nine"); }
+          return n ? `${ilgi(kimlik(k))} ninesi: ${ad(n)}.` : yok("nine"); }
         case "torun": {
           const tl=[]; cocuklar.forEach(c=>(c._kids||[]).forEach(g=>tl.push(g)));
-          return tl.length ? `${kimlik(k)}'nin ${tl.length} torunu var: ${say(tl)}.` : yok("torun"); }
+          return tl.length ? `${ilgi(kimlik(k))} ${tl.length} torunu var: ${say(tl)}.` : yok("torun"); }
         case "yegen": {
           const yl=[]; kardesler.forEach(s=>(s._kids||[]).forEach(x=>yl.push(x)));
-          return yl.length ? `${kimlik(k)}'nin ${yl.length} yeğeni var: ${say(yl)}.` : yok("yeğen"); }
+          return yl.length ? `${ilgi(kimlik(k))} ${yl.length} yeğeni var: ${say(yl)}.` : yok("yeğen"); }
         case "amca": case "dayi": case "hala": case "teyze": {
           // amca/hala = babanın kardeşleri, dayı/teyze = annenin kardeşleri
           const anaTaraf=(tur==="dayi"||tur==="teyze");
@@ -4786,7 +4849,7 @@ const KOMUTLAR=[
           const erkek=(tur==="amca"||tur==="dayi");
           const l=kk.filter(x=> erkek ? x.sex!=="K" : x.sex==="K");
           const et={amca:"amca",dayi:"dayı",hala:"hala",teyze:"teyze"}[tur];
-          return l.length ? `${kimlik(k)}'nin ${et}sı: ${say(l)}.` : yok(et); }
+          return l.length ? `${ilgi(kimlik(k))} ${et}sı: ${say(l)}.` : yok(et); }
         case "nesil":
           return `${kimlik(k)} — ${nesilOf(k)}. nesil.`;
       }
@@ -5156,6 +5219,11 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       ? `Merhaba${kimAd}, ben ${ad}. Abdurrahman Oğullarının soy ağacını bilirim; ailemizi, bölgemizi ve bu siteyi sorabilirsin. Bu evren, Fahri Arslan'ın 1956'da elle çizdiği ağacın yaşayan hâli: nereden geldiğimizi, kimin kimin nesi olduğunu, büyüklerimizin anılarını birlikte konuşalım.`
       : `${selam}${kimAd}! ${oneri ? `Bugün belki şunu merak edersin: “${oneri}”` : "Soyumuz hakkında ne merak ediyorsun?"}`);
     ciplerKur();
+    const dg=(typeof dogumGunleri==="function" && (sessionToken||isAdmin)) ? dogumGunleri(0).filter(x=>x.n.id!==kimlikId()) : [];
+    if(dg.length){
+      notYaz(`🎂 Bugün ${dg.map(x=>ilgi(dispName(x.n.name))).join(", ")} doğum günü!`);
+      secenekleriKur(dg.slice(0,3).map(x=>({ etiket:`🎂 Kutla: ${dispName(x.n.name)}`, eylem:()=>{ kutlamaAc(x.n); return "Kutlama kartını hazırladım."; } })));
+    }
     panel.style.display="block";
     if(typeof kotaTazele==="function") kotaTazele();
   }
@@ -5168,7 +5236,9 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     const selam = saat<11 ? "Günaydın" : saat<17 ? "İyi günler" : saat<22 ? "İyi akşamlar" : "İyi geceler";
     const kim=kimlikId(), kimAd = kim&&byId[kim] ? " "+dispName(byId[kim].name) : "";
     const oneri=ilkOneri();
-    const metin = ilkZiyaret ? `Merhaba${kimAd}, ben ${asistanAdi()} — soyumuzu sor` : (oneri ? `${selam}${kimAd} · “${oneri}”` : `${selam}${kimAd} · bir şey sor`);
+    const dg=(typeof dogumGunleri==="function" && (sessionToken||isAdmin)) ? dogumGunleri(0).filter(x=>x.n.id!==kimlikId()) : [];
+    const metin = dg.length ? `🎂 Bugün ${ilgi(dispName(dg[0].n.name))} doğum günü — kutla`
+      : ilkZiyaret ? `Merhaba${kimAd}, ben ${asistanAdi()} — soyumuzu sor` : (oneri ? `${selam}${kimAd} · “${oneri}”` : `${selam}${kimAd} · bir şey sor`);
     const d=document.createElement("div"); d.id="cinarSerit"; d.setAttribute("role","button"); d.tabIndex=0;
     d.innerHTML=`<span class="csIsaret">${document.querySelector(".brand .logoIsaret")?.outerHTML||"🌳"}</span>
       <span class="csAd">${escapeHtml(asistanAdi())}</span><span class="csMetin">${escapeHtml(metin)}</span>
@@ -5176,7 +5246,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     document.body.appendChild(d);
     requestAnimationFrame(()=>d.classList.add("acik"));
     const git=()=>{ d.classList.remove("acik"); setTimeout(()=>d.remove(), 300); };
-    d.onclick=e=>{ if(e.target.closest(".csKapat")){ e.stopPropagation(); git(); return; } git(); ac(false); };
+    d.onclick=e=>{ if(e.target.closest(".csKapat")){ e.stopPropagation(); git(); return; } git(); if(dg.length) kutlamaAc(dg[0].n); else ac(false); };
     d.onkeydown=e=>{ if(e.key==="Enter"){ git(); ac(false); } };
     setTimeout(git, CINAR_SERIT.sureSn*1000);
   }
@@ -5249,7 +5319,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   // calistirKomut() kotasız yerel yedek olarak yanıtlar ve bir satırla söylenir.
   // Yalnızca ARAYÜZ komutları (köken, istatistik, kol, nesil aralığı…) doğrudan
   // yerelde çalışır: asistanın ekranı yönetme aracı yok, kota harcamaya da gerek yok.
-  const YEREL=new Set(["cinsiyet","tanis","denetim","cift","ben","koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
+  const YEREL=new Set(["meydan","cinsiyet","tanis","denetim","cift","ben","koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
   function yerelArayuzMu(t){
     for(const k of KOMUTLAR){
       if(k.ad==="uzman") continue;   // bilgi becerisi arayüz komutu değil: asistan önce denesin
@@ -6100,7 +6170,7 @@ applyEvren();
 (function dockEtiketleri(){
   const E={ fitBtn:"Sığdır", zinBtn:"Yakın", zoutBtn:"Uzak", physBtn:"Fizik", reparentBtn:"Bağ",
     rehberBtn:"Çınar", duzBtn:"Görünüm", kafesBtn:"Örgü", pathBtn:"Yol bul", focusBtn:"Odak",
-    genBtn:"Nesil", statsBtn:"Sayılar", kokenBtn:"Köken", lensBtn:"Katman", kilavuzBtn:"Kılavuz", themeBtn:"Tema",
+    genBtn:"Nesil", statsBtn:"Sayılar", kokenBtn:"Köken", lensBtn:"Katman", meydanBtn:"Meydan", kilavuzBtn:"Kılavuz", themeBtn:"Tema",
     chatBtn:"Sohbet", adminBtn:"Yönetici", approvalBtn:"Öneriler" };
   document.querySelectorAll(".dock button").forEach(b=>{
     const e=E[b.id] || (b.title||"").split(/[—(/]/)[0].trim().split(" ")[0];
@@ -6437,6 +6507,7 @@ function hesapMenusu(hedef){
     ${isAdmin||sessionToken?`<button data-denetim>🩺 Veri denetimi${window.AgacLib&&AgacLib.veriDenetimi?" ("+AgacLib.veriDenetimi(currentGraphJSON()).filter(x=>x.onem==="yuksek").length+" önemli)":""}</button>`:""}
     ${isAdmin||sessionToken?`<button data-cift>🧹 Çift kayıtlar${window.AgacLib&&AgacLib.ciftKayitlar?" ("+AgacLib.ciftKayitlar(currentGraphJSON()).length+")":""}</button>`:""}
     ${iosCihaz() && !anaEkranda() ? `<button data-anaekran>📲 Ana ekrana ekle</button>`:""}
+    ${sessionToken||isAdmin?`<button data-meydan>🏡 Aile Meydanı</button>`:""}
     ${sessionToken||isAdmin?`<button data-tanis>🤝 Tanışmalarım</button>`:""}
     <button data-kilavuz>📖 Kullanma kılavuzu</button>
     <button data-degistir>🔄 Ben değilim — kişiyi değiştir</button>
@@ -6454,6 +6525,7 @@ function hesapMenusu(hedef){
     toast(`Kim olduğunu ${typeof asistanaYaz==="function"?asistanaYaz():"asistana"} “Ben …” diye yaz ya da kişinin kartında “Bu benim”e dokun`);
     if(typeof updateStatus==="function") updateStatus(); };
   const ae=m.querySelector("[data-anaekran]"); if(ae) ae.onclick=()=>{ kapat(); anaEkranRehberi(true); };
+  const md=m.querySelector("[data-meydan]"); if(md) md.onclick=()=>{ kapat(); meydanAc(); };
   const tn=m.querySelector("[data-tanis]"); if(tn) tn.onclick=()=>{ kapat(); tanismalarimAc(); };
   m.querySelector("[data-kilavuz]").onclick=()=>{ kapat(); window.open("/kilavuz.html","_blank","noopener"); };
   const ck=m.querySelector("[data-cift]"); if(ck) ck.onclick=()=>{ kapat(); ciftKayitlariAc(); };
@@ -6474,7 +6546,8 @@ async function oturumDogrula(){
       else { oturumSakla(j); if(j.kisi && j.kisi!==benId) benAta(j.kisi, true);
         if(typeof showApprovalBtn==="function") setTimeout(showApprovalBtn, 0);   // "📥 Önerilerim" aile üyesine de
         setTimeout(hatirlatmalariGetir, new URLSearchParams(location.search).has("uyari") ? 300 : 2500);
-        setTimeout(gelenDavetleriKontrol, 4000); }
+        setTimeout(gelenDavetleriKontrol, 4000);
+        { const mq=new URLSearchParams(location.search).get("meydan"); if(mq!==null) setTimeout(()=>meydanAc(mq||undefined), 1500); } }
     }
     else if(r.status===401) oturumKapat("Oturumun süresi dolmuş — devam etmek için yeniden giriş yap");
   }catch(e){}   // ağ hatası oturumu düşürmesin
@@ -6553,11 +6626,229 @@ function kisileriBirlestir(a, b, sonra){
   };
 }
 
+
+// ============================ AİLE MEYDANI (sosyalleşme) ============================
+// Sekmeler: 🎂 Kutlamalar · ❓ Haftanın sorusu · 👴 Büyüğe sor · 📅 Etkinlikler · 📷 Fotoğraflar · ⭐ Bu ay
+// Sunucu: api/meydan.js (kutla, soru-*, etkinlik-*); haftanın sorusu yanıtları api/sohbet.js (kapsam hafta:YYYY-WW);
+// fotoğraf etiketleri ağaç verisinde (galeri öğesi {url, etiket:[id]}). Ayrıntı: docs/meydan.md
+const MEYDAN_SEKME=[["kutla","🎂 Kutlamalar"],["hafta","❓ Haftanın sorusu"],["sor","👴 Büyüğe sor"],["etkinlik","📅 Etkinlikler"],["foto","📷 Fotoğraflar"],["ay","⭐ Bu ay"]];
+const benAdi=()=>{ const k=kimlikId(); return k&&byId[k] ? dispName(byId[k].name) : (isAdmin?"Yönetici":"Aile üyesi"); };
+async function meydanApi(adim, govde){
+  const r=await yetkiliIstek(()=>fetch("/api/meydan?adim="+adim,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({jeton:sessionToken||"", ...govde})}), "Aile Meydanı için aile şifrenle giriş yap.");
+  return r.json().catch(()=>({ok:false, hata:"Sunucu yanıtı okunamadı"}));
+}
+function isoHafta(t=new Date()){
+  const d=new Date(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())); const g=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-g);
+  const y=new Date(Date.UTC(d.getUTCFullYear(),0,1)); const h=Math.ceil(((d-y)/864e5+1)/7);
+  return { yil:d.getUTCFullYear(), hafta:h, kod:`${d.getUTCFullYear()}-${String(h).padStart(2,"0")}` };
+}
+function haftaninSorusu(){ const l=(AYAR&&AYAR.MEYDAN&&AYAR.MEYDAN.haftaninSorulari)||[]; const h=isoHafta(); return { soru: l.length ? l[(h.yil*53+h.hafta)%l.length] : "", kapsam:"hafta:"+h.kod }; }
+// Doğum günleri: profil bilgisinde "gg.aa.yyyy" doğum tarihi olanlar (yalnız yaşayanlar)
+function dogumGunleri(gunSiniri){
+  const bugun=new Date(); bugun.setHours(0,0,0,0);
+  return nodes.filter(n=>n.alive!==false).map(n=>{
+    const d=String(((PROFILES[n.id]||{}).info||{}).dogum||""); const m=d.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/); if(!m) return null;
+    const t=new Date(bugun.getFullYear(), +m[2]-1, +m[1]); if(t<bugun) t.setFullYear(t.getFullYear()+1);
+    const kalan=Math.round((t-bugun)/864e5); return { n, kalan, yas: t.getFullYear()-(+m[3]), tarih:t };
+  }).filter(x=>x && x.kalan<=gunSiniri).sort((a,b)=>a.kalan-b.kalan);
+}
+const kisiAvatar=(n,boy)=>`<div class="tlAv" style="${boy?`width:${boy}px;height:${boy}px;`:""}${avatarStil(n)}">${(PROFILES[n.id]||{}).photo?"":escapeHtml(basHarf(n))}</div>`;
+const kisaTarih=t=>new Date(t).toLocaleDateString("tr-TR",{day:"numeric",month:"short"});
+
+function meydanAc(sekme){
+  if(!sessionToken && !isAdmin){ toast("Aile Meydanı için aile şifresiyle giriş yap"); return; }
+  if(!kimlikId()){ toast("Önce kim olduğunu seç: kendi kartında “🙋 Bu benim”"); return; }
+  const ort=davetPenceresi(`<div class="meydan"><div class="mUst"><b>🏡 Aile Meydanı</b><button class="tbtn" data-kapat>Kapat</button></div>
+    <div class="mSekmeler">${MEYDAN_SEKME.map(([k,a])=>`<button data-sekme="${k}">${a}</button>`).join("")}</div><div class="mIc"></div></div>`);
+  ort.querySelector(".dpKutu").style.width="min(560px,100%)";
+  ort.querySelector("[data-kapat]").onclick=()=>ort.remove();
+  const ic=ort.querySelector(".mIc");
+  const ac=k=>{ ort.querySelectorAll("[data-sekme]").forEach(b=>b.classList.toggle("sec", b.dataset.sekme===k));
+    ic.innerHTML=`<div class="mBos">Yükleniyor…</div>`; (MEYDAN_CIZ[k]||MEYDAN_CIZ.kutla)(ic, ort, ac); };
+  ort.querySelectorAll("[data-sekme]").forEach(b=>b.onclick=()=>ac(b.dataset.sekme));
+  ac(sekme || (dogumGunleri(0).length ? "kutla" : "hafta"));
+}
+window.meydanAc=meydanAc;
+
+const MEYDAN_CIZ={
+  // 🎂 Kutlamalar: bugün ve yaklaşan doğum günleri
+  kutla(ic){
+    const gun=(AYAR&&AYAR.MEYDAN&&AYAR.MEYDAN.dogumGunuOnGun)||30, l=dogumGunleri(gun);
+    ic.innerHTML=l.length ? l.map(x=>`<div class="mKart ${x.kalan===0?"bugun":""}"><div class="mSatir">${kisiAvatar(x.n)}
+        <div class="mMetin"><b>${escapeHtml(dispName(x.n.name))}</b> ${x.kalan===0?"🎂 bugün":`· ${x.kalan} gün sonra`}<small>${x.yas}. yaş · ${escapeHtml(kimlikSatiri(x.n)||"")} · ${kisaTarih(x.tarih)}</small></div>
+        ${x.n.id!==kimlikId()?`<button class="mBtn ${x.kalan===0?"dolu":""}" data-kutla="${x.n.id}">🎂 Kutla</button>`:`<span style="font-size:12px;color:var(--spine)">sensin 🎉</span>`}</div></div>`).join("")
+      : `<div class="mBos">Önümüzdeki ${gun} günde doğum günü görünmüyor.<br>Doğum günlerinin görünmesi için kişinin kartında doğum tarihini <b>gün.ay.yıl</b> olarak yaz (ör. 12.03.1965).</div>`;
+    ic.querySelectorAll("[data-kutla]").forEach(b=>b.onclick=()=>kutlamaAc(byId[b.dataset.kutla]));
+  },
+  // ❓ Haftanın sorusu: herkes aynı soruyu yanıtlar; yanıt istenirse kendi kartına anı olur
+  hafta(ic){
+    const h=haftaninSorusu();
+    ic.innerHTML=`<div class="mKart"><div style="font-size:11px;color:var(--spine);font-weight:700;letter-spacing:1px">BU HAFTANIN SORUSU</div>
+      <div class="mSoru">${escapeHtml(h.soru||"—")}</div>
+      <textarea placeholder="Yanıtını yaz — tüm aile görür" maxlength="2000"></textarea>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--text-soft);margin-top:6px"><input type="checkbox" style="width:auto;margin:0" checked> Yanıtım kendi kartıma anı olarak da eklensin</label>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="mBtn dolu" data-yanit>Paylaş</button></div></div>
+      <div style="font-size:12px;color:var(--muted);margin:12px 2px 0">Ailenin yanıtları</div><div class="hafYanit" style="max-height:40vh;overflow:auto"></div>`;
+    const kutu=ic.querySelector(".hafYanit"), ta=ic.querySelector("textarea"), cb=ic.querySelector("input[type=checkbox]");
+    chatLoad(h.kapsam, kutu);
+    ic.querySelector("[data-yanit]").onclick=async()=>{
+      const metin=ta.value.trim(); if(!metin) return toast("Yanıtını yaz");
+      if(cb.checked){ const k=kimlikId(); const p=getProfile(k); p.memories=p.memories||[];
+        p.memories.unshift({ date:new Date().toLocaleDateString("tr-TR"), baslik:h.soru, text:metin, kaynak:"haftanin-sorusu" }); saveProfile(k,p); }
+      await chatSend(h.kapsam, ta, kutu); toast(cb.checked?"Paylaşıldı — kartına anı olarak da eklendi":"Paylaşıldı");
+    };
+  },
+  // 👴 Büyüğe sor: gençler büyüklere soru bırakır; büyük yazıyla ya da sesli hikâyeyle yanıtlar
+  async sor(ic){
+    const ben=byId[kimlikId()];
+    const j=await meydanApi("soru-liste",{});
+    if(!j.ok){ ic.innerHTML=`<div class="mBos">${escapeHtml(j.hata||"Yüklenemedi")}</div>`; return; }
+    const satir=(n,ust,alt,sag)=>n?`<div class="mKart"><div class="mSatir">${kisiAvatar(n)}<div class="mMetin">${ust}<small>${alt}</small></div>${sag||""}</div></div>`:"";
+    const bekleyen=(j.bana||[]).filter(x=>!x.yanit);
+    ic.innerHTML=`
+      ${bekleyen.length?`<div style="font-size:12px;color:var(--spine);font-weight:700;margin:4px 2px">SANA SORULANLAR (${bekleyen.length})</div>`+bekleyen.map(q=>`<div class="mKart bugun">
+        <div class="mSatir">${byId[q.soran]?kisiAvatar(byId[q.soran]):""}<div class="mMetin"><b>${escapeHtml(q.soran_ad||"Biri")}</b> soruyor<small>${kisaTarih(q.olusma)}</small></div></div>
+        <div style="margin-top:6px;font-size:14.5px">“${escapeHtml(q.metin)}”</div>
+        <textarea data-yanit-metin="${q.id}" placeholder="Yanıtını yaz…"></textarea>
+        <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--text-soft);margin-top:6px"><input type="checkbox" data-ani="${q.id}" style="width:auto;margin:0" checked> Kartıma anı olarak da eklensin</label>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button class="mBtn" data-sesli="${q.id}">🎙 Sesle anlat</button><button class="mBtn dolu" data-yanitla="${q.id}">Yanıtla</button></div></div>`).join(""):""}
+      <div class="mKart"><b style="font-size:14px">Bir büyüğüne soru sor</b>
+        <div style="font-size:12.5px;color:var(--text-soft);margin-top:2px">Merak ettiğini sor; yanıtı ailenin hafızasında kalsın.</div>
+        <input data-kime-ara placeholder="Kime? (adını yaz)"><div data-kime-sonuc></div>
+        <textarea data-soru placeholder="Ör. Köyde çocukken ne oynardınız?"></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="mBtn dolu" data-sor>Soruyu gönder</button></div></div>
+      ${(j.benden||[]).length?`<div style="font-size:12px;color:var(--muted);margin:12px 2px 0">Sorduklarım</div>`+j.benden.map(q=>satir(byId[q.kime], escapeHtml(q.metin), q.yanit?`✓ ${escapeHtml(q.yanit)}`:"yanıt bekleniyor…")).join(""):""}
+      ${(j.son||[]).length?`<div style="font-size:12px;color:var(--muted);margin:12px 2px 0">Ailede son yanıtlananlar</div>`+j.son.slice(0,10).map(q=>satir(byId[q.kime], `<b>${escapeHtml(byId[q.kime]?dispName(byId[q.kime].name):"")}</b> · ${escapeHtml(q.metin)}`, `${escapeHtml(q.soran_ad||"")} sordu · “${escapeHtml(q.yanit)}”`)).join(""):""}`;
+    let kime=null;
+    const ara=ic.querySelector("[data-kime-ara]"), sonuc=ic.querySelector("[data-kime-sonuc]");
+    if(window.__soruKime && byId[window.__soruKime]){ kime=byId[window.__soruKime]; ara.value=dispName(kime.name)+(kimlikSatiri(kime)?" ("+kimlikSatiri(kime)+")":""); window.__soruKime=null; setTimeout(()=>ic.querySelector("[data-soru]").focus(),50); }
+    ara.oninput=()=>{ const v=ara.value.trim(); kime=null; if(v.length<2){ sonuc.innerHTML=""; return; }
+      const l=kisiAraAd(v,true,6).filter(n=>n.id!==ben.id);
+      sonuc.innerHTML=l.map(n=>`<div class="mSatir" data-sec="${n.id}" style="cursor:pointer;padding:6px 2px">${kisiAvatar(n,30)}<div class="mMetin">${escapeHtml(dispName(n.name))}<small>${escapeHtml(kimlikSatiri(n)||"")} · ${nesilOf(n)}. nesil</small></div></div>`).join("");
+      sonuc.querySelectorAll("[data-sec]").forEach(d=>d.onclick=()=>{ kime=byId[d.dataset.sec]; ara.value=dispName(kime.name)+(kimlikSatiri(kime)?" ("+kimlikSatiri(kime)+")":""); sonuc.innerHTML=""; }); };
+    ic.querySelector("[data-sor]").onclick=async()=>{
+      const m=ic.querySelector("[data-soru]").value.trim();
+      if(!kime) return toast("Kime soracağını listeden seç"); if(!m) return toast("Sorunu yaz");
+      const r=await meydanApi("soru-sor",{kime:kime.id, metin:m, soran_ad:benAdi()});
+      if(r.ok){ toast(`❓ Soru ${yonel(dispName(kime.name))} gitti`); MEYDAN_CIZ.sor(ic); } else toast(r.hata||"Gönderilemedi"); };
+    ic.querySelectorAll("[data-yanitla]").forEach(b=>b.onclick=async()=>{
+      const id=b.dataset.yanitla, y=ic.querySelector(`[data-yanit-metin="${id}"]`).value.trim(); if(!y) return toast("Yanıtını yaz");
+      const q=bekleyen.find(x=>String(x.id)===id);
+      if(ic.querySelector(`[data-ani="${id}"]`).checked){ const k=kimlikId(); const p=getProfile(k); p.memories=p.memories||[];
+        p.memories.unshift({ date:new Date().toLocaleDateString("tr-TR"), baslik:q.metin, text:y, kaynak:"buyuge-sor", soran:q.soran_ad||"" }); saveProfile(k,p); }
+      const r=await meydanApi("soru-yanitla",{id:Number(id), yanit:y, yanitlayan_ad:benAdi()});
+      if(r.ok){ toast("Yanıtın gitti — teşekkürler!"); MEYDAN_CIZ.sor(ic); } else toast(r.hata||"Gönderilemedi"); });
+    ic.querySelectorAll("[data-sesli]").forEach(b=>b.onclick=()=>{ document.querySelector(".davetPen")?.remove();
+      const n=byId[kimlikId()]; selectNode(n); openInspector(n); toast("Kartındaki “🎙 Hikâye anlat” ile sesli yanıtla; sonra buradan kısa bir not düş"); });
+  },
+  // 📅 Etkinlikler: buluşma, köy ziyareti, düğün, bayramlaşma… katılım: Evet / Belki / Hayır
+  async etkinlik(ic){
+    const j=await meydanApi("etkinlik-liste",{});
+    if(!j.ok){ ic.innerHTML=`<div class="mBos">${escapeHtml(j.hata||"Yüklenemedi")}</div>`; return; }
+    const ben=kimlikId(), bugun=new Date().toISOString().slice(0,10);
+    const kart=e=>{ const t=new Date(String(e.tarih).slice(0,10)+"T12:00:00"), k=e.katilim||[], benim=(k.find(x=>x.kisi===ben)||{}).durum;
+      const say=d=>k.filter(x=>x.durum===d).length, gecti=String(e.tarih).slice(0,10)<bugun;
+      return `<div class="mKart" style="${gecti?"opacity:.65":""}"><div class="mSatir"><div class="mTarih"><b>${t.getDate()}</b><small>${t.toLocaleDateString("tr-TR",{month:"short"})}</small></div>
+        <div class="mMetin"><b>${escapeHtml(e.baslik)}</b><small>${t.toLocaleDateString("tr-TR",{weekday:"long"})}${e.saat?" · "+escapeHtml(e.saat):""}${e.yer?" · 📍 "+escapeHtml(e.yer):""} · ${escapeHtml(e.olusturan_ad||"")} duyurdu</small></div>
+        ${(e.olusturan===ben||isAdmin)?`<button class="tbtn" data-esil="${e.id}" title="Sil" style="font-size:12px;padding:4px 8px">🗑</button>`:""}</div>
+        ${e.aciklama?`<div style="font-size:13.5px;margin-top:6px;color:var(--text-soft)">${escapeHtml(e.aciklama)}</div>`:""}
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">✓ ${say("evet")} geliyor · ${say("belki")} belki${k.filter(x=>x.durum==="evet").length?" — "+escapeHtml(k.filter(x=>x.durum==="evet").map(x=>x.ad).filter(Boolean).slice(0,6).join(", ")):""}</div>
+        ${gecti?"":`<div style="display:flex;gap:6px;margin-top:8px">${[["evet","Geliyorum"],["belki","Belki"],["hayir","Gelemem"]].map(([d,a])=>`<button class="mBtn ${benim===d?"dolu":""}" data-katil="${e.id}" data-durum="${d}">${a}</button>`).join("")}</div>`}</div>`; };
+    ic.innerHTML=`<details class="mKart"><summary style="cursor:pointer;font-weight:700">＋ Etkinlik duyur</summary>
+        <input data-e="baslik" placeholder="Ne? (ör. Derbent ziyareti, bayramlaşma)" maxlength="80">
+        <div style="display:flex;gap:6px"><input data-e="tarih" type="date" min="${bugun}"><input data-e="saat" placeholder="Saat (isteğe bağlı)" maxlength="20"></div>
+        <input data-e="yer" placeholder="Nerede? (isteğe bağlı)" maxlength="80">
+        <textarea data-e="aciklama" placeholder="Açıklama (isteğe bağlı)"></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="mBtn dolu" data-duyur>Duyur — tüm aileye bildirim gider</button></div></details>
+      ${(j.etkinlikler||[]).length ? j.etkinlikler.map(kart).join("") : `<div class="mBos">Yaklaşan etkinlik yok. İlk buluşmayı sen duyur!</div>`}`;
+    const v=k=>ic.querySelector(`[data-e="${k}"]`).value.trim();
+    ic.querySelector("[data-duyur]").onclick=async()=>{
+      if(!v("baslik")) return toast("Etkinliğe bir ad ver"); if(!v("tarih")) return toast("Tarihi seç");
+      const r=await meydanApi("etkinlik-ekle",{baslik:v("baslik"), tarih:v("tarih"), saat:v("saat"), yer:v("yer"), aciklama:v("aciklama"), olusturan_ad:benAdi()});
+      if(r.ok){ toast("📅 Duyuruldu — aileye haber verildi"); MEYDAN_CIZ.etkinlik(ic); } else toast(r.hata||"Olmadı"); };
+    ic.querySelectorAll("[data-katil]").forEach(b=>b.onclick=async()=>{
+      const r=await meydanApi("etkinlik-katil",{id:Number(b.dataset.katil), durum:b.dataset.durum, ad:benAdi()});
+      if(r.ok) MEYDAN_CIZ.etkinlik(ic); else toast(r.hata||"Olmadı"); });
+    ic.querySelectorAll("[data-esil]").forEach(b=>b.onclick=async()=>{ if(!confirm("Etkinlik silinsin mi?")) return;
+      const r=await meydanApi("etkinlik-sil",{id:Number(b.dataset.esil)}); if(r.ok) MEYDAN_CIZ.etkinlik(ic); else toast(r.hata||"Olmadı"); });
+  },
+  // 📷 Fotoğraflar: ailenin fotoğrafları; etiketsizler önce — "Bu fotoğrafta kim var?"
+  foto(ic){
+    const l=[]; nodes.forEach(n=>((PROFILES[n.id]||{}).gallery||[]).forEach((g,i)=>{ if(g && typeof g==="object" && g.video) return;
+      l.push({ n, i, url: typeof g==="object"?g.url:g, etiket: (typeof g==="object"&&g.etiket)||[] }); }));
+    l.sort((a,b)=>a.etiket.length-b.etiket.length);
+    const etiketsiz=l.filter(x=>!x.etiket.length).length;
+    ic.innerHTML=l.length ? `<div style="font-size:13px;color:var(--text-soft);margin:2px">${etiketsiz?`<b>${etiketsiz}</b> fotoğrafta kimin olduğu yazılmamış — tanıdığın birini görürsen etiketle.`:"Bütün fotoğraflar etiketli 👏"}</div>
+      <div class="mIzgara">${l.slice(0,60).map((x,k)=>`<div data-foto="${k}" style="background-image:url('${x.url}')">${x.etiket.length?`<span>👥 ${x.etiket.length}</span>`:`<span>kim var?</span>`}</div>`).join("")}</div>`
+      : `<div class="mBos">Henüz galeri fotoğrafı yok. Kişilerin kartından “＋ Fotoğraf / Video ekle” ile eski fotoğrafları yükleyin.</div>`;
+    ic.querySelectorAll("[data-foto]").forEach(d=>d.onclick=()=>{ const x=l[+d.dataset.foto]; fotoEtiketAc(x.url, {kisiId:x.n.id, index:x.i}, ()=>MEYDAN_CIZ.foto(ic)); });
+  },
+  ay(ic){
+    ic.innerHTML=`<div class="mKart"><b>⭐ Ailemizin bu ayı</b><div style="font-size:13px;color:var(--text-soft);margin-top:4px">Bu ay kim hikâye anlattı, kim yeni kişi ekledi — katkı sıralaması ve aile özeti.</div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="mBtn dolu" data-ay>Aç</button></div></div>`;
+    ic.querySelector("[data-ay]").onclick=()=>{ document.querySelector(".davetPen")?.remove(); if(typeof aileAyiAc==="function") aileAyiAc(); };
+  },
+};
+
+// 🎂 Kutlama: şık kart + not → Aile Sohbeti'ne düşer, kutlanana bildirim gider
+function kutlamaAc(n){
+  const ben=byId[kimlikId()]; if(!ben || !n) return;
+  const kart=not=>`<div class="davetKart">${LOGO_SVG()}<div class="dkUst">İyi ki doğdun</div>
+    <div class="dkKisiler"><div class="dkAv" style="width:96px;height:96px;${avatarStil(n)}">${(PROFILES[n.id]||{}).photo?"":escapeHtml(basHarf(n))}</div></div>
+    <div class="dkAdlar">🎂 ${escapeHtml(dispName(n.name))}</div>
+    <div class="dkOzet">${escapeHtml(akrabalik(ben,n).baslik||"")}</div>
+    ${not?`<div class="dkNot">“${escapeHtml(not)}”<b>— ${escapeHtml(dispName(ben.name))}</b></div>`:""}
+    <div class="dkAlt">soyevrenim.com · Abdurrahman Oğulları</div></div>`;
+  const ort=davetPenceresi(`<div data-onizleme></div><textarea maxlength="${(AYAR&&AYAR.MEYDAN&&AYAR.MEYDAN.metinMax)||600}"></textarea>
+    <div class="dpDugmeler"><button data-vazgec>Vazgeç</button><button class="birincil" data-gonder>🎂 Kutla</button></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center">Kutlaman Aile Sohbeti'nde herkese görünür; ${escapeHtml(yonel(dispName(n.name)))} bildirim gider.</div>`);
+  const ta=ort.querySelector("textarea"), on=ort.querySelector("[data-onizleme]");
+  ta.value=`Nice mutlu yıllara ${dispName(n.name)}! Sağlıkla, sevdiklerinle nice yaşlar.`;
+  const ciz=()=>on.innerHTML=kart(ta.value.trim()); ciz(); ta.oninput=ciz;
+  ort.querySelector("[data-vazgec]").onclick=()=>ort.remove();
+  ort.querySelector("[data-gonder]").onclick=async()=>{
+    const r=await meydanApi("kutla",{kime:n.id, mesaj:ta.value.trim(), gonderen_ad:dispName(ben.name), kime_ad:dispName(n.name)});
+    if(r.ok){ ort.remove(); toast(`🎂 Kutlandı — Aile Sohbeti'ne de yazıldı`); } else toast(r.hata||"Gönderilemedi"); };
+}
+window.kutlamaAc=kutlamaAc;
+
+// 👥 Fotoğraf etiketleme: "Bu fotoğrafta kim var?" — galeri öğesi {url, etiket:[id]} olarak kaydedilir
+function fotoEtiketAc(src, baglam, sonra){
+  const sahip=byId[baglam.kisiId]; if(!sahip) return;
+  const p=getProfile(sahip.id), g=p.gallery[baglam.index];
+  let etiket=(g && typeof g==="object" && Array.isArray(g.etiket)) ? [...g.etiket] : [];
+  const yetkili=!!(sessionToken||isAdmin);
+  const o=document.createElement("div"); o.className="etiketPen";
+  o.innerHTML=`<img src="${src}" alt=""><div class="ePanel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:14px">👥 Bu fotoğrafta kim var?</b><button class="tbtn" data-kapat>Kapat</button></div>
+    <div class="eCipler" style="margin-top:8px"></div>
+    ${yetkili?`<input placeholder="Kişi adı yaz ve seç…"><div class="eSonuc"></div>`:`<div style="font-size:12px;color:var(--muted);margin-top:6px">Etiketlemek için aile şifresiyle giriş yap.</div>`}</div>`;
+  document.body.appendChild(o);
+  const cipler=o.querySelector(".eCipler");
+  const kaydet=()=>{ const q=getProfile(sahip.id); const eski=q.gallery[baglam.index]; const url=typeof eski==="object"?eski.url:eski;
+    q.gallery[baglam.index]= etiket.length ? {...(typeof eski==="object"?eski:{}), url, etiket} : (typeof eski==="object" && !eski.video ? url : eski);
+    saveProfile(sahip.id, q); };
+  const ciz=()=>{ cipler.innerHTML=etiket.length ? etiket.filter(i=>byId[i]).map(i=>`<span>${escapeHtml(dispName(byId[i].name))}${yetkili?`<button data-cikar="${i}" aria-label="Çıkar">×</button>`:""}</span>`).join("") : `<span style="border-style:dashed;color:var(--muted)">Henüz kimse etiketlenmedi</span>`;
+    cipler.querySelectorAll("[data-cikar]").forEach(b=>b.onclick=()=>{ etiket=etiket.filter(i=>i!==b.dataset.cikar); kaydet(); ciz(); }); };
+  ciz();
+  const inp=o.querySelector("input"), son=o.querySelector(".eSonuc");
+  if(inp) inp.oninput=()=>{ const v=inp.value.trim(); if(v.length<2){ son.innerHTML=""; return; }
+    son.innerHTML=kisiAraAd(v,false,6).filter(n=>!etiket.includes(n.id)).map(n=>`<div data-ekle="${n.id}">${escapeHtml(dispName(n.name))} <small style="color:var(--muted)">${escapeHtml(kimlikSatiri(n)||"")}</small></div>`).join("");
+    son.querySelectorAll("[data-ekle]").forEach(d=>d.onclick=()=>{ etiket.push(d.dataset.ekle); kaydet(); ciz(); inp.value=""; son.innerHTML=""; inp.focus(); }); };
+  const kapat=()=>{ o.remove(); if(typeof sonra==="function") sonra(); else if(inspector.classList.contains("show") && byId[inspector.dataset.kisi]) renderProfileSections._rerun(byId[inspector.dataset.kisi]); };
+  o.querySelector("[data-kapat]").onclick=kapat;
+  o.addEventListener("click",e=>{ if(e.target===o || e.target.tagName==="IMG") kapat(); });
+}
+
 // ============================ TANIŞMA DAVETİ ============================
 // Birbirini tanımayan aile üyeleri (çoğu zaman gençler) şık bir kartla tanışma daveti gönderir.
 // Kart: iki kişinin fotoğrafı/baş harfi, akrabalık anlatısı (AgacLib.akrabalikAnlatisi), kişisel not.
 // Gönderim: site içi (alıcı girişte kartı görür + telefonuna bildirim) ya da RESİM olarak paylaş (WhatsApp…).
 // Kabul edilince iki kişiye özel sohbet açılır (kapsam ozel:<a>:<b>). Sunucu: api/sohbet.js → tanis-*.
+// Türkçe ekler (AgacLib: ünlü uyumu) — "Mustafa'ya", "Aysel'in"
+const yonel=a=>window.AgacLib&&AgacLib.yonelmeEki ? AgacLib.yonelmeEki(a) : a+"'a";
+const ilgi=a=>window.AgacLib&&AgacLib.ilgiEki ? AgacLib.ilgiEki(a) : a+"'in";
 const LOGO_SVG=()=>{ const l=document.querySelector(".brand .logoIsaret"); return l?l.outerHTML.replace('class="logoIsaret"','class="dkIz"'):""; };
 const basHarf=n=>(dispName(n.name).trim()[0]||"?").toLocaleUpperCase("tr");
 function avatarStil(n){ const f=(PROFILES[n.id]||{}).photo; return f?`background-image:url('${f}')`:`background-color:${nodeColor(n)}`; }
@@ -6637,7 +6928,7 @@ function tanismaDavetiAc(alici){
   const ort=davetPenceresi(`<div id="dkOnizleme"></div>
     <textarea id="dkNot" maxlength="${(AYAR&&AYAR.TANISMA&&AYAR.TANISMA.mesajMax)||400}" aria-label="Kişisel not"></textarea>
     <div class="dpDugmeler"><button data-vazgec>Vazgeç</button><button data-resim>🖼 Resim olarak paylaş</button><button class="birincil" data-gonder>🤝 Davet gönder</button></div>
-    <div style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;line-height:1.5">Davet ${escapeHtml(dispName(alici.name))}'a sitede iletilir (bildirim açıksa telefonuna da). Siteyi kullanmıyorsa “Resim olarak paylaş” ile WhatsApp'tan gönder.</div>`);
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;line-height:1.5">Davet ${escapeHtml(yonel(dispName(alici.name)))} sitede iletilir (bildirim açıksa telefonuna da). Siteyi kullanmıyorsa “Resim olarak paylaş” ile WhatsApp'tan gönder.</div>`);
   const not=ort.querySelector("#dkNot"), on=ort.querySelector("#dkOnizleme");
   not.value=varsayilanNot(ben, alici);
   const ciz=()=>{ on.innerHTML=davetKartiHTML(ben, alici, not.value.trim()); };
@@ -6651,7 +6942,7 @@ function tanismaDavetiAc(alici){
       const j=await r.json();
       if(j.ok){ ort.remove();
         if(j.durum==="kabul"){ toast(`${dispName(alici.name)} ile zaten tanıştınız — sohbet açılıyor`); ozelSohbetAc(alici.id); }
-        else toast(`🤝 Davet ${dispName(alici.name)}'a gitti — kabul edince haber vereceğim`); }
+        else toast(`🤝 Davet ${yonel(dispName(alici.name))} gitti — kabul edince haber vereceğim`); }
       else { toast(j.hata||"Gönderilemedi"); e.target.disabled=false; e.target.textContent="🤝 Davet gönder"; }
     }catch(err){ toast("Bağlantı hatası"); e.target.disabled=false; e.target.textContent="🤝 Davet gönder"; }
   };
