@@ -115,3 +115,16 @@ export async function aileyeBildir({ haricKisi, baslik, metin, url, etiket }) {
   for (const id of silinecek) await sql`delete from bildirim_abonelik where id = ${id}`;
   return { gonderilen: sonuclar.filter((s) => s.ok).length, silinen: silinecek.length };
 }
+
+// Tek kişiye (o kişinin tüm cihazlarına) bildirim — öz-denetim hatırlatması için
+export async function kisiyeBildir(kisiId, { baslik, metin, url, etiket }) {
+  if (!kisiId) return { gonderilen: 0, silinen: 0 };
+  const sql = db();
+  const aboneler = await sql`select id, endpoint, p256dh, auth from bildirim_abonelik where kisi_id = ${kisiId} order by id desc limit ${BILDIRIM.enCokAlici}`;
+  if (!aboneler.length) return { gonderilen: 0, silinen: 0 };
+  const yuk = { baslik, metin: String(metin || '').slice(0, BILDIRIM.metinMax), url, etiket };
+  const sonuclar = await Promise.all(aboneler.map((a) => pushGonder(a, yuk).then((s) => ({ ...s, id: a.id }))));
+  const silinecek = sonuclar.filter((s) => s.sil).map((s) => s.id);
+  for (const id of silinecek) await sql`delete from bildirim_abonelik where id = ${id}`;
+  return { gonderilen: sonuclar.filter((s) => s.ok).length, silinen: silinecek.length };
+}

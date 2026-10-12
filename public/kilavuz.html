@@ -97,6 +97,7 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
     <li><a href="#giris">Giriş</a></li><li><a href="#gezinme">Ağaçta gezinme</a></li>
     <li><a href="#cinar">Çınar</a></li><li><a href="#ekleme">Fotoğraf ve bilgi</a></li>
     <li><a href="#hikaye">Hikâye</a></li><li><a href="#sohbet">Aile Sohbeti</a></li>
+    <li><a href="#tanisma">Tanışma</a></li><li><a href="#denetim">Çelişki ve denetim</a></li>
     <li><a href="#telefon">Telefona ekle</a></li><li><a href="#hesap">Hesap ve çıkış</a></li>
     <li><a href="#yonetici">Yönetici</a></li>
   </ul>
@@ -106,7 +107,7 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
     <p>İndirme gerekmez: telefonda ya da bilgisayarda <b>soyevrenim.com</b>'u açman yeterli.</p>
     <ol>
       <li>“Bu evrene kim bakıyor?” kutusuna <b>adını</b> yaz ve listeden kendini seç. Soyadı ya da Türkçe harf farkı sorun olmaz (<span class="ornek">Yuksel</span> = Yüksel).</li>
-      <li>Düzenlemek, sohbet etmek ve Çınar'la konuşmak için <b>aile şifresi</b>yle gir. Şifreyi aile büyüklerinden al.</li>
+      <li>Düzenlemek, sohbet etmek ve Çınar'la konuşmak için <b>aile şifresi</b>yle gir. Şifreyi aile büyüklerinden al. Şifreyle giren güvenilir sayılır: <b>değişikliklerin hemen kaydedilir</b>, onay beklenmez.</li>
       <li>Sadece bakmak istersen <b>Sadece bakmak istiyorum</b>'a dokun.</li>
     </ol>
     <div class="not"><b>Ağaçta yok musun?</b> Listenin altındaki <span class="dugme">Listede yok musun? Kaydol →</span>'a dokun. Adını yaz, ağaçtaki bir yakınını seç ve bağını belirt (çocuğu, eşi ya da kardeşi). Yakınını seçmeden kayıt olmaz; aile şifresi gerekir.</div>
@@ -131,10 +132,11 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
       <li><span class="ornek">Emine ile Fahri nasıl akraba?</span></li>
       <li><span class="ornek">Nereden geldik?</span> · <span class="ornek">Molla Memiş kimdir?</span></li>
       <li><span class="ornek">1835 kayıtlarında atalarımızı nasıl bulurum?</span></li>
-      <li><span class="ornek">Ayşe, Fahri'nin kız kardeşi</span> → kişi ekleme önerisi olur</li>
-      <li><span class="ornek">Nevin Kaya ile Nevin Arslan (Kaya) aynı kişi</span> → çift kaydı birleştirme</li>
+      <li><span class="ornek">Ayşe, Fahri'nin kız kardeşi</span> → eklemeyi hazırlar, <span class="dugme">✓ Ağaca işle</span>'ye dokununca işlenir</li>
+      <li><span class="ornek">Nevin Kaya ile Nevin Arslan (Kaya) aynı kişi</span> → <span class="dugme">⇄ Evet, birleştir</span></li>
+      <li><span class="ornek">Tanışabileceğim akrabalar</span> · <span class="ornek">cinsiyet hatalarını listele</span> · <span class="ornek">saçmalıkları bul</span></li>
     </ul>
-    <div class="not">Çınar ağaca kendisi yazmaz; eklemeler yöneticinin onayına gider. Herkesin günlük bir mesaj hakkı vardır; dolunca hazır bilgilerle yanıt verir.</div>
+    <div class="not">Çınar ağaca kendiliğinden yazmaz: hazırladığı değişikliği sen <b>✓ Ağaca işle</b> ile onaylarsın. Herkesin günlük bir mesaj hakkı vardır; dolunca hazır bilgilerle yanıt verir.</div>
   </section>
 
   <section id="ekleme">
@@ -142,14 +144,14 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
     <ol>
       <li>Kişiye <b>uzun bas</b> → ayrıntı kartı açılır.</li>
       <li><span class="dugme">＋ Fotoğraf ekle</span>: profil fotoğrafı. <span class="dugme">＋ Fotoğraf / Video ekle</span>: galeri. Fotoğraflar <b>onay beklemeden</b> hemen görünür.</li>
-      <li>Doğum yılı, meslek, eş gibi bilgileri karttaki alanlara yaz. Aile üyesinin değişikliği <span class="dugme">Onaya gönder</span> ile yöneticiye gider.</li>
+      <li>Doğum yılı, meslek, eş gibi bilgileri karttaki alanlara yaz — <b>hemen kaydedilir</b>. Kartın altında kimin eklediği ve en son kimin değiştirdiği yazar.</li>
     </ol>
     <div class="not uyari"><b>Dikkat:</b> kartın en üstündeki <b>“Ad”</b> kutusu kişinin adını değiştirir. Birini aramak için bu kutuyu değil, sayfanın en üstündeki <span class="dugme">kişi ara…</span> kutusunu kullan. Adı tamamen değiştirmeye çalışırsan site önce sorar.</div>
   </section>
 
   <section id="hikaye">
     <h2><span class="no">05</span> Hikâye ve anı</h2>
-    <p>Büyüklerin anlattıkları kaybolmasın: kişinin kartında <span class="dugme">🎙 Hikâye anlat</span>'a dokun ve konuş. Kayıt yazıya çevrilir, anı olarak kişinin kartına eklenir (yönetici onaylar). Yazılı anı için <span class="dugme">＋ Anı ekle</span>.</p>
+    <p>Büyüklerin anlattıkları kaybolmasın: kişinin kartında <span class="dugme">🎙 Hikâye anlat</span>'a dokun ve konuş. Kayıt yazıya çevrilir ve anı olarak <b>doğrudan</b> kişinin kartına eklenir. Hikâyede geçen ve ağaçta olmayan kişiler <span class="dugme">📥 Öneriler</span> kutunda bekler; doğruysa <span class="dugme">✓ Ağaca işle</span>. Yazılı anı için <span class="dugme">＋ Anı ekle</span>.</p>
   </section>
 
   <section id="sohbet">
@@ -161,8 +163,30 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
     </ul>
   </section>
 
+  <section id="tanisma">
+    <h2><span class="no">07</span> Tanışma daveti</h2>
+    <p>Ailede birbirini tanımayanlar çok (özellikle gençler). Tanışmak istediğin kişinin kartında <span class="dugme">🤝 … ile tanış — davet gönder</span>'e dokun: ikinizin fotoğrafı, akrabalığınız (“Aynı kökün iki dalı · ortak atanız Molla Memiş” gibi) ve notunla şık bir kart hazırlanır.</p>
+    <ul>
+      <li><span class="dugme">🤝 Davet gönder</span>: davet sitede ona iletilir (bildirimi açıksa telefonuna da). Girişte kartı görür.</li>
+      <li><span class="dugme">🖼 Resim olarak paylaş</span>: siteyi kullanmayan biri için kartı resim olarak WhatsApp'tan gönder.</li>
+      <li>O <span class="dugme">Tanışalım 🤝</span> derse <b>yalnız ikinizin gördüğü özel sohbet</b> açılır.</li>
+      <li>Hesap menüsü → <span class="dugme">🤝 Tanışmalarım</span>: gelen davetler, tanıştıkların, ve <b>tanışabileceğin akrabalar</b> (aynı kuşak, aynı şehir, yaklaşan doğum günü).</li>
+    </ul>
+  </section>
+
+  <section id="denetim">
+    <h2><span class="no">08</span> Çelişki ve denetim</h2>
+    <p>Onay olmadığı için site <b>kendini denetler</b>:</p>
+    <ul>
+      <li>Kaydettiğin şey başkasının eklediğiyle çelişirse (aynı kişiyi iki kez eklemek, başkasının girdiği doğum yılını değiştirmek…) hemen <b>⚠ uyarı</b> görürsün. Bilgiyi ilk giren kişiye de hatırlatma gider; girişte <b>“⚠ Eklediğin bilgilerle ilgili hatırlatma”</b> çıkar. Doğru olan hangisiyse kartından düzeltin ya da Aile Sohbeti'nde konuşun.</li>
+      <li>Hesap menüsü → <span class="dugme">🩺 Veri denetimi</span>: ağaçtaki tutarsızlıklar (yanlış anne bağı, eşi farklı yazılmış kişi, kopyalanmış profil…). <span class="dugme">⚥ Yalnız cinsiyet</span> ile cinsiyeti yanlış girilmiş olabilecekler; tek dokunuşla <span class="dugme">♀ Kadın yap</span> / <span class="dugme">♂ Erkek yap</span>.</li>
+      <li>Hesap menüsü → <span class="dugme">🧹 Çift kayıtlar</span>: aynı kişinin iki kaydını <b>Birleştir</b> ya da <b>Farklı kişiler</b> (ada sıra numarası eklenir).</li>
+      <li>Tek sınır: bir kerede 3'ten fazla kişiyi yalnız yönetici silebilir. Her değişiklik günlüğe yazılır, geri alınabilir.</li>
+    </ul>
+  </section>
+
   <section id="telefon">
-    <h2><span class="no">07</span> Telefonun ana ekranına ekle</h2>
+    <h2><span class="no">09</span> Telefonun ana ekranına ekle</h2>
     <p>Site uygulama gibi açılır; iPhone'da bildirimler için bu adım <b>gerekli</b>.</p>
     <ul>
       <li><b>iPhone (Safari):</b> <span class="dugme">Paylaş ⬆</span> → <b>Ana Ekrana Ekle</b> → <b>Ekle</b>. Instagram/WhatsApp içinden açtıysan önce <b>Safari'de aç</b>.</li>
@@ -171,21 +195,21 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
   </section>
 
   <section id="hesap">
-    <h2><span class="no">08</span> Hesap ve çıkış</h2>
+    <h2><span class="no">10</span> Hesap ve çıkış</h2>
     <ul>
       <li>Site seni yanlış kişi sanıyorsa: kendi kartını aç → <span class="dugme">🙋 Bu benim</span>, ya da Çınar'a <span class="ornek">Ben Yüksel</span> yaz.</li>
-      <li>Hesap menüsü (sayfadaki <span class="dugme">👤 Aile üyesi</span> / <span class="dugme">🔓 Yönetici</span> yazısına dokun): <span class="dugme">🔄 Ben değilim</span>, <span class="dugme">📲 Ana ekrana ekle</span>, <span class="dugme">⎋ Çıkış yap</span>. Çıkınca karşılama ekranına dönersin.</li>
+      <li>Hesap menüsü (sayfadaki <span class="dugme">👤 Aile üyesi</span> / <span class="dugme">🔓 Yönetici</span> yazısına dokun): <span class="dugme">🤝 Tanışmalarım</span>, <span class="dugme">🩺 Veri denetimi</span>, <span class="dugme">🧹 Çift kayıtlar</span>, <span class="dugme">📖 Kullanma kılavuzu</span>, <span class="dugme">🔄 Ben değilim</span>, <span class="dugme">📲 Ana ekrana ekle</span>, <span class="dugme">⎋ Çıkış yap</span>. Çıkınca karşılama ekranına dönersin.</li>
     </ul>
   </section>
 
   <section id="yonetici" class="yonetici">
-    <h2><span class="no">09</span> Yönetici için</h2>
+    <h2><span class="no">11</span> Yönetici için</h2>
     <ul>
-      <li><span class="dugme">Onay kutusu</span>: aile üyelerinin önerilerini onayla ya da reddet.</li>
-      <li>Hesap menüsü → <span class="dugme">🩺 Veri denetimi</span>: ağaçtaki tutarsızlıklar (yanlış anne bağı, eşi farklı yazılmış kişi, kopyalanmış profil…) önem sırasıyla listelenir; ada dokununca kart açılır. Kesin yanlışlar <span class="dugme">Düzelt</span> ile temizlenir.</li>
-      <li>Hesap menüsü → <span class="dugme">🧹 Çift kayıtlar</span>: aynı kişinin iki kaydını <b>Birleştir</b> ya da <b>Farklı kişiler</b> (ada sıra numarası eklenir: Hasan2, ekranda yine “Hasan”).</li>
+      <li>Onay kuyruğu yok; aile üyeleri doğrudan kaydeder. <span class="dugme">📥 Öneriler</span>'de Çınar'ın ve sesli hikâyelerin hazırladığı, henüz işlenmemiş öneriler görünür.</li>
+      <li>Bir kerede 3'ten fazla kişiyi yalnız yönetici silebilir.</li>
+      <li>Veri denetiminde <span class="dugme">Düzelt</span>: kesin yanlışlar (babanın aynı zamanda “anne” yazılması) tek seferde temizlenir.</li>
       <li>Kişi kartında <span class="dugme">🔗 Kişisel giriş bağlantısı gönder</span>: o kişi şifresiz, kendisi olarak girer.</li>
-      <li>Kural: anne-babası aynı iki kişi aynı adı taşıyamaz.</li>
+      <li>Kural: anne-babası aynı iki kişi aynı adı taşıyamaz (farklılarsa ada sıra numarası: Hasan2).</li>
     </ul>
   </section>
 

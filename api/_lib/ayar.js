@@ -97,6 +97,19 @@ export const GIRIS = {
   davetGun: 180,           // kişisel giriş bağlantısı geçerliliği
 };
 
+// Aile üyesi (aile şifresiyle giren) ağaca DOĞRUDAN kaydeder — yönetici onayı yok (güvenilir sayılır).
+// Tek güvenlik ağı: tek kayıtta bundan fazla kişiyi silmek yalnız yöneticide (yanlışlıkla toplu silme).
+// Her kayıt gunluk'e yazılır, geri alınabilir.
+export const AILE = { silmeMax: 3 };
+
+// Öz-denetim (api/_lib/denetim.js): kayıtta yeni çıkan çelişkiler kaydedene ve ilgili kişilere bildirilir
+export const DENETIM_UYARI = {
+  onemler: ['yuksek', 'orta'],  // bu önemdeki YENİ bulgular uyarılır (küçükler denetim ekranında kalır)
+  enCok: 8,                     // tek kayıtta en fazla uyarı
+  farkMax: 4,                   // bir kişide listelenen en fazla değişen alan
+  listeMax: 50,                 // kişinin okunmamış hatırlatma listesi
+};
+
 // Kayıt: ağaçta olmayan aile üyesi kendini ekler — mevcut bir kişiye BAĞLI olmak zorunda
 // (api/agac.js?adim=kayit, api/_lib/kayit.js). Bağsız kayıt yok; aile şifresi gerekir.
 export const KAYIT = {
@@ -111,6 +124,9 @@ export const ANA_EKRAN = { gecikmeSn: 6, tekrarGun: 14 };
 
 // Aile sohbeti: yeni mesaj yoklaması (rozet + bildirim) ve panel açıkken yenileme
 export const SOHBET = { yoklamaSn: 45, acikYoklamaSn: 15, yeniMax: 50 };
+
+// Tanışma daveti (api/sohbet.js → tanis-*): birbirini tanımayan aile üyeleri; kabul edilince özel sohbet
+export const TANISMA = { mesajMax: 400, listeMax: 30 };
 
 // Web Push bildirimleri (api/_lib/push.js)
 export const BILDIRIM = {

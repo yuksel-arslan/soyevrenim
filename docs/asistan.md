@@ -23,8 +23,9 @@ Asistan girişi / 🎤 ─► arayüz komutu mu? (köken, istatistik, kol, "3-6 
   - Jeton yoksa notun altında **🔑 Aile şifresiyle giriş yap** düğmesi çıkar; kutu bir kerelik şifre
     kutusuna dönüşür (ortak `sifreyleGir()`, bkz. `docs/sohbet.md`).
   - Mobilde hazır sorular tek satırda yana kayar, yanıt alanı ≤30vh: yazı kutusu hep görünür.
-- **Model ağaca yazmaz.** Ekleme/düzeltme `oneri_olustur` aracıyla `oneri` tablosuna **yama** (`islem`) olarak düşer;
-  yönetici mevcut onay kutusundan onaylar. Onayda yama **o anki** ağaca uygulanır (araya giren onayları ezmez).
+- **Model ağaca kendiliğinden yazmaz.** Ekleme/düzeltme `oneri_olustur` aracıyla `oneri` tablosuna **yama** (`islem`)
+  olarak düşer; yanıtta "✓ Ağaca işle" düğmesi çıkar, kişi dokununca (`/api/oneri?adim=karar`, önerinin sahibi ya da
+  yönetici) yama **o anki** ağaca uygulanır. Yönetici onayı yok.
 - **Belirsiz isim:** sistem istemi, birden çok eşleşmede tahmin yerine soru sormayı zorunlu kılar (ağaçta 37 tekrarlı ad var).
 - **Kaynak:** yanıt sonunda `Kaynak: <kişi>'in anısı, <tarih>` ya da `Kaynak: soy ağacı kaydı`.
 - **Görsel:** `yol_bul` çağrıldıysa istemci yolu ağaçta çizer (`gorsel.yol`), tek kişi getirildiyse kişiyi seçer (`gorsel.kisi`).
@@ -154,7 +155,7 @@ aile büyüğünün anlatacağı gibi:
 | `ani_ara {sorgu, kisi_id?}` | Anı metni/başlık/tarih içinde arama |
 | `uzman_bilgi {sorgu, beceri}` | Beceriler: bölge tarihi, site kullanımı, Lazca (kaynaklı, güven etiketli) |
 | `soy_tarihi {}` | Fahri Arslan notu, zaman çizelgesi, yerler, adlar (güven etiketli, kaynaklı) + ağaç sayıları |
-| `oneri_olustur {islemler, aciklama}` | `kisi_ekle`, `iliski_ekle`, `bilgi_duzelt` yaması → onay kuyruğu |
+| `oneri_olustur {islemler, aciklama}` | `kisi_ekle`, `iliski_ekle`, `bilgi_duzelt` yaması → kişi "✓ Ağaca işle" ile işler |
 
 Yama işlemleri (`api/_lib/oneri.js`):
 
@@ -242,7 +243,7 @@ ilgili parçaları alır. Ayrıntı: [docs/cinar-beceri.md](cinar-beceri.md).
 ## Test
 
 `npm test` (birim) · `TEST_DATABASE_URL=postgres://… npm test` (uçtan uca; `npm i --no-save pg`).
-Senaryolar: "Ayşe, Fahri'nin kız kardeşi" → belirsizlikte soru, netleşince öneri + onayda ağaca ekleme;
+Senaryolar: "Ayşe, Fahri'nin kız kardeşi" → belirsizlikte soru, netleşince öneri + "✓ Ağaca işle" ile ağaca ekleme;
 "Emine ile Fahri nasıl akraba?" → yol + kaynaklı yanıt; sistem/kişi kotası dolu → yedek; sağlayıcı 429 → yedek.
 LLM testlerde **senaryolu taklittir**: tesisatı doğrular, modelin gerçek davranışını değil.
 
@@ -253,6 +254,6 @@ Kullanıcı iki kaydın aynı kişi olduğunu söylerse ("Nevin Kaya ile Nevin A
 "… birleştir") istek **modele gitmez**; yerel komut (`birlestirKomutu`) iki kişiyi bulur:
 - Adaş varsa hangisi olduğu seçenekle sorulur (baba adı ve nesille).
 - **Yönetici:** "⇄ Evet, birleştir" → birleştirme penceresi (hangi ad kalsın) → `kisileriBirlestir`.
-- **Aile üyesi:** "⇄ Yöneticiye öner" → birleşmiş ağaç öneri olarak onaya gider.
+- **Aile üyesi:** aynı "⇄ Evet, birleştir" (onay yok; öz-denetimden geçer).
 - Farklı cinsiyetteki iki kayıt birleştirilmez. Kural: `api/_lib/agac.js → kisiBirlestir`.
 Model yanıtlarında iç kimlikler (id) ve Markdown işaretleri gösterilmez (`yanitTemizle`; sistem istemi kural 12–13).

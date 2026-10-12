@@ -1,21 +1,22 @@
 # KÖK · Abdurrahman Oğulları Soy Ağacı
 
 Ortak, canlı bir aile soy ağacı. Herkes girip görebilir; aile şifresiyle giren
-kişiler kendi yakınlarında değişiklik önerebilir; tüm değişiklikler yöneticinin
-onayından geçer.
+kişiler güvenilir sayılır: değişiklikleri hemen kaydedilir (yönetici onayı yok); sistem her kayıtta
+kendini denetler, çelişkide ilgilileri uyarır.
 
 ## Özellikler
 
 - **Bloom tarzı görsel ağaç** — nesil halkaları, eğik disk perspektifi, dinamik merkez
 - **Herkes kendi bakışının merkezinde** — kim bakıyorsa onun soyu aydınlanır
 - **Aile şifresiyle giriş** — ortak şifre girilir, imzalı oturum jetonu verilir (SMS/telefon yok)
-- **Onay sistemi** — kimse ana ağacı doğrudan değiştiremez; değişiklikler admin onayından geçer
+- **Onay yok, öz-denetim var** — aile şifresiyle giren doğrudan kaydeder; çelişkide kaydeden ve bilgiyi ilk giren uyarılır · [docs/agac.md](docs/agac.md)
 - **Foto & video** — Cloudflare R2'de (sesli hikâyelerle aynı depo) ortak saklanır, herkes görür
 - **Fotoğraflı avatarlar, iletişim, sosyal medya, anılar**
 - **Mobil uyumlu, dark/light/yadigâr**
 - **Kullanma kılavuzu** — aile üyeleri için kısa rehber: `/kilavuz.html` (karşılama ekranındaki bağlantı, alt/sol çubuktaki “Kılavuz” düğmesi ve hesap menüsü; tema sitedekiyle aynı)
+- **Tanışma daveti** — birbirini tanımayan akrabalara şık kart; kabulde iki kişilik özel sohbet · [docs/sohbet.md](docs/sohbet.md)
 - **Asistan** — soru yanıtlar, konuşarak kişi ekleme önerir (OpenAI GPT, günlük harcama tavanlı) · [docs/asistan.md](docs/asistan.md) · beceri: [docs/cinar-beceri.md](docs/cinar-beceri.md)
-- **Sesli hikâye** — kendi sesinle anlat; saklanır, yazıya çevrilir, anı olarak onaya gider · [docs/hikaye.md](docs/hikaye.md)
+- **Sesli hikâye** — kendi sesinle anlat; saklanır, yazıya çevrilir, anı olarak doğrudan karta eklenir · [docs/hikaye.md](docs/hikaye.md)
 - **Kökenimiz ve araştırma köşesi** — Fahri Arslan'ın 1956 notu, Osmanlı arşiv kayıtları, gençler için adım adım rehber, sözlük ve kaynakça · [docs/kaynakca.md](docs/kaynakca.md)
 - **Ailemizin bu ayı** — kota, katkılar, hikâye şeridi · [docs/kullanim.md](docs/kullanim.md)
 
@@ -44,7 +45,7 @@ Kısaca:
 public/index.html   → ağacın kendisi (frontend)
 api/agac.js         → ağacı oku/kaydet
 api/giris.js        → aile/admin şifresiyle giriş, oturum jetonu üretir
-api/oneri.js        → onay kuyruğu (öneri gönder/listele/karar)
+api/oneri.js        → öneriler (Çınar / sesli hikâye hazırlar; sahibi ya da yönetici "✓ Ağaca işle")
 api/medya.js        → foto/video yükleme (Blob)
 api/sohbet.js       → aile sohbeti / kişi yorumları
 api/asistan.js      → LLM asistanı (araç döngüsü, kota, öneri)

@@ -47,7 +47,7 @@ Aile üyesinin yüklediği **profil fotoğrafı ve galeri öğesi yönetici onay
 medya alanını değiştirir (ağacın geri kalanına dokunmaz). `url` kendi depomuzdan olmalı
 (`/api/medya?adim=oku&anahtar=…`, `medyaUrlGecerli`); başka adres `400`. Oturumsuz `401`.
 Yönetici eskisi gibi tam kayıt (`saveProfile → cloudSave`) yapar. Eskiden aile üyesinin fotoğrafı
-"Onaya gönder" çubuğuna düşüyor ve onaylanmadıkça görünmüyordu.
+"Onaya gönder" çubuğuna düşüyor ve onaylanmadıkça görünmüyordu. (Artık onay kuyruğu tamamen kaldırıldı; bkz. `docs/agac.md`.)
 
 ## Ortam değişkenleri
 

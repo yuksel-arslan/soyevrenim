@@ -136,6 +136,31 @@ Kızların çocuklarının annelerinin altında çizilmesi (1956 çizimindeki gi
   (eskiden birleştiriliyordu: bir id başka kişiye geçtiyse eski foto/meslek yanlış kişide görünüyor ve
   yöneticinin kaydıyla sunucuya yazılıyordu).
 
+## Öz-denetim (her kayıtta)
+
+Onay kuyruğu yok: aile şifresiyle giren doğrudan kaydeder (tek sınır: tek kayıtta `AILE.silmeMax`'tan fazla
+kişiyi yalnız yönetici siler). Bu yüzden sistem her kayıtta kendini denetler — `api/_lib/denetim.js`:
+
+1. **Damga:** yeni kişiye `ekleyen`, değişen kişiye `duzenleyen` = `{kisi, ad, zaman}` (sunucu yazar; istemci
+   göndermese de eskiden korunur). Kişinin kartında "ekleyen: Ali · son değiştiren: Veli" görünür.
+2. **Çelişki:** bu kaydın getirdiği YENİ denetim bulguları (`veriDenetimi` farkı; önem `DENETIM_UYARI.onemler`)
+   ve başkasının girdiği bilginin değişmesi (ad, cinsiyet, yaşam durumu, doğum/meslek…, fotoğraf).
+3. **Uyarı:** kaydedene yanıtta (`uyarilar`) → "⚠ Kaydedildi — ama bir çelişki olabilir" penceresi.
+   İlgili öteki kişilere (ilk ekleyen / son değiştiren) `uyari` tablosuna hatırlatma + varsa telefonlarına push;
+   girişte "⚠ Eklediğin bilgilerle ilgili N hatırlatma" penceresi, "Tamam, gördüm" ile okundu.
+
+Hiçbir şey kendiliğinden düzeltilmez. Uçlar: `POST /api/agac?adim=uyarilar {jeton}`, `?adim=uyari-okundu {jeton, ids?}`.
+Tam kayıt, kayıt/medya yamaları ve "✓ Ağaca işle" (öneri) aynı denetimden geçer. Tablo: `uyari` (`sql/uyari.sql`).
+Ayarlar `api/_lib/ayar.js → DENETIM_UYARI`, `AILE`. Test: `test/denetim.test.mjs`.
+
+## Onay yok (aile güvenilir)
+
+- Aile şifresiyle giren herkes kişi ekler, bilgi düzeltir, fotoğraf yükler, kayıt birleştirir — hemen kaydedilir.
+- Çınar'ın hazırladığı değişiklik: model kendiliğinden yazmaz; kişi "✓ Ağaca işle"ye dokununca işlenir
+  (`/api/oneri?adim=karar`: önerinin sahibi ya da yönetici).
+- Sesli hikâye: anı doğrudan karta; hikâyede geçen yeni kişiler öneri olarak "📥 Önerilerim"de.
+- Yönetici araçları (veri denetimi, çift kayıtlar, toplu silme, kişisel bağlantı) yöneticide kalır.
+
 ## Ortam değişkenleri
 
 `DATABASE_URL`, `OTURUM_GIZLI`.

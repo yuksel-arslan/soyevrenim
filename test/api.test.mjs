@@ -148,10 +148,12 @@ test('sesli hikâye: kota doluyken kuyruğa girer, cron işler → anı önerisi
   r = await cagir(hikaye, { method: 'GET', query: { adim: 'kuyruk' }, headers: { authorization: 'Bearer gizli' } });
   assert.deepEqual(r.govde.sonuc.map((x) => x.durum), ['islendi']);
   const [is] = await D.sql`select * from hikaye_kuyruk`;
-  assert.equal(is.durum, 'islendi'); assert.ok(is.oneri_id);
-  const [o] = await D.sql`select * from oneri where id=${is.oneri_id}`;
-  assert.equal(o.kaynak, 'hikaye');
-  const ani = o.islem[0].ani;
+  assert.equal(is.durum, 'islendi');
+  // ANI onaysız, doğrudan hedef kişinin kartına işlenir (anlatanın kendi sesi)
+  const [ag] = await D.sql`select veri from agac where id=1`;
+  const hedef = ag.veri.nodes.find((n) => n.id === 'p1222');
+  const ani = (hedef.profile.memories || []).find((m) => m.ses_anahtar === anahtar);
+  assert.ok(ani, 'anı kartta');
   assert.equal(ani.kaynak, 'ses'); assert.equal(ani.ses_anahtar, anahtar); assert.equal(ani.date, '1985');
   assert.equal(ani.baslik, 'Tarla günü'); assert.match(ani.transkript, /dedem hamit/);
   const k = await D.sql`select tur, islem, saniye::float as sn from kullanim order by id`;
@@ -238,12 +240,20 @@ test('Lazca yazan kullanıcı: istemde Lazca kuralı; uzman_bilgi(lazca) Türkç
   for (const i of llm.istekler) assert.ok(tahminiToken(JSON.stringify(i.messages)) + tahminiToken(JSON.stringify(i.tools || [])) <= MESAJ_MAX_TOKEN);
 });
 
-test('agac kaydet: oturumsuz 401 (yeniden giriş), aile 403 (öneri yolu), yönetici 200 + güncelleme zamanı', { skip: atla }, async () => {
+test('agac kaydet: oturumsuz 401, aile üyesi DOĞRUDAN kaydeder (onay yok), toplu silme yalnız yönetici; güncelleme zamanı', { skip: atla }, async () => {
   const { default: agac } = await import('../api/agac.js');
+  const { AILE } = await import('../api/_lib/ayar.js');
   const veri = (await cagir(agac, { method: 'GET' })).govde.veri;
-  const kaydet = (j) => cagir(agac, { method: 'POST', body: { veri, guncelleyen: 'Test', jeton: j } });
+  const kaydet = (j, v = veri) => cagir(agac, { method: 'POST', body: { veri: v, guncelleyen: 'Test', jeton: j } });
   assert.equal((await kaydet('')).statusCode, 401);
-  assert.equal((await kaydet(jeton)).statusCode, 403);
+  const aile = await kaydet(jeton);
+  assert.equal(aile.statusCode, 200, JSON.stringify(aile.govde));
+  // aile üyesi tek kayıtta AILE.silmeMax'tan fazla kişi silemez (yanlışlıkla toplu silme)
+  const yapraklar = veri.nodes.filter((n) => !veri.edges.some((e) => e.from === n.id) && !(veri.motherEdges || []).some((e) => e.from === n.id)).slice(0, AILE.silmeMax + 1).map((n) => n.id);
+  const az = { ...veri, nodes: veri.nodes.filter((n) => !yapraklar.includes(n.id)), edges: veri.edges.filter((e) => !yapraklar.includes(e.to)),
+    motherEdges: (veri.motherEdges || []).filter((e) => !yapraklar.includes(e.to)), marriages: (veri.marriages || []).filter((m) => !yapraklar.includes(m.from) && !yapraklar.includes(m.to)) };
+  const toplu = await kaydet(jeton, az);
+  assert.equal(toplu.statusCode, 403); assert.equal(toplu.govde.kural, 'toplu-silme');
   const r = await kaydet(adminJeton);
   assert.equal(r.govde.ok, true);
   assert.ok(r.govde.guncelleme, 'kaydeden cihaz kendi kaydını tanısın');
@@ -264,4 +274,22 @@ test('agac kaydet: eski sürümün üstüne yazılmaz (409 + güncel veri), gün
   const c = await kaydet(ilk.veri, new Date(b.govde.guncelleme).toISOString()); // B birleştirip güncel sürümle
   assert.equal(c.govde.ok, true);
   assert.equal((await kaydet(ilk.veri, undefined)).govde.ok, true, 'onceki göndermeyen eski istemci koşulsuz');
+});
+
+test('öneri: aile üyesi KENDİ önerisini "✓ Ağaca işle" ile işler (yönetici onayı yok); başkasınınkini işleyemez', { skip: atla }, async () => {
+  const { default: oneri } = await import('../api/oneri.js');
+  const { oneriEkle } = await import('../api/_lib/oneri.js');
+  const { jetonUret } = await import('../api/giris.js');
+  const benimJeton = jetonUret('aile', KISI), baskasi = jetonUret('aile', 'p1234442');
+  const o = await oneriEkle({ kisiId: KISI, gonderenAd: 'Test (asistan)', kaynak: 'asistan',
+    islemler: [{ tur: 'kisi_ekle', ad: 'Deneme Çocuk', cinsiyet: 'E', iliski: 'cocugu', hedef_id: 'p1222' }] });
+  const liste = await cagir(oneri, { query: { adim: 'liste' }, body: { jeton: benimJeton } });
+  assert.ok(liste.govde.oneriler.some((x) => Number(x.id) === o.id), 'kendi önerisini görür');
+  assert.ok(!(await cagir(oneri, { query: { adim: 'liste' }, body: { jeton: baskasi } })).govde.oneriler.some((x) => Number(x.id) === o.id), 'başkası görmez');
+  assert.equal((await cagir(oneri, { query: { adim: 'karar' }, body: { jeton: baskasi, id: o.id, karar: 'onayla' } })).statusCode, 403);
+  const r = await cagir(oneri, { query: { adim: 'karar' }, body: { jeton: benimJeton, id: o.id, karar: 'onayla' } });
+  assert.equal(r.govde.ok, true, JSON.stringify(r.govde));
+  const [a] = await D.sql`select veri from agac where id=1`;
+  assert.ok(a.veri.nodes.some((n) => n.name === 'Deneme Çocuk'));
+  await D.sql`update agac set veri=${JSON.stringify(D.agac)}::jsonb where id=1`;
 });

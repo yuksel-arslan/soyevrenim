@@ -1,4 +1,5 @@
 // AĞAÇ KÜTÜPHANESİ — saf fonksiyonlar, hem sunucu hem istemci kullanır.
+import { adCinsiyeti } from './adlar.js';
 // Kaynak burası. public/lib/agac.js bu dosyanın kopyasıdır (npm run build ile üretilir:
 // scripts/lib-kopyala.mjs). İstemci yol bulma / ortak ata / akrabalık etiketini buradan alır.
 //
@@ -616,6 +617,9 @@ export function veriDenetimi(veri) {
   // 11) Taslak ad kalmış
   for (const n of N) if (/^yeni kişi$/i.test(ad(n)))
     ekle('taslak-ad', 'dusuk', `Adı girilmemiş bir kayıt var (“Yeni kişi”).`, [n.id]);
+  // 11b) Cinsiyeti yanlış girilmiş olabilir
+  for (const c of cinsiyetSuphesi(veri))
+    ekle('cinsiyet-suphe', 'orta', `${c.ad} ${c.sex === 'K' ? 'KADIN' : 'ERKEK'} olarak kayıtlı — ${c.neden.join('; ')}.`, [c.id]);
   // 12) Çift kayıt adayları
   for (const c of ciftKayitlar(veri))
     ekle('cift-kayit', c.neden === 'kural' ? 'orta' : 'yuksek', `Aynı kişi olabilir: ${c.adlar.map(adiGoster).join(' ↔ ')} (${c.neden === 'kural' ? 'anne-babası ve adı aynı' : 'ad ve soyad örtüşüyor'}).`, c.ids);
@@ -638,4 +642,38 @@ export function guvenliDuzelt(veri0) {
   for (const n of veri.nodes || []) if (n.mother && by[n.mother] && by[n.mother].sex === 'E' && baba.get(n.id) === n.mother) { n.mother = null; alan++; }
   const bag = once - veri.motherEdges.length;
   return { veri, sayi: bag + alan, ozet: `${bag} yanlış anne bağı ve ${alan} yanlış anne alanı temizlendi` };
+}
+
+
+// ---- CİNSİYETİ YANLIŞ GİRİLMİŞ OLABİLECEKLER ----
+// Üç işaret (yalnız ipucu; karar insanda): (1) ad sözlüğüne göre tipik cinsiyet farklı ("Muzaffer" kadın,
+// "Aysel" erkek kayıtlı); (2) aynı ad ağaçta çoğunlukla öteki cinsiyette; (3) eşiyle aynı cinsiyette.
+// Unisex adlar (Deniz, Yüksel, Ümit…) ve adı girilmemiş kayıtlar işaretlenmez.
+export function cinsiyetSuphesi(veri) {
+  const N = veri.nodes || [], by = Object.fromEntries(N.map((n) => [n.id, n]));
+  const ilk = (n) => adAnahtari(n.name).replace(/\d+/g, '').trim().split(' ')[0] || '';
+  const taslak = (n) => /^(evlat|yeni|bilinmiyor)/.test(ilk(n));
+  const say = new Map();
+  for (const n of N) { if (taslak(n) || !n.sex) continue; const a = ilk(n); if (!say.has(a)) say.set(a, { E: 0, K: 0 }); say.get(a)[n.sex]++; }
+  const esler = new Map();
+  for (const m of veri.marriages || []) { (esler.get(m.from) || esler.set(m.from, []).get(m.from)).push(m.to); (esler.get(m.to) || esler.set(m.to, []).get(m.to)).push(m.from); }
+  const out = [];
+  for (const n of N) {
+    if (taslak(n) || !n.sex) continue;
+    const neden = [];
+    const tipik = adCinsiyeti(n.name);
+    // Yapı kayıtlı cinsiyeti destekliyorsa (anne olarak bağlı / karşı cinsten eşi var) ad tek başına işaret değil:
+    // eski kuşaklarda bazı adlar iki cinste de kullanılırdı ("Muzaffer Hanım").
+    const anne = (veri.motherEdges || []).some((e) => e.from === n.id);
+    const karsiEs = (esler.get(n.id) || []).some((i) => by[i] && by[i].sex && by[i].sex !== n.sex);
+    const yapiDestekler = (n.sex === 'K' && anne) || karsiEs;
+    if (tipik && tipik !== n.sex && !yapiDestekler) neden.push(`“${adiGoster(n.name).split(' ')[0]}” genellikle ${tipik === 'K' ? 'kadın' : 'erkek'} adı`);
+    const c = say.get(ilk(n));
+    const obur = n.sex === 'K' ? 'E' : 'K';
+    if (c && c[obur] > c[n.sex] && !tipik && !yapiDestekler) neden.push(`ağaçtaki öteki ${c[obur]} “${adiGoster(n.name).split(' ')[0]}” ${obur === 'K' ? 'kadın' : 'erkek'} kayıtlı`);
+    const ayniCins = (esler.get(n.id) || []).map((i) => by[i]).filter((e) => e && e.sex === n.sex);
+    if (ayniCins.length) neden.push(`eşi ${ayniCins.map((e) => adiGoster(e.name)).join(', ')} de ${n.sex === 'K' ? 'kadın' : 'erkek'} kayıtlı`);
+    if (neden.length) out.push({ id: n.id, ad: adiGoster(n.name), sex: n.sex, oneri: n.sex === 'K' ? 'E' : 'K', neden });
+  }
+  return out;
 }

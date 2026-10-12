@@ -6,18 +6,22 @@
 
 import { jetonDogrula, jetonUret } from './giris.js';
 import { db } from './_lib/db.js';
-import { KAYIT } from './_lib/ayar.js';
+import { KAYIT, AILE } from './_lib/ayar.js';
 import { kayitEkle, medyaEkle } from './_lib/kayit.js';
 import { yeniKardesIhlali, kardesIhlaliMetni } from './_lib/agac.js';
+import { damgala, celiskiBul, uyarilariYaz } from './_lib/denetim.js';
+import { DENETIM_UYARI } from './_lib/ayar.js';
 
 // Ağaca KÜÇÜK ve SINIRLI bir değişiklik işler (tam ağaç yazımı yalnız yöneticide).
 // Güncel sürüm okunur, `degistir(veri)` uygulanır, koşullu yazılır; arada başka kayıt
 // olduysa yeniden denenir (yöneticinin tam kaydıyla aynı çakışma kuralı).
-async function agacYamala(sql, kim, degistir) {
+async function agacYamala(sql, kim, degistir, kimKisi = null) {
   for (let i = 0; i < KAYIT.deneme; i++) {
     const [row] = await sql`select veri, guncelleme from agac where id = 1`;
     if (!row) throw Object.assign(new Error('Ağaç henüz yok'), { kod: 404, hata: 'Ağaç henüz yok' });
     const sonuc = degistir(row.veri);
+    const kimO = { kisi: kimKisi || (sonuc.id || null), ad: kim };
+    sonuc.veri = damgala(row.veri, sonuc.veri, kimO);
     const ihlal = yeniKardesIhlali(row.veri, sonuc.veri);
     if (ihlal.length) throw Object.assign(new Error('kural'), { kod: 409, hata: kardesIhlaliMetni(ihlal), var: ihlal[0].ids.find((i) => i !== sonuc.id) });
     const [kayit] = await sql`
@@ -26,7 +30,9 @@ async function agacYamala(sql, kim, degistir) {
       returning guncelleme`;
     if (kayit) {
       await sql`insert into gunluk (veri, guncelleyen) values (${JSON.stringify(sonuc.veri)}::jsonb, ${kim})`;
-      return { ...sonuc, guncelleme: kayit.guncelleme };
+      const celiskiler = celiskiBul(row.veri, sonuc.veri, kimO);
+      try { await uyarilariYaz(sql, celiskiler, kimO); } catch (e) { /* hatırlatma yazılamasa da kayıt geçerli */ }
+      return { ...sonuc, guncelleme: kayit.guncelleme, uyarilar: celiskiler.map((c) => ({ mesaj: c.mesaj, ids: c.ids })) };
     }
   }
   throw Object.assign(new Error('Ağaç şu an çok yoğun'), { kod: 409, hata: 'Ağaç şu an başka biri tarafından değiştiriliyor — tekrar dene' });
@@ -68,50 +74,68 @@ export default async function handler(req, res) {
       try {
         const ad = String(body.ad || '').slice(0, 80);
         const r = await agacYamala(sql, `${ad} (kayıt)`, (v) => kayitEkle(v, body));
-        return res.status(200).json({ ok: true, kisi: r.id, ad: r.kisi.name, rol, jeton: jetonUret(rol, r.id), guncelleme: r.guncelleme });
+        return res.status(200).json({ ok: true, kisi: r.id, ad: r.kisi.name, rol, jeton: jetonUret(rol, r.id), guncelleme: r.guncelleme, uyarilar: r.uyarilar });
       } catch (e) { return yamaHatasi(res, e); }
     }
     // FOTOĞRAF / GALERİ: aile üyesinin yüklediği medya ONAYSIZ işlenir (yalnız medya alanı;
     // ağacın geri kalanına dokunulmaz). Bağlantı kendi deposumuzdan olmalı (medyaEkle denetler).
+    // ÖZ-DENETİM hatırlatmaları: kişinin okunmamış uyarıları / okundu işareti
+    if (req.method === 'POST' && (adim === 'uyarilar' || adim === 'uyari-okundu')) {
+      const oturum = jetonDogrula((req.body || {}).jeton);
+      if (!oturum) return res.status(401).json({ ok: false, hata: 'Giriş gerekli' });
+      if (!oturum.kisi) return res.status(200).json({ ok: true, uyarilar: [] });
+      if (adim === 'uyari-okundu') {
+        const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number).filter(Number.isFinite) : null;
+        if (ids && ids.length) await sql`update uyari set okundu = true where kisi_id = ${oturum.kisi} and id = any(${ids})`;
+        else await sql`update uyari set okundu = true where kisi_id = ${oturum.kisi}`;
+        return res.status(200).json({ ok: true });
+      }
+      const rows = await sql`select id, mesaj, ids, kaynak_ad, olusma from uyari where kisi_id = ${oturum.kisi} and okundu = false order by olusma desc limit ${DENETIM_UYARI.listeMax}`;
+      return res.status(200).json({ ok: true, uyarilar: rows });
+    }
+
     if (req.method === 'POST' && adim === 'medya') {
       const body = req.body || {};
       const oturum = jetonDogrula(body.jeton);
       if (!oturum) return res.status(401).json({ ok: false, hata: 'Oturumun süresi dolmuş — yeniden giriş yap' });
       try {
         const kim = String(body.guncelleyen || oturum.rol).slice(0, 80);
-        const r = await agacYamala(sql, kim, (v) => medyaEkle(v, String(body.kisi_id || ''), body.alan, body.url, !!body.video));
-        return res.status(200).json({ ok: true, profil: r.profil, guncelleme: r.guncelleme });
+        const r = await agacYamala(sql, kim, (v) => medyaEkle(v, String(body.kisi_id || ''), body.alan, body.url, !!body.video), oturum.kisi || null);
+        return res.status(200).json({ ok: true, profil: r.profil, guncelleme: r.guncelleme, uyarilar: r.uyarilar });
       } catch (e) { return yamaHatasi(res, e); }
     }
 
     if (req.method === 'POST') {
       // ağacı kaydet (tüm ağaç JSON olarak gelir)
       const body = req.body || {};
-      const veri = body.veri;
+      let veri = body.veri;
       const token = (body.token || '').toString();
       const kim = (body.guncelleyen || '').toString().slice(0, 80);
       if (!veri || !Array.isArray(veri.nodes)) {
         return res.status(400).json({ ok: false, hata: 'Geçersiz veri' });
       }
-      // DOĞRUDAN kaydetme yalnızca admin'e açık. Aile üyeleri /api/oneri kullanır.
+      // DOĞRUDAN kayıt: aile şifresiyle giren herkes (aile) ve yönetici. Onay kuyruğu yok.
       const oturum = jetonDogrula(body.jeton);
-      // Oturum geçersiz (süresi dolmuş / OTURUM_GIZLI değişmiş) → 401: istemci şifre sorar ve
-      // yeniden dener. Geçerli ama yönetici değil → 403 (öneri yolu).
+      // Oturum geçersiz (süresi dolmuş / OTURUM_GIZLI değişmiş) → 401: istemci şifre sorar ve yeniden dener.
       if (!oturum) return res.status(401).json({ ok: false, hata: 'Oturumun süresi dolmuş — yeniden giriş yap' });
-      const adminOk = oturum.rol === 'admin';
-      if (!adminOk) {
-        return res.status(403).json({ ok: false, hata: 'Doğrudan kayıt sadece yöneticiye açık. Değişikliğini "Onaya gönder" ile ilet.' });
-      }
-      // ÇAKIŞMA DENETİMİ: ağaç bütün olarak kaydedilir. İstemci hangi sürümün üstüne yazdığını
-      // (`onceki` = elindeki guncelleme) söyler; arada başka cihaz kaydettiyse ÜSTÜNE YAZILMAZ,
-      // 409 + güncel veri döner — istemci kendi değişikliklerini güncel sürüme işleyip yeniden
-      // kaydeder. (Eskiden son kaydeden kazanıyordu: eski kopyası açık duran cihaz, başka
-      // cihazda yüklenen fotoğrafı geri alıyordu.) `onceki` gönderilmezse koşulsuz (eski istemci).
+      if (!['aile', 'admin'].includes(oturum.rol)) return res.status(403).json({ ok: false, hata: 'Kayıt yetkisi yok' });
       // KURAL: anne-babası aynı iki kişi aynı adı taşıyamaz (yalnız bu kayıtla YENİ oluşan ihlal engellenir)
+      const kimO = { kisi: oturum.kisi || null, ad: kim || (oturum.rol === 'admin' ? 'Yönetici' : 'Aile üyesi') };
+      let celiskiler = [];
       {
         const [simdiki] = await sql`select veri from agac where id = 1`;
+        // ÖZ-DENETİM: kim ekledi / değiştirdi damgası + bu kaydın getirdiği çelişkiler
+        veri = damgala(simdiki ? simdiki.veri : null, veri, kimO);
+        celiskiler = celiskiBul(simdiki ? simdiki.veri : null, veri, kimO);
         const ihlal = yeniKardesIhlali(simdiki ? simdiki.veri : null, veri);
         if (ihlal.length) return res.status(400).json({ ok: false, kural: 'ayni-ad-kardes', catisma: ihlal, hata: kardesIhlaliMetni(ihlal) });
+        // Güvenlik ağı: aile üyesi tek kayıtta AILE.silmeMax'tan fazla kişi silemez (yanlışlıkla toplu silme)
+        if (oturum.rol !== 'admin' && simdiki) {
+          const yeniIds = new Set(veri.nodes.map((n) => n.id));
+          const silinen = (simdiki.veri.nodes || []).filter((n) => !yeniIds.has(n.id));
+          if (silinen.length > AILE.silmeMax)
+            return res.status(403).json({ ok: false, kural: 'toplu-silme', hata: `Tek seferde ${silinen.length} kişi silinmek isteniyor; ${AILE.silmeMax}'ten fazlasını yalnız yönetici silebilir.` });
+        }
       }
       const kosullu = typeof body.onceki === 'string' && body.onceki;
       const [kayit] = kosullu
@@ -136,8 +160,10 @@ export default async function handler(req, res) {
         insert into gunluk (veri, guncelleyen)
         values (${JSON.stringify(veri)}::jsonb, ${kim})
       `;
+      // Öz-denetim: ilgili öteki kişilere hatırlatma (+ push); kaydedene yanıtta uyarı
+      try { await uyarilariYaz(sql, celiskiler, kimO); } catch (e) { /* hatırlatma yazılamasa da kayıt geçerli */ }
       // güncelleme zamanı: kaydeden cihaz kendi kaydını "başkasından gelen yeni sürüm" sanmasın
-      return res.status(200).json({ ok: true, guncelleme: kayit ? kayit.guncelleme : null });
+      return res.status(200).json({ ok: true, guncelleme: kayit ? kayit.guncelleme : null, uyarilar: celiskiler.map((c) => ({ mesaj: c.mesaj, ids: c.ids })) });
     }
 
     return res.status(405).json({ ok: false, hata: 'Yöntem desteklenmiyor' });

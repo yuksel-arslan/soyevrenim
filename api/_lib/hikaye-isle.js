@@ -140,15 +140,22 @@ export async function hikayeIsle(id) {
     yerler: d.yerler.slice(0, 10), kisiler: d.kisiler.map((k) => adiGoster(k.ad)).slice(0, 20),
   };
   const temel = [{ tur: 'ani_ekle', kisi_id: is.hedef_kisi_id, ani }];
+  // ANI DOĞRUDAN kişinin kartına işlenir (yönetici onayı yok): anlatanın kendi sesi; ham döküm de saklanır.
+  // Hikâyede geçen ve ağaçta olmayan KİŞİLER modelin çıkarımıdır → öneri olarak kalır; anlatan
+  // "Önerilerim"den ya da Çınar'dan "✓ Ağaca işle" ile onaylar (model ağaca kendiliğinden kişi eklemez).
   let oneri = null;
   try {
-    oneri = await oneriEkle({ kisiId: is.kisi_id, gonderenAd: `${anlatan} (sesli hikâye)`, kaynak: 'hikaye',
-      islemler: [...temel, ...kisiOnerileri(veri, d.kisiler, temel)] });
+    const guncel = await agacOku();
+    const yeni = yamaUygula(guncel, temel);
+    await sql`update agac set veri = ${JSON.stringify(yeni)}::jsonb, guncelleyen = ${`${anlatan} (sesli hikâye)`.slice(0, 80)}, guncelleme = now() where id = 1`;
+    await sql`insert into gunluk (veri, guncelleyen) values (${JSON.stringify(yeni)}::jsonb, ${`hikâye #${id}`})`;
+    const kisiler = kisiOnerileri(veri, d.kisiler, temel);
+    if (kisiler.length) oneri = await oneriEkle({ kisiId: is.kisi_id, gonderenAd: `${anlatan} (sesli hikâye)`, kaynak: 'hikaye', islemler: kisiler });
   } catch (e) {
     if (!yamaHatasiMi(e)) throw e;
     await sql`update hikaye_kuyruk set durum='hata', hata=${e.message}, transkript=${ham} where id=${id}`;
     return { durum: 'hata', hata: e.message };
   }
-  await sql`update hikaye_kuyruk set durum='islendi', baslik=${ani.baslik}, transkript=${ham}, oneri_id=${oneri.id}, islenme=now() where id=${id}`;
+  await sql`update hikaye_kuyruk set durum='islendi', baslik=${ani.baslik}, transkript=${ham}, oneri_id=${oneri ? oneri.id : null}, islenme=now() where id=${id}`;
   return { durum: 'islendi', oneri, baslik: ani.baslik, metin: ani.text };
 }
