@@ -97,6 +97,11 @@ export const GIRIS = {
   davetGun: 180,           // kişisel giriş bağlantısı geçerliliği
 };
 
+// Aile üyesi (aile şifresiyle giren) ağaca DOĞRUDAN kaydeder — yönetici onayı yok (güvenilir sayılır).
+// Tek güvenlik ağı: tek kayıtta bundan fazla kişiyi silmek yalnız yöneticide (yanlışlıkla toplu silme).
+// Her kayıt gunluk'e yazılır, geri alınabilir.
+export const AILE = { silmeMax: 3 };
+
 // Kayıt: ağaçta olmayan aile üyesi kendini ekler — mevcut bir kişiye BAĞLI olmak zorunda
 // (api/agac.js?adim=kayit, api/_lib/kayit.js). Bağsız kayıt yok; aile şifresi gerekir.
 export const KAYIT = {

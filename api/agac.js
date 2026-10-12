@@ -6,7 +6,7 @@
 
 import { jetonDogrula, jetonUret } from './giris.js';
 import { db } from './_lib/db.js';
-import { KAYIT } from './_lib/ayar.js';
+import { KAYIT, AILE } from './_lib/ayar.js';
 import { kayitEkle, medyaEkle } from './_lib/kayit.js';
 import { yeniKardesIhlali, kardesIhlaliMetni } from './_lib/agac.js';
 
@@ -93,25 +93,23 @@ export default async function handler(req, res) {
       if (!veri || !Array.isArray(veri.nodes)) {
         return res.status(400).json({ ok: false, hata: 'Geçersiz veri' });
       }
-      // DOĞRUDAN kaydetme yalnızca admin'e açık. Aile üyeleri /api/oneri kullanır.
+      // DOĞRUDAN kayıt: aile şifresiyle giren herkes (aile) ve yönetici. Onay kuyruğu yok.
       const oturum = jetonDogrula(body.jeton);
-      // Oturum geçersiz (süresi dolmuş / OTURUM_GIZLI değişmiş) → 401: istemci şifre sorar ve
-      // yeniden dener. Geçerli ama yönetici değil → 403 (öneri yolu).
+      // Oturum geçersiz (süresi dolmuş / OTURUM_GIZLI değişmiş) → 401: istemci şifre sorar ve yeniden dener.
       if (!oturum) return res.status(401).json({ ok: false, hata: 'Oturumun süresi dolmuş — yeniden giriş yap' });
-      const adminOk = oturum.rol === 'admin';
-      if (!adminOk) {
-        return res.status(403).json({ ok: false, hata: 'Doğrudan kayıt sadece yöneticiye açık. Değişikliğini "Onaya gönder" ile ilet.' });
-      }
-      // ÇAKIŞMA DENETİMİ: ağaç bütün olarak kaydedilir. İstemci hangi sürümün üstüne yazdığını
-      // (`onceki` = elindeki guncelleme) söyler; arada başka cihaz kaydettiyse ÜSTÜNE YAZILMAZ,
-      // 409 + güncel veri döner — istemci kendi değişikliklerini güncel sürüme işleyip yeniden
-      // kaydeder. (Eskiden son kaydeden kazanıyordu: eski kopyası açık duran cihaz, başka
-      // cihazda yüklenen fotoğrafı geri alıyordu.) `onceki` gönderilmezse koşulsuz (eski istemci).
+      if (!['aile', 'admin'].includes(oturum.rol)) return res.status(403).json({ ok: false, hata: 'Kayıt yetkisi yok' });
       // KURAL: anne-babası aynı iki kişi aynı adı taşıyamaz (yalnız bu kayıtla YENİ oluşan ihlal engellenir)
       {
         const [simdiki] = await sql`select veri from agac where id = 1`;
         const ihlal = yeniKardesIhlali(simdiki ? simdiki.veri : null, veri);
         if (ihlal.length) return res.status(400).json({ ok: false, kural: 'ayni-ad-kardes', catisma: ihlal, hata: kardesIhlaliMetni(ihlal) });
+        // Güvenlik ağı: aile üyesi tek kayıtta AILE.silmeMax'tan fazla kişi silemez (yanlışlıkla toplu silme)
+        if (oturum.rol !== 'admin' && simdiki) {
+          const yeniIds = new Set(veri.nodes.map((n) => n.id));
+          const silinen = (simdiki.veri.nodes || []).filter((n) => !yeniIds.has(n.id));
+          if (silinen.length > AILE.silmeMax)
+            return res.status(403).json({ ok: false, kural: 'toplu-silme', hata: `Tek seferde ${silinen.length} kişi silinmek isteniyor; ${AILE.silmeMax}'ten fazlasını yalnız yönetici silebilir.` });
+        }
       }
       const kosullu = typeof body.onceki === 'string' && body.onceki;
       const [kayit] = kosullu

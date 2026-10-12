@@ -1,6 +1,6 @@
 // ÖNERİ KATMANI — onay kuyruğuna (oneri tablosu) yazmanın tek yolu.
 // Kural: model ve sunucu tarafı akışlar AĞACA DOĞRUDAN YAZMAZ. Değişiklik bir "yama"
-// (islem listesi) olarak öneriye düşer; yönetici onaylayınca yama O ANKİ ağaca uygulanır
+// (islem listesi) olarak öneriye düşer; öneren kişi (ya da yönetici) "✓ Ağaca işle" deyince yama O ANKİ ağaca uygulanır
 // (tam-ağaç anlık görüntüsü gibi araya giren onayları ezmez).
 import { db, agacOku } from './db.js';
 import { adiGoster, grafKur } from './agac.js';
@@ -130,7 +130,7 @@ export function yamaUygula(veri, islemler) {
 
 export function yamaHatasiMi(e) { return e instanceof YamaHatasi; }
 
-// İnsan okunur tek satır (yönetici onay kutusunda görünür)
+// İnsan okunur tek satır (Çınar'da ve "Önerilerim" kutusunda görünür)
 export function yamaOzeti(veri, islemler) {
   const g = grafKur(veri);
   const ad = (id) => adiGoster(g.byId[id]?.name) || id;

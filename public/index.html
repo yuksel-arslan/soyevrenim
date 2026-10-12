@@ -3572,7 +3572,7 @@ function renderProfileSections(n){
   mem.appendChild(addMem);
   if(CLOUD.on){
     const hk=document.createElement("button"); hk.className="tbtn"; hk.style.cssText="width:100%;justify-content:center;margin-top:6px";
-    hk.textContent="🎙 Hikâye anlat"; hk.title="Sesinle anlat — kaydedilir, yazıya çevrilir, anı olarak onaya gider";
+    hk.textContent="🎙 Hikâye anlat"; hk.title="Sesinle anlat — kaydedilir, yazıya çevrilir, anı olarak karta eklenir";
     hk.onclick=()=>hikayeAnlat(n);
     mem.appendChild(hk);
   }
@@ -4131,7 +4131,7 @@ function updateStatus(){
   const kisi = filtreli
     ? `<b>${gorunur.length}</b> / ${nodes.length} kişi`
     : `<b>${nodes.length}</b> kişi`;
-  // Rol her zaman görünsün: aile üyesinin değişikliği onaya gider, yöneticininki doğrudan kaydedilir
+  // Rol her zaman görünsün (aile üyesi ve yönetici değişikliği doğrudan kaydedilir; yönetici ek araçlara sahip)
   const rol = isAdmin ? `<button class="rolBtn" data-hesap style="color:var(--spine);font-weight:600" title="Hesap · çıkış">🔓 Yönetici</button> · `
     : sessionToken ? `<button class="rolBtn" data-hesap style="color:var(--text-soft)" title="Hesap · çıkış">👤 Aile üyesi</button> · ` : "";
   el.innerHTML = `${rol}${kisi} · <b>${bag}</b> bağ`
@@ -4515,20 +4515,8 @@ function birlestirSor(a, b){
   const [tut,sil]=puan(b)>puan(a)?[b,a]:[a,b];
   const tanit=n=>`${dispName(n.name)}${kimlikSatiri(n)?" ("+kimlikSatiri(n)+")":""}`;
   const ozet=`“${tanit(tut)}” ile “${tanit(sil)}” tek kişi olarak birleştirilsin mi? Anne-baba, eş ve çocuk bağları, fotoğraf ve bilgiler tek kayıtta toplanır.`;
-  if(isAdmin) return { metin:ozet, secenekler:[{ etiket:"⇄ Evet, birleştir", eylem:()=>{ kisileriBirlestir(tut, sil); return "Hangi adın kalacağını seç ve “Birleştir”e dokun."; } }] };
-  if(!sessionToken) return "İki kaydı birleştirmek için önce aile şifresiyle giriş yap; birleştirme yöneticinin onayıyla yapılır.";
-  return { metin:ozet+" Birleştirmeyi yönetici onaylar.", secenekler:[{ etiket:"⇄ Yöneticiye öner", eylem:()=>{ birlestirOner(tut, sil); return "Gönderiliyor…"; } }] };
-}
-async function birlestirOner(tut, sil){
-  try{
-    const { veri } = AgacLib.kisiBirlestir(currentGraphJSON(), tut.id, sil.id);
-    const kk=kimlikId();
-    const r=await yetkiliIstek(()=>fetch("/api/oneri?adim=gonder",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ veri, jeton:sessionToken||"", gonderen_ad: kk&&byId[kk]?dispName(byId[kk].name):"", kisi_id:kk||null })}),
-      "Öneriyi göndermek için oturumunu yenile.");
-    const j=await r.json();
-    if(typeof window.__rehberYaz==="function") window.__rehberYaz(j.ok ? `✓ “${dispName(tut.name)}” ve “${dispName(sil.name)}” kayıtlarının birleştirilmesi yöneticinin onayına gitti.` : (j.hata||"Gönderilemedi"));
-  }catch(e){ if(typeof window.__rehberYaz==="function") window.__rehberYaz("Bağlantı hatası — tekrar dene."); }
+  if(!(isAdmin || sessionToken)) return "İki kaydı birleştirmek için önce aile şifresiyle giriş yap.";
+  return { metin:ozet, secenekler:[{ etiket:"⇄ Evet, birleştir", eylem:()=>{ kisileriBirlestir(tut, sil); return "Hangi adın kalacağını seç ve “Birleştir”e dokun."; } }] };
 }
 
 const KOMUTLAR=[
@@ -5268,7 +5256,13 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       const g=j.gorsel||{};
       if(g.yol && typeof yolBul==="function") yolBul(g.yol[0], g.yol[1]);
       else if(g.kisi && byId[g.kisi]){ selectNode(byId[g.kisi]); if(typeof merkezeAl==="function") merkezeAl(byId[g.kisi]); }
-      if(j.oneriler && j.oneriler.length) notYaz("✓ Öneri yönetici onayına gitti: "+j.oneriler.map(o=>o.ozet).join(" · "));
+      if(j.oneriler && j.oneriler.length){
+        // Model ağaca kendiliğinden yazmaz: hazırladığı değişikliği kullanıcı bir dokunuşla işler
+        notYaz("Hazır: "+j.oneriler.map(o=>o.ozet).join(" · "));
+        secenekleriKur(j.oneriler.flatMap(o=>[
+          { etiket:`✓ Ağaca işle: ${o.ozet.slice(0,40)}`, eylem:()=>{ window.oneriKarar(o.id,"onayla"); return "Ağaca işleniyor…"; } },
+          { etiket:"✕ Vazgeç", eylem:()=>{ window.oneriKarar(o.id,"reddet"); return "Vazgeçildi."; } }]));
+      }
     }catch(e){ calistirKomut(t); notYaz("Bağlantı kurulamadı; hazır bilgilerimle yanıtladım."); }
     finally{ mesgul=false; }
   }
@@ -5714,7 +5708,7 @@ async function hikayeAnlat(n){
         body:JSON.stringify({jeton:sessionToken||"",kisi_id:kimlikId(),hedef_kisi_id:n.id,parcalar:gonder})})).json();
       if(!r.ok) throw new Error(r.hata||"Kaydedilemedi");
       kapat();
-      if(r.durum==="islendi") toast(`Yazıya çevrildi — “${r.baslik||"hikâye"}” onaya gönderildi`);
+      if(r.durum==="islendi") toast(`Yazıya çevrildi — “${r.baslik||"hikâye"}” anı olarak karta eklendi`);
       else toast(r.mesaj||"Kaydın saklandı, yazıya çevirme yarın yapılacak.");
       kotaTazele();
       if(selNode && selNode.id===n.id && renderProfileSections._rerun) renderProfileSections._rerun(n);
@@ -5735,7 +5729,7 @@ async function bekleyenHikayeler(n, kap){
     const agacta=new Set(((PROFILES[n.id]||{}).memories||[]).map(m=>m.ses_anahtar).filter(Boolean));
     const l=j.kayitlar.filter(h=>!agacta.has(h.ses_anahtar));
     if(!l.length){ kap.innerHTML=""; return; }
-    const etiket={bekliyor:"yazıya çevrilmeyi bekliyor", islendi:"yazıya çevrildi · onay bekliyor", hata:"işlenemedi — yönetici bakacak"};
+    const etiket={bekliyor:"yazıya çevrilmeyi bekliyor", islendi:"yazıya çevrildi · karta eklendi", hata:"işlenemedi — yönetici bakacak"};
     kap.innerHTML=`<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:4px 0 6px">Kaydedilen sesli hikâyeler</div>`+
       l.map(h=>`<div style="background:var(--bg2);border:1px dashed var(--line2);border-radius:8px;padding:10px 12px;margin-bottom:8px">
         <div style="display:flex;gap:8px;align-items:center">${avatarHtml(h.kisi_id,22)}
@@ -6042,7 +6036,7 @@ applyEvren();
   const E={ fitBtn:"Sığdır", zinBtn:"Yakın", zoutBtn:"Uzak", physBtn:"Fizik", reparentBtn:"Bağ",
     rehberBtn:"Çınar", duzBtn:"Görünüm", kafesBtn:"Örgü", pathBtn:"Yol bul", focusBtn:"Odak",
     genBtn:"Nesil", statsBtn:"Sayılar", kokenBtn:"Köken", lensBtn:"Katman", kilavuzBtn:"Kılavuz", themeBtn:"Tema",
-    chatBtn:"Sohbet", adminBtn:"Yönetici", approvalBtn:"Onay" };
+    chatBtn:"Sohbet", adminBtn:"Yönetici", approvalBtn:"Öneriler" };
   document.querySelectorAll(".dock button").forEach(b=>{
     const e=E[b.id] || (b.title||"").split(/[—(/]/)[0].trim().split(" ")[0];
     if(e) b.dataset.etiket=e;
@@ -6183,12 +6177,8 @@ async function cloudLoad(){
 // Normal kullanıcının değişiklikleri yerelde birikir, "Onaya gönder" ile öneri olur.
 function cloudSave(immediate){
   if(!CLOUD.on) return;
-  if(!isAdmin){
-    // kullanıcı: doğrudan kaydetme yok — sadece "bekleyen değişiklik" işaretle
-    pendingChanges = true;
-    updatePendingBar();
-    return;
-  }
+  // Yönetici onayı YOK: aile şifresiyle giren herkes doğrudan kaydeder. Oturum yoksa sunucu 401 döner,
+  // yetkiliIstek giriş penceresini açar ve kaydı yeniden dener.
   clearTimeout(CLOUD.timer);
   const doSave = async ()=>{
     if(CLOUD.saving) { CLOUD.timer=setTimeout(doSave,800); return; }
@@ -6196,7 +6186,7 @@ function cloudSave(immediate){
     // Kayıt hatası artık SESSİZ değil: eskiden oturumu düşmüş yöneticinin değişikliği
     // yalnızca o cihazda kalıyor, diğer cihazlara hiç gitmiyordu ("mobilde var, bilgisayarda yok").
     try{
-      const kim = kimlikId()&&byId[kimlikId()] ? dispName(byId[kimlikId()].name) : "Yönetici";
+      const kim = kimlikId()&&byId[kimlikId()] ? dispName(byId[kimlikId()].name) : (isAdmin?"Yönetici":"Aile üyesi");
       // ÇAKIŞMA: hangi sürümün üstüne yazdığımızı söyle (onceki). Arada başka cihaz kaydettiyse
       // sunucu 409 + güncel veri döner; kendi değişikliklerimizi onun üstüne işleyip yeniden dene.
       let veri=currentGraphJSON(), r=null;
@@ -6205,7 +6195,7 @@ function cloudSave(immediate){
         r = await yetkiliIstek(()=>fetch(CLOUD.url, {
           method:"POST", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({ veri: govdeVeri, onceki, guncelleyen: kim, jeton: sessionToken||"" })
-        }), "Değişikliğini ağaca kaydetmek için oturumunu yenile (yönetici şifresi).");
+        }), "Değişikliğini ağaca kaydetmek için aile şifrenle giriş yap.");
         if(r.status!==409) break;
         const c=await r.json().catch(()=>({}));
         if(!c.veri || !window.AgacLib || !AgacLib.agacBirlestir) break;
@@ -6221,8 +6211,9 @@ function cloudSave(immediate){
         updateStatus();
       } else if(r && r.status===409){
         toast("⚠ Ağaç başka cihazda değişiyor — birazdan tekrar dene");
-      } else if(r.status===403 && !isAdmin){
-        pendingChanges=true; updatePendingBar();   // yönetici değil: öneri yoluna düş
+      } else if(r.status===403){
+        const j=await r.json().catch(()=>({}));
+        toast("⚠ "+(j.hata||"Bu değişikliği kaydetme yetkin yok"));   // ör. aile üyesi toplu silme
       } else {
         const j=await r.json().catch(()=>({}));
         toast("⚠ Kaydedilemedi: "+(j.hata||("sunucu "+r.status))+" — değişiklik yalnızca bu cihazda");
@@ -6236,8 +6227,10 @@ function cloudSave(immediate){
 // bekleyen değişiklik (kullanıcı için) — "Onaya gönder" çubuğu
 let pendingChanges = false;
 function updatePendingBar(){
+  // Onay kuyruğu kaldırıldı: değişiklikler doğrudan kaydedilir, bu çubuk artık gösterilmez.
+  pendingChanges=false;
   let bar=document.getElementById("pendingBar");
-  if(!CLOUD.on || isAdmin || !pendingChanges || !sessionToken){
+  if(true){
     if(bar) bar.style.display="none"; return;
   }
   if(!bar){
@@ -6410,7 +6403,8 @@ async function oturumDogrula(){
     if(j.ok){
       // Oturumda kişi yoksa ama bu cihazda seçiliyse oturuma işle; varsa cihaz seçimini oturumdan al
       if(!j.kisi && benId){ sessionToken=j.jeton; oturumaKisiIsle(benId); }
-      else { oturumSakla(j); if(j.kisi && j.kisi!==benId) benAta(j.kisi, true); }
+      else { oturumSakla(j); if(j.kisi && j.kisi!==benId) benAta(j.kisi, true);
+        if(typeof showApprovalBtn==="function") setTimeout(showApprovalBtn, 0); }   // "📥 Önerilerim" aile üyesine de
     }
     else if(r.status===401) oturumKapat("Oturumun süresi dolmuş — devam etmek için yeniden giriş yap");
   }catch(e){}   // ağ hatası oturumu düşürmesin
@@ -6453,7 +6447,7 @@ async function yetkiliIstek(yap, neden){
 // Yönetici: aynı kişinin iki kaydını birleştir. Bağlar (baba/anne/evlilik), fotoğraf, bilgiler,
 // anılar tek kayıtta toplanır; hangi adın kalacağını yönetici seçer. Kural: AgacLib.kisiBirlestir.
 function kisileriBirlestir(a, b, sonra){
-  if(!isAdmin || !window.AgacLib) return;
+  if(!(isAdmin || sessionToken) || !window.AgacLib) return;
   if((a.sex||"")!==(b.sex||"")){ toast("Farklı cinsiyetteki iki kayıt aynı kişi olamaz — önce cinsiyeti düzelt"); if(typeof sonra==="function") sonra(); return; }
   document.getElementById("birlestirPen")?.remove();
   const ort=document.createElement("div"); ort.id="birlestirPen";
@@ -6636,9 +6630,10 @@ async function sifreyleGir(sifre){
     tohumla();
   }
   if(typeof chatShowBtn==="function") chatShowBtn();
+  if(typeof showApprovalBtn==="function") showApprovalBtn();
   if(typeof updateStatus==="function") updateStatus();
   if(typeof updatePendingBar==="function") updatePendingBar();
-  toast(j.rol==="admin" ? "Yönetici olarak girildi" : "Aile üyesi olarak girildi");
+  toast(j.rol==="admin" ? "Yönetici olarak girildi" : "Aile üyesi olarak girildi — değişikliklerin doğrudan kaydedilir");
   if(typeof cloudLoad==="function") cloudLoad();
   if(selNode && typeof openInspector==="function") openInspector(selNode);
   return {ok:true, rol:j.rol};
@@ -6683,12 +6678,15 @@ document.getElementById("adminBtn").onclick=()=>{
 };
 
 // ============================ ADMIN ONAY KUTUSU ============================
+// Yönetici: tüm bekleyen öneriler. Aile üyesi: KENDİ önerileri ("📥 Önerilerim") — Çınar'ın hazırladığı
+// ya da sesli hikâyede geçen yeni kişiler; "✓ Ağaca işle" ile kendisi işler (yönetici onayı yok).
 function showApprovalBtn(){
   const b=document.getElementById("approvalBtn");
-  if(b && CLOUD.on && isAdmin){ b.style.display=""; refreshApprovals(); }
+  if(b && CLOUD.on && (isAdmin || sessionToken)){
+    b.style.display=""; b.title=isAdmin?"Öneriler (tüm aile)":"Önerilerim"; b.dataset.etiket="Öneriler"; refreshApprovals(); }
 }
 async function refreshApprovals(){
-  if(!isAdmin || !CLOUD.on) return;
+  if(!(isAdmin || sessionToken) || !CLOUD.on) return;
   try{
     const r=await fetch("/api/oneri?adim=liste",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({jeton: sessionToken||"", durum:"bekliyor"})});
@@ -6720,10 +6718,10 @@ function renderApprovalList(list){
       <div style="font-size:12px;color:var(--text-soft);margin-bottom:8px">${escapeHtml(o.ozet||"")}</div>
       <div style="font-size:12px;line-height:1.6;margin-bottom:10px">${detay.join("<br>")||""}</div>`;
     const row=document.createElement("div"); row.style.cssText="display:flex;gap:8px";
-    const onay=document.createElement("button"); onay.textContent="✓ Onayla";
+    const onay=document.createElement("button"); onay.textContent="✓ Ağaca işle";
     onay.style.cssText="flex:1;background:var(--ok);color:var(--on-accent);border:none;border-radius:7px;padding:9px;font-weight:600;cursor:pointer;font-size:13px";
     onay.onclick=()=>karar(o.id,"onayla");
-    const ret=document.createElement("button"); ret.textContent="✕ Reddet";
+    const ret=document.createElement("button"); ret.textContent=isAdmin?"✕ Reddet":"✕ Vazgeç";
     ret.style.cssText="flex:1;background:none;color:var(--danger);border:1px solid var(--danger);border-radius:7px;padding:9px;font-weight:600;cursor:pointer;font-size:13px";
     ret.onclick=()=>karar(o.id,"reddet");
     row.appendChild(onay); row.appendChild(ret); card.appendChild(row);
@@ -6736,7 +6734,7 @@ async function karar(id, karar){
       body:JSON.stringify({jeton: sessionToken||"", id, karar})});
     const j=await r.json();
     if(j.ok){
-      toast(karar==="onayla"?"Onaylandı — ağaca işlendi":"Reddedildi");
+      toast(karar==="onayla"?"✓ Ağaca işlendi":"Vazgeçildi");
       if(karar==="onayla"){ // ağacı tazele
         const g=await (await fetch(CLOUD.url)).json();
         if(g.ok && g.veri){ absorbCloudProfiles(g.veri); loadGraph(g.veri); layoutRadial();
@@ -6756,7 +6754,8 @@ async function karar(id, karar){
 const _tryAdmin_orig = tryAdminLogin;
 tryAdminLogin = function(){ _tryAdmin_orig(); setTimeout(showApprovalBtn, 100); };
 // periyodik: yeni öneri geldi mi (admin açıkken)
-setInterval(()=>{ if(isAdmin && CLOUD.on && !document.hidden) refreshApprovals(); }, 45000);
+setInterval(()=>{ if((isAdmin||sessionToken) && CLOUD.on && !document.hidden) refreshApprovals(); }, 45000);
+window.oneriKarar=karar;
 
 // ============================ SOHBET (genel + kişi yorumları) ============================
 // Aile sohbeti: son görülen mesaj (rozet için). Yoklama süreleri api/_lib/ayar.js → SOHBET.

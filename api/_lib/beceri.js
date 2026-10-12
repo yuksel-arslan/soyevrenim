@@ -46,7 +46,9 @@ const SITE_GUNCEL = [
   { baslik: 'Aile Sohbeti ve bildirimler', anahtar: 'sohbet mesaj grup bildirim davet whatsapp',
     metin: 'Aile Sohbeti tüm ailenin ortak odasıdır; aile şifresiyle giren herkes yazar. “＋ Davet et” bağlantıyı paylaşır (şifre bağlantıda yazmaz). “🔕 Bildirim al” ile telefon kilitliyken de yeni mesaj haber verilir.' },
   { baslik: 'Aynı kişinin iki kaydı (birleştirme)', anahtar: 'birleştir aynı kişi iki kayıt kopya çift tekrar',
-    metin: 'Aynı kişi ağaçta iki kez varsa Çınar’a “X ile Y aynı kişi” yazmak yeter: yönetici “⇄ Evet, birleştir” ile birleştirir, aile üyesinin isteği yöneticiye öneri olarak gider. Yönetici kişinin kartındaki “⇄ … ile aynı kişi mi? Birleştir” düğmesini de kullanabilir; bağlar, fotoğraf ve bilgiler tek kayıtta toplanır.' },
+    metin: 'Aynı kişi ağaçta iki kez varsa Çınar’a “X ile Y aynı kişi” yazmak yeter: “⇄ Evet, birleştir” ile birleştirirsin. Yönetici kişinin kartındaki “⇄ … ile aynı kişi mi? Birleştir” düğmesini de kullanabilir; bağlar, fotoğraf ve bilgiler tek kayıtta toplanır.' },
+  { baslik: 'Değişiklikler hemen kaydedilir (onay yok)', anahtar: 'onay onaya gönder yönetici onayı bekliyor kaydet ne zaman görünür öneri',
+    metin: 'Aile şifresiyle giren herkesin değişikliği (kişi ekleme, bilgi düzeltme, fotoğraf, birleştirme) hemen kaydedilir; yönetici onayı beklenmez. Çınar’ın hazırladığı ekleme ve düzeltmeler “✓ Ağaca işle”ye dokununca işlenir. Sesli hikâye anı olarak doğrudan kişinin kartına eklenir; hikâyede geçen yeni kişiler “📥 Önerilerim”de bekler. Tek sınır: bir kerede 3’ten fazla kişiyi yalnız yönetici silebilir. Her değişiklik günlüğe yazılır, geri alınabilir.' },
   { baslik: 'Kural: aynı anne-babadan aynı ad', anahtar: 'aynı ad kardeş kural sıra numarası hasan1 hasan2',
     metin: 'Anne-babası aynı iki kişi aynı adı taşıyamaz. Farklı kişilerse (eskiden ölen çocuğun adı sonraki kardeşe verilirdi) adın sonuna sıra numarası eklenir: Hasan1, Hasan2 — ekranda ikisi de “Hasan” görünür.' },
   { baslik: 'Nesil nasıl hesaplanır', anahtar: 'nesil kuşak kaçıncı nesil eşin kardeşi dünür',
@@ -56,7 +58,7 @@ const SITE_GUNCEL = [
   { baslik: 'Kullanma kılavuzu', anahtar: 'kılavuz nasıl kullanılır yardım rehber başlangıç öğren',
     metin: 'Kısa kullanma kılavuzu: soyevrenim.com/kilavuz.html — giriş, ağaçta gezinme, Çınar, fotoğraf ve bilgi ekleme, hikâye, Aile Sohbeti, telefona ekleme, hesap ve yönetici işleri. Karşılama ekranındaki “📖 Kullanma kılavuzu” bağlantısı, alttaki (bilgisayarda soldaki) “Kılavuz” düğmesi ve hesap menüsü de açar.' },
   { baslik: 'Çınar kimdir', anahtar: 'çınar asistan sen kimsin yapay zeka model',
-    metin: 'Çınar sitenin asistanıdır: soyumuzu, bölgemizi, araştırma kaynaklarını ve siteyi bilir. Ağaca kendisi yazmaz; ekleme ve düzeltmeler yönetici onayına öneri olarak gider. Günlük ortak kota ve kişi başı mesaj hakkı vardır; dolunca hazır bilgilerle yanıtlar.' },
+    metin: 'Çınar sitenin asistanıdır: soyumuzu, bölgemizi, araştırma kaynaklarını ve siteyi bilir. Ağaca kendiliğinden yazmaz; ekleme ve düzeltmeleri hazırlar, sen “✓ Ağaca işle”ye dokununca işlenir. Günlük ortak kota ve kişi başı mesaj hakkı vardır; dolunca hazır bilgilerle yanıtlar.' },
 ];
 
 let _belgeler = null;

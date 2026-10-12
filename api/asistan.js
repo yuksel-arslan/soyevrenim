@@ -4,7 +4,7 @@
 // Model: OpenAI GPT (ayar.js → LLM; ücretli, günlük tavanla sınırlı). Sunucu tarafı araç döngüsü (en fazla ASISTAN.maxTur).
 // Çağrı öncesi sistem + kişi günlük kotası kontrol edilir; dolu ya da sağlayıcı 429 verirse
 // {yedek:true} döner → istemci hazır bilgilerle (calistirKomut) yanıtlar.
-// Model ağaca YAZMAZ: ekleme/düzeltme oneri_olustur ile onay kuyruğuna düşer.
+// Model ağaca kendiliğinden YAZMAZ: ekleme/düzeltme oneri_olustur ile hazırlanır; kullanıcı "✓ Ağaca işle" ile işler.
 //
 // Env: OPENAI_API_KEY, DATABASE_URL, OTURUM_GIZLI   · Ayrıntı: docs/asistan.md
 import { cors, govde } from './_lib/db.js';
@@ -25,7 +25,7 @@ Kurallar:
 1. Bilgiyi YALNIZCA araç sonuçlarından ver; uydurma. Bilmiyorsan söyle.
 2. Her isim için önce kisi_ara kullan. Birden çok eşleşme varsa ve bağlam ayırt etmiyorsa hangisi olduğunu sor (baba adı ve nesille listele); asla tahmin etme.
 3. Yanıtın sonunda kaynak göster: anıdan gelen bilgi için "Kaynak: <kişi>'in anısı, <tarih>"; ağaç kaydından gelen için "Kaynak: soy ağacı kaydı".
-4. Ağaca doğrudan yazamazsın. Kişi ekleme, ilişki kurma, bilgi düzeltme isteğinde oneri_olustur kullan ve değişikliğin yönetici onayına gittiğini söyle.
+4. Ağaca kendiliğinden yazamazsın. Kişi ekleme, ilişki kurma, bilgi düzeltme isteğinde oneri_olustur kullan ve değişikliğin hazır olduğunu, kullanıcının "✓ Ağaca işle"ye dokununca ağaca işleneceğini söyle (yönetici onayı yok).
 5. Yeni kişi eklerken: hedef kişiyi kisi_ara ile kesinleştir; cinsiyeti ifadeden çıkar ("kız kardeşi", "kızı", "annesi" → K); aynı adda bir kişi zaten o ilişkideyse eklemeden önce sor.
 6. Akrabalık sorusunda yol_bul kullan. Yanıtı aracın "anlati" alanı üzerine kur: bir aile büyüğünün anlatacağı gibi sıcak ve akıcı anlat (kim kimin nesi, ortak ata kim, dallar nerede ayrılmış); "A → B → C" gibi liste ya da "12 adım" gibi mekanik ifade kullanma.
 7. Soyun kökeni, göçü, tarihi, yerler, Molla Memiş, Osmanlı arşivi ve araştırma sorularında önce bilgi_ara kullan; genel köken özeti ya da ağacın sayıları (kişi, nesil, yaşayan, kollar) için soy_tarihi. Fahri Arslan'ın notunu (aile kaydı) kaynaklı bilgiden ayır; "Teyit gerekli" ya da "Yorum" etiketli bilgiyi kesinmiş gibi söyleme.
@@ -34,7 +34,7 @@ Kurallar:
 10. Kişisel iletişim bilgisi (telefon, adres, e-posta) verme.
 11. Sıcak ve saygılı ol; aile büyüklerinden söz ederken "rahmetli" gibi geleneksel ifadeleri yerinde kullanabilirsin.
 12. Kişi kimliklerini (id: p1222…, n1 gibi) ASLA yazma; kişileri adı, baba/anne adı ve nesliyle ayırt et. Düz metin yaz: Markdown (**kalın**, # başlık, tablo) kullanma, ekran bunları göstermez.
-13. Kullanıcı iki kaydın aynı kişi olduğunu söylerse ("X ile Y aynı kişi", "birleştir") karşı soru sorma: birleştirmeyi site yapar (yönetici onaylar). Yalnızca "İki kaydı birleştirmek için yöneticiye ilettim" de.
+13. Kullanıcı iki kaydın aynı kişi olduğunu söylerse ("X ile Y aynı kişi", "birleştir") karşı soru sorma: birleştirmeyi site yapar. Yalnızca "İki kaydı birleştirmeyi aşağıdaki düğmeyle yapabilirsin" de.
 
 ${YONTEM}`;
 
@@ -59,7 +59,7 @@ const ARACLAR = [
     'Soyun kökeni ve tarihi (Fahri Arslan\'ın 1956 notu, zaman çizelgesi, yerler, kaynaklar ve güven etiketleri) ile ağacın genel sayıları (kişi, nesil, yaşayan, kollar).',
     parameters: { type: 'object', properties: {} } } },
   { type: 'function', function: { name: 'oneri_olustur', description:
-    'Ağaç değişikliğini yönetici onayına öneri olarak gönderir. kisi_ekle: yeni kişi = hedef_id kişisinin <iliski>si. iliski_ekle: mevcut kisi_id = hedef_id kişisinin <iliski>si. bilgi_duzelt: kisi_id kişisinin alanını değiştirir. Aynı öneride yeni eklenen kişiye ref ile ("$1") başvurulabilir.',
+    'Ağaç değişikliğini hazırlar (öneri); kullanıcı "✓ Ağaca işle" ile ağaca işler. kisi_ekle: yeni kişi = hedef_id kişisinin <iliski>si. iliski_ekle: mevcut kisi_id = hedef_id kişisinin <iliski>si. bilgi_duzelt: kisi_id kişisinin alanını değiştirir. Aynı öneride yeni eklenen kişiye ref ile ("$1") başvurulabilir.',
     parameters: { type: 'object', properties: {
       islemler: { type: 'array', items: { type: 'object', properties: {
         tur: { type: 'string', enum: ['kisi_ekle', 'iliski_ekle', 'bilgi_duzelt'] },
@@ -157,7 +157,7 @@ function aracCalistirici(ctx) {
         const o = await oneriEkle({ kisiId: ctx.kisiId, gonderenAd: `${ctx.ad} (asistan)`, islemler, kaynak: 'asistan' });
         ctx.oneriler.push({ id: o.id, ozet: o.ozet });
         ctx.islemTurleri.push(...islemler.map((x) => x.tur));
-        return { tamam: true, oneri_id: o.id, ozet: o.ozet, not: 'yönetici onayına gönderildi', aciklama };
+        return { tamam: true, oneri_id: o.id, ozet: o.ozet, not: 'hazır — kullanıcı "✓ Ağaca işle"ye dokununca ağaca işlenir', aciklama };
       } catch (e) {
         if (yamaHatasiMi(e)) return { hata: e.message };
         throw e;
@@ -240,7 +240,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: false, yedek: true, sebep: 'hata', mesaj: KOTA_MESAJI.saglayici, hata: String(e.message || e).slice(0, 200) });
   }
   await kayit(ctx, toplam);
-  if (!yanit) yanit = ctx.oneriler.length ? `Önerin yönetici onayına gönderildi: ${ctx.oneriler.map((o) => o.ozet).join(' · ')}` : 'Bunu yanıtlayamadım, biraz daha açar mısın?';
+  if (!yanit) yanit = ctx.oneriler.length ? `Hazır: ${ctx.oneriler.map((o) => o.ozet).join(' · ')} — “✓ Ağaca işle”ye dokununca ağaca işlenir.` : 'Bunu yanıtlayamadım, biraz daha açar mısın?';
   const yeniKota = await kotaDurumu(kim.kisiId);
   return res.status(200).json({ ok: true, yanit, gorsel: ctx.gorsel, oneriler: ctx.oneriler, kota: yeniKota });
 }
