@@ -8,6 +8,7 @@ import { jetonDogrula, jetonUret } from './giris.js';
 import { db } from './_lib/db.js';
 import { KAYIT } from './_lib/ayar.js';
 import { kayitEkle, medyaEkle } from './_lib/kayit.js';
+import { yeniKardesIhlali, kardesIhlaliMetni } from './_lib/agac.js';
 
 // Ağaca KÜÇÜK ve SINIRLI bir değişiklik işler (tam ağaç yazımı yalnız yöneticide).
 // Güncel sürüm okunur, `degistir(veri)` uygulanır, koşullu yazılır; arada başka kayıt
@@ -17,6 +18,8 @@ async function agacYamala(sql, kim, degistir) {
     const [row] = await sql`select veri, guncelleme from agac where id = 1`;
     if (!row) throw Object.assign(new Error('Ağaç henüz yok'), { kod: 404, hata: 'Ağaç henüz yok' });
     const sonuc = degistir(row.veri);
+    const ihlal = yeniKardesIhlali(row.veri, sonuc.veri);
+    if (ihlal.length) throw Object.assign(new Error('kural'), { kod: 409, hata: kardesIhlaliMetni(ihlal), var: ihlal[0].ids.find((i) => i !== sonuc.id) });
     const [kayit] = await sql`
       update agac set veri = ${JSON.stringify(sonuc.veri)}::jsonb, guncelleyen = ${kim}, guncelleme = now()
       where id = 1 and date_trunc('milliseconds', guncelleme) = date_trunc('milliseconds', ${row.guncelleme}::timestamptz)
@@ -104,6 +107,12 @@ export default async function handler(req, res) {
       // 409 + güncel veri döner — istemci kendi değişikliklerini güncel sürüme işleyip yeniden
       // kaydeder. (Eskiden son kaydeden kazanıyordu: eski kopyası açık duran cihaz, başka
       // cihazda yüklenen fotoğrafı geri alıyordu.) `onceki` gönderilmezse koşulsuz (eski istemci).
+      // KURAL: anne-babası aynı iki kişi aynı adı taşıyamaz (yalnız bu kayıtla YENİ oluşan ihlal engellenir)
+      {
+        const [simdiki] = await sql`select veri from agac where id = 1`;
+        const ihlal = yeniKardesIhlali(simdiki ? simdiki.veri : null, veri);
+        if (ihlal.length) return res.status(400).json({ ok: false, kural: 'ayni-ad-kardes', catisma: ihlal, hata: kardesIhlaliMetni(ihlal) });
+      }
       const kosullu = typeof body.onceki === 'string' && body.onceki;
       const [kayit] = kosullu
         ? await sql`

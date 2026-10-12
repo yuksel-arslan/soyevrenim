@@ -8,6 +8,7 @@
 import { jetonDogrula } from './giris.js';
 import { db } from './_lib/db.js';
 import { farkCikar, ozetle, yamaUygula, yamaHatasiMi } from './_lib/oneri.js';
+import { yeniKardesIhlali, kardesIhlaliMetni } from './_lib/agac.js';
 
 // giriş jetonundan rol çıkar (aile / admin / null)
 function oturumRol(body){
@@ -40,6 +41,9 @@ export default async function handler(req, res){
       if(!yeni || !Array.isArray(yeni.nodes)) return res.status(400).json({ok:false, hata:'Geçersiz veri'});
       // admin doğrudan kaydeder (öneri değil) — agac.js üzerinden; burada sadece aile önerisi
       const cur = (await sql`select veri from agac where id=1`)[0]?.veri || {nodes:[]};
+      // KURAL: anne-babası aynı iki kişi aynı adı taşıyamaz
+      const ihlal = yeniKardesIhlali(cur, yeni);
+      if(ihlal.length) return res.status(400).json({ok:false, kural:'ayni-ad-kardes', catisma:ihlal, hata:kardesIhlaliMetni(ihlal)});
       const fark = farkCikar(cur, yeni);
       const ozet = ozetle(fark);
       const ad = (body.gonderen_ad||'').toString().slice(0,80);

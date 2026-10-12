@@ -66,6 +66,34 @@ bir önceki, onların çocukları bir sonraki nesildir.
 - Sunucu: `api/_lib/agac.js → nesilHaritasi(g)` / `nesil(g, id)` (grafta önbellekli).
 - Eskiden yalnız baba zinciri sayılıyordu: eşin kardeşi "1. nesil" görünüyordu. Test: `test/agac.test.mjs`.
 
+## Kural: anne-babası aynı iki kişi aynı adı taşıyamaz
+
+Aynı baba (`edges`) ve aynı anne (`motherEdges`) altında aynı adlı iki kardeş, aynı kişinin iki kaydıdır.
+`ayniAdliKardesler(veri)` / `yeniKardesIhlali(eski, yeni)` (`api/_lib/agac.js`).
+
+- Ad karşılaştırması harf/aksan duyarsız; **sıra numarası korunur**: ağaçta aynı adlı kardeşler
+  sonlarına sayı alarak ayrılır (`Hasan1`, `Hasan2` — ekranda ikisi de "Hasan"; eskiden küçük yaşta
+  ölen çocuğun adı sonraki kardeşe verilirdi). Sayıyla ayrılmış adlar farklıdır.
+- Kural dışı: anne-babası hiç bilinmeyenler, "Yeni kişi" taslağı, farklı anneden kardeşler (her ikisinin annesi kayıtlıysa).
+- Uygulandığı yerler: yönetici kaydı (`POST /api/agac` → `400 {kural:'ayni-ad-kardes', catisma}`),
+  öneri gönderme (`/api/oneri?adim=gonder`), kayıt ve medya yamaları (`agacYamala` → `409`),
+  istemcide kişi kartında ad girilince (ihlalde ad eski hâline döner, uyarı çıkar).
+- **Yalnız YENİ ihlal engellenir**: veride zaten olan kopyalar kaydı kilitlemez; yönetici onları
+  "Birleştir" ile temizler ya da sıra numarası ekler.
+
+## Aynı kişinin iki kaydını birleştirme (yönetici)
+
+Örn. "Nevin Kaya" (Celal Kaya kızı) ve "Nevin Arslan (Kaya)" (Fahri Kaan'ın annesi). Kişi kartında
+yöneticiye **"⇄ “X” ile aynı kişi mi? Birleştir"** önerisi çıkar (`olasiKopyalar`: aynı ilk ad, aynı
+cinsiyet; babaları farklı adaşlar önerilmez). Pencerede hangi adın kalacağı seçilir.
+
+- `kisiBirlestir(veri, tutId, silId)`: baba/anne/evlilik bağları taşınır (tekrar ve kendine bağ
+  oluşmaz; bir çocuğa iki baba düşerse tutulanınki kalır), profil birleşir (tutulanın dolu alanı
+  kalır, boşsa silinenin; galeri/anılar toplanır), başkalarının eş yazıları ve `kin` bağları güncellenir.
+- Kayıtta aynı TAM adla (ad+soyad) evlenmemiş biri varsa ikinci kişi açılmaz, evlilik o kişiye bağlanır
+  (`kayitEkle`; çift kayıt böyle oluşuyordu).
+- Test: `test/agac.test.mjs`, `test/kayit.test.mjs`.
+
 ## Ortam değişkenleri
 
 `DATABASE_URL`, `OTURUM_GIZLI`.

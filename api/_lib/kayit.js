@@ -89,6 +89,23 @@ export function kayitEkle(veri0, girdi, zaman = new Date().toISOString()) {
   } else {
     const v = mevcutAyni(veri, esleri(veri, bag.id), k.ad);
     if (v) throw hata(409, `${v.name} zaten ${bag.name} kişisinin eşi olarak ağaçta — listeden kendini seç`, { var: v.id });
+    // Aynı TAM adla (ad + soyad) ağaçta biri zaten varsa — ör. "Nevin Kaya" babasının kızı olarak
+    // ekli, "Nevin Arslan (Kaya)" da yazılabilir — ikinci kayıt AÇILMAZ: evlilik o kişiye bağlanır.
+    // (Aynı kişinin iki kaydı böyle oluşuyordu.) O kişi başka biriyle evliyse karar kullanıcıda: 409.
+    const sozcuk = katla(k.ad).replace(/[()]/g, ' ').split(' ').filter(Boolean);
+    const ayni = sozcuk.length > 1 && veri.nodes.find((n) => n.id !== bag.id && n.sex === k.cinsiyet &&
+      sozcuk.every((w) => katla(n.name).replace(/[()]/g, ' ').split(' ').includes(w)));
+    if (ayni) {
+      if (esleri(veri, ayni.id).length) throw hata(409, `Ağaçta ${ayni.name} zaten var (başka bir eşle) — bu sen misin?`, { var: ayni.id });
+      veri.marriages.push({ from: bag.id, to: ayni.id, type: 'marriage' });
+      ayni.kin = ayni.kin || bag.id;
+      ayni.spouse = [...(ayni.spouse || []).filter((x) => ilkAd(x) !== ilkAd(bag.name)), `${bag.name} (aileden)`];
+      bag.spouse = bag.spouse || [];
+      const j = bag.spouse.findIndex((x) => ilkAd(String(x).replace(' (aileden)', '')) === ilkAd(k.ad));
+      if (j >= 0) bag.spouse[j] = `${ayni.name} (aileden)`; else bag.spouse.push(`${ayni.name} (aileden)`);
+      if (!bag.kin) bag.kin = ayni.id;
+      return { veri, id: ayni.id, kisi: ayni, baglandi: true };
+    }
     veri.marriages.push({ from: bag.id, to: id, type: 'marriage' });
     nn.kin = bag.id; nn.spouse = [`${bag.name} (aileden)`];
     // Eş daha önce yalnız ad olarak yazılmışsa ("Nevin Kaya") o kayıt artık bu kişidir

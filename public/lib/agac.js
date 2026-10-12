@@ -390,3 +390,111 @@ export function agacBirlestir(taban, yerel, sunucu) {
   for (const ad of ['edges', 'motherEdges', 'marriages']) if (yerel[ad] || sunucu[ad]) birlesik[ad] = bag(ad);
   return birlesik;
 }
+
+// Ad karşılaştırma anahtarı: harf/aksan duyarsız, SIRA NUMARASI KORUNUR. Ağaçta aynı adlı kardeşler
+// sonlarına sayı alarak ayrılır ("Hasan1", "Hasan2"; ekranda ikisi de "Hasan") — eskiden küçük yaşta
+// ölen çocuğun adının sonraki kardeşe verilmesi yaygındı. Sayıyla ayrılmış adlar FARKLI sayılır.
+const adAnahtari = (s) => String(s || '').replace('★', '').toLocaleLowerCase('tr').replace(/[’'`]/g, ' ')
+  .replace(/[^\p{L}\p{N} ]/gu, ' ').replace(/\s+/g, ' ').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i');
+
+// ---- AYNI KİŞİNİN İKİ KAYDINI BİRLEŞTİR (yönetici) ----
+// Örn. "Nevin Kaya" (Celal Kaya kızı) ve "Nevin Arslan (Kaya)" (Fahri Kaan'ın annesi) aynı kişi.
+// `silId`'nin bütün bağları (baba/anne/evlilik) `tutId`'ye taşınır, profil birleşir
+// (tutulanın dolu alanı kalır, boşsa silinenin değeri gelir; galeri/anılar toplanır),
+// başkalarının eş yazıları ve kin bağları güncellenir, silinen kayıt kalkar.
+// Tekrarlanan bağ ve kişinin kendisine bağı oluşmaz. Girdi değişmez.
+export function kisiBirlestir(veri0, tutId, silId) {
+  if (!tutId || !silId || tutId === silId) throw new Error('İki farklı kişi seç');
+  const veri = JSON.parse(JSON.stringify(veri0));
+  const tut = (veri.nodes || []).find((n) => n.id === tutId), sil = (veri.nodes || []).find((n) => n.id === silId);
+  if (!tut || !sil) throw new Error('Kişi bulunamadı');
+  const ad = (s) => String(s || '').replace(' (aileden)', '').trim();
+  const tasi = (liste, tur) => {
+    const gor = new Set(), out = [];
+    for (const e of liste || []) {
+      const x = { ...e, from: e.from === silId ? tutId : e.from, to: e.to === silId ? tutId : e.to };
+      if (x.from === x.to) continue;
+      // evlilik yönsüz; ağaç/anne bağında çocuğun tek babası/annesi olur
+      const k = tur === 'es' ? [x.from, x.to].sort().join('|') : `${x.from}>${x.to}`;
+      if (gor.has(k)) continue; gor.add(k); out.push(x);
+    }
+    if (tur !== 'es') {   // aynı çocuğa iki farklı baba/anne düşerse: tutulanın bağı kalır
+      const cocuk = new Map();
+      for (const e of out) { const v = cocuk.get(e.to); if (!v || e.from === tutId) cocuk.set(e.to, e); }
+      return out.filter((e) => cocuk.get(e.to) === e);
+    }
+    return out;
+  };
+  veri.edges = tasi(veri.edges, 'baba');
+  veri.motherEdges = tasi(veri.motherEdges, 'anne');
+  veri.marriages = tasi(veri.marriages, 'es');
+  // profil: tutulan esas, boş alanlar silinenden; liste alanları birleşir
+  const pt = tut.profile || {}, ps = sil.profile || {};
+  const liste = (a, b) => { const out = [...(a || [])]; const k = new Set(out.map((x) => JSON.stringify(x)));
+    for (const x of b || []) if (!k.has(JSON.stringify(x))) out.push(x); return out; };
+  const p = { ...ps, ...Object.fromEntries(Object.entries(pt).filter(([, v]) => v !== '' && v != null)) };
+  p.info = { ...(ps.info || {}), ...Object.fromEntries(Object.entries(pt.info || {}).filter(([, v]) => v !== '' && v != null)) };
+  for (const a of ['gallery', 'memories']) if (pt[a] || ps[a]) p[a] = liste(pt[a], ps[a]);
+  if (Object.keys(p).length) tut.profile = p;
+  for (const a of ['fatherExt', 'tel', 'mother']) if (!tut[a] && sil[a]) tut[a] = sil[a] === tutId ? null : sil[a];
+  if (sil.alive === false) tut.alive = false;
+  // eş yazıları: tek bir listede, adı tekrarsız
+  const esler = []; for (const s of [...(tut.spouse || []), ...(sil.spouse || [])]) if (!esler.some((x) => ad(x) === ad(s))) esler.push(s);
+  tut.spouse = esler;
+  if (!tut.kin && sil.kin && sil.kin !== tutId) tut.kin = sil.kin;
+  veri.nodes = veri.nodes.filter((n) => n.id !== silId);
+  for (const n of veri.nodes) {
+    if (n.kin === silId) n.kin = tutId;
+    if (n.mother === silId) n.mother = tutId;
+    if (Array.isArray(n.spouse)) {
+      const yeni = [];
+      for (const s of n.spouse) {
+        const x = ad(s) === ad(sil.name) ? s.replace(ad(sil.name), ad(tut.name)) : s;
+        if (!yeni.some((y) => ad(y) === ad(x))) yeni.push(x);
+      }
+      n.spouse = yeni;
+    }
+  }
+  return { veri, tut: tutId, silinen: silId };
+}
+
+// Aynı kişi olabilecek kayıtlar: adı (soyad/parantez hariç ilk ad) aynı, farklı id.
+// Yöneticiye "birleştir" önerisi için; karar her zaman yöneticinin.
+// Babaları farklı olan adaşlar (ağaçta çok sayıda Mehmet, Fahri…) önerilmez: en az birinin babası
+// bilinmiyorsa (eşle ya da ayrı eklenmiş) ya da babaları aynıysa önerilir.
+export function olasiKopyalar(veri, id) {
+  const ilk = (s) => adAnahtari(s).split(' ')[0];
+  const baba = new Map((veri.edges || []).map((e) => [e.to, e.from]));
+  const n = (veri.nodes || []).find((x) => x.id === id); if (!n) return [];
+  return (veri.nodes || []).filter((x) => x.id !== id && x.sex === n.sex && ilk(x.name) === ilk(n.name)
+    && (!baba.get(x.id) || !baba.get(n.id) || baba.get(x.id) === baba.get(n.id))
+    && baba.get(x.id) !== n.id && baba.get(n.id) !== x.id);
+}
+
+// ---- KURAL: anne-babası aynı iki kişi aynı adı taşıyamaz ----
+// Aynı baba (edges) ve aynı anne (motherEdges) altında aynı adlı iki kardeş = aynı kişinin iki
+// kaydı. Anahtar: baba|anne|ad (ad: soyad ve sıra numarası dahil, harf/aksan duyarsız).
+// Anne-babası hiç bilinmeyenler ve "Yeni kişi" taslağı kural dışı. Ad anahtarı: adAnahtari (sıra no korunur).
+const TASLAK_AD = 'yeni kisi';
+export function ayniAdliKardesler(veri) {
+  const baba = new Map((veri.edges || []).map((e) => [e.to, e.from]));
+  const anne = new Map((veri.motherEdges || []).map((e) => [e.to, e.from]));
+  const gruplar = new Map();
+  for (const n of veri.nodes || []) {
+    const b = baba.get(n.id) || '', a = anne.get(n.id) || '', ad = adAnahtari(n.name);
+    if ((!b && !a) || !ad || ad === TASLAK_AD) continue;
+    const k = `${b}|${a}|${ad}`;
+    if (!gruplar.has(k)) gruplar.set(k, []);
+    gruplar.get(k).push(n);
+  }
+  return [...gruplar.entries()].filter(([, l]) => l.length > 1)
+    .map(([anahtar, l]) => ({ anahtar, ad: adiGoster(l[0].name), ids: l.map((n) => n.id) }));
+}
+// Yeni veride, eskisinde OLMAYAN kural ihlalleri (eski verideki mevcut kopyalar kaydı engellemez;
+// yönetici onları "Birleştir" ile temizler).
+export function yeniKardesIhlali(eski, yeni) {
+  const once = new Set(ayniAdliKardesler(eski || { nodes: [] }).map((x) => x.anahtar + '#' + x.ids.length));
+  return ayniAdliKardesler(yeni).filter((x) => !once.has(x.anahtar + '#' + x.ids.length));
+}
+export const kardesIhlaliMetni = (l) =>
+  `Anne-babası aynı iki kişi aynı adı taşıyamaz: ${l.map((x) => `“${x.ad}”`).join(', ')}. Aynı kişiyse kayıtları birleştir; farklı kişilerse adın sonuna sıra numarası ekle (ör. ${l[0].ad}2 — ekranda yine “${l[0].ad}” görünür).`;

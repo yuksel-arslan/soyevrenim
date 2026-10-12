@@ -80,6 +80,14 @@ Kayıt formu karşılamada açılır: ad, soyad (isteğe bağlı), cinsiyet, do�
 - Sınırlar `api/_lib/ayar.js → KAYIT` (`adMin`, `adMax`, `iliskiler`, `deneme`, `dogumMin`).
 - Test: `test/kayit.test.mjs`.
 
+## Çıkış
+
+Hesap menüsü → **⎋ Çıkış yap**: bildirim aboneliği bırakılır (en çok 2,5 sn beklenir), oturum
+(`kok_session`) ve "ben kimim" (`kok_ben`) silinir, sayfa **karşılama ekranına** yeniden açılır
+("Çıkış yapıldı" bildirimiyle). Eskiden yalnız oturum siliniyordu; ağaç, kart ve paneller aynen
+kaldığı için ekran değişmiyordu. Çıkış sürerken geç dönen bir oturum yanıtı jetonu geri yazamaz
+(`cikisSurerken`).
+
 ## Rol görünürlüğü
 
 - Durum satırında her zaman rol: **🔓 Yönetici** ya da **👤 Aile üyesi** (girişsizse yok).

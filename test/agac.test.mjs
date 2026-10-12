@@ -192,3 +192,44 @@ test('nesil: eşin kardeşi kişiyle aynı nesil; dünür ebeveyn bir üst, çoc
   const ist = await import('../public/lib/agac.js');
   assert.equal(ist.nesil(ist.grafKur(v), 'sv'), 2);
 });
+
+test('kisiBirlestir: iki Nevin tek kişi — bağlar taşınır, profil birleşir, eş yazıları tekrarsız', async () => {
+  const { kisiBirlestir, olasiKopyalar } = await import('../api/_lib/agac.js');
+  const v = { nodes: [
+    { id: 'ck', name: 'Celal Kaya', sex: 'E' },
+    { id: 'n1', name: 'Nevin Kaya', sex: 'K', spouse: ['Yüksel (aileden)'], profile: { info: { meslek: 'Öğretmen' } } },
+    { id: 'n2', name: 'Nevin Arslan (Kaya)', sex: 'K', spouse: ['Yüksel (aileden)'], profile: { photo: '/f.jpg', info: { dogum: '1965' } } },
+    { id: 'y', name: 'Yüksel', sex: 'E', spouse: ['Nevin Kaya (aileden)', 'Nevin Arslan (Kaya) (aileden)'], kin: 'n1' },
+    { id: 'fk', name: 'Fahri Kaan', sex: 'E' },
+  ], edges: [{ from: 'ck', to: 'n1' }, { from: 'y', to: 'fk' }],
+  marriages: [{ from: 'y', to: 'n1' }, { from: 'y', to: 'n2' }], motherEdges: [{ from: 'n2', to: 'fk' }] };
+  assert.deepEqual(olasiKopyalar(v, 'n1').map((x) => x.id), ['n2']);
+  const { veri } = kisiBirlestir(v, 'n2', 'n1');
+  assert.equal(v.nodes.length, 5, 'girdi değişmez');
+  assert.ok(!veri.nodes.some((n) => n.id === 'n1'));
+  const n = veri.nodes.find((x) => x.id === 'n2');
+  assert.ok(veri.edges.some((e) => e.from === 'ck' && e.to === 'n2'), 'babası taşındı');
+  assert.equal(veri.marriages.length, 1, 'çift evlilik kalmadı');
+  assert.ok(veri.motherEdges.some((e) => e.from === 'n2' && e.to === 'fk'));
+  assert.equal(n.profile.photo, '/f.jpg');
+  assert.deepEqual(n.profile.info, { meslek: 'Öğretmen', dogum: '1965' });
+  assert.equal(veri.nodes.find((x) => x.id === 'y').kin, 'n2');
+  assert.deepEqual(veri.nodes.find((x) => x.id === 'y').spouse, ['Nevin Arslan (Kaya) (aileden)']);
+});
+
+test('kural: anne-babası aynı iki kişi aynı adı taşıyamaz; yalnız YENİ ihlal engellenir', async () => {
+  const { ayniAdliKardesler, yeniKardesIhlali } = await import('../api/_lib/agac.js');
+  const v = { nodes: [{ id: 'b', name: 'Baba', sex: 'E' }, { id: 'a', name: 'Anne', sex: 'K' },
+    { id: 'c1', name: 'Ali', sex: 'E' }, { id: 'c2', name: 'Veli', sex: 'E' }, { id: 'x', name: 'Ali', sex: 'E' },
+    { id: 't1', name: 'Yeni kişi', sex: 'E' }, { id: 't2', name: 'Yeni kişi', sex: 'E' }],
+  edges: [{ from: 'b', to: 'c1' }, { from: 'b', to: 'c2' }, { from: 'b', to: 't1' }, { from: 'b', to: 't2' }],
+  motherEdges: [{ from: 'a', to: 'c1' }, { from: 'a', to: 'c2' }], marriages: [] };
+  assert.deepEqual(ayniAdliKardesler(v), [], 'farklı ad, anne-babası bilinmeyen namesake ve taslak kural dışı');
+  const y = JSON.parse(JSON.stringify(v)); y.nodes.find((n) => n.id === 'c2').name = 'ALİ';
+  assert.deepEqual(yeniKardesIhlali(v, y).map((x) => x.ids), [['c1', 'c2']]);
+  // farklı anneden aynı ad (üvey kardeş) kural dışı
+  const z = JSON.parse(JSON.stringify(y)); z.motherEdges = [{ from: 'a', to: 'c1' }];
+  assert.deepEqual(ayniAdliKardesler(z), []);
+  // mevcut ihlal yeni kaydı engellemez
+  assert.deepEqual(yeniKardesIhlali(y, y), []);
+});

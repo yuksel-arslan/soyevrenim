@@ -641,3 +641,18 @@ dokunma olayları denenmedi. Şunlar **gözle test edilmedi**:
   Sayfa içinde satır içi SVG, rengi `var(--spine)` (üç temada da token'dan).
 - Dosyalar: `public/favicon.svg` (sekme simgesi), `public/logo.svg` (açık zemin), `public/logo-koyu.svg`
   (koyu zemin), `public/simge-192.png` / `simge-512.png` (ana ekran / bildirim simgesi), `public/manifest.webmanifest`.
+
+
+## Çizim performansı (INP)
+
+Ağaç "nefes alan" salınımla sürekli döner, yani her kare yeniden çizilir. Ana iş parçacığı boşalmazsa
+tıklamalar sıradaki kareyi bekler (Çınar'ın Kapat düğmesinde 216 ms INP uyarısı).
+- `shadowBlur` (canvas'ın en pahalı işlemi) yalnız vurgulu/seçili/üstündeki düğümde; diğerlerinde ucuz yarı saydam hale.
+- Kullanıcı bir şey yapmıyorken salınım yarı hızda çizilir (`CIZIM.bostaAtla`); herhangi bir girişten
+  sonra `CIZIM.etkinMs` boyunca tam hız. Sürükleme, kaydırma ve fizik açıkken hep tam hız.
+
+## Mobil dock etiketleri
+
+Dokunmatikte `title` ipucu görünmez; mobilde her dock ikonunun altında kısa etiket yazar
+(`data-etiket` → `::after`, `dockEtiketleri()`): Sığdır, Yakın, Uzak, Fizik, Bağ, Çınar, Görünüm,
+Örgü, Yol bul, Odak, Nesil, Sayılar, Köken, Katman, Tema, Sohbet, Yönetici, Onay. Masaüstünde `title` kalır.
