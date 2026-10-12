@@ -468,6 +468,28 @@ body:has(.inspector.show) #activeCard{display:none !important}
 .whoKayit{padding:11px 14px;font-size:13px;color:var(--accent);cursor:pointer;border-top:1px solid var(--line);font-weight:600}
 .whoKayit:hover{background:var(--panel2)}
 .whoBos{padding:10px 14px;color:var(--muted);font-size:13px;line-height:1.45}
+/* iPhone: "Ana Ekrana Ekle" yönergesi (alt sayfa) */
+#anaEkran{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:60;
+  max-width:440px;margin:0 auto;background:var(--panel);border:1px solid var(--line2);border-radius:16px;
+  padding:16px 16px 14px;box-shadow:0 20px 60px var(--shadow);color:var(--text);
+  transform:translateY(130%);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+#anaEkran.acik{transform:none}
+#anaEkran .aeBas{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+#anaEkran .aeBas img{width:44px;height:44px;border-radius:11px;flex:none;border:1px solid var(--line)}
+#anaEkran h3{font-size:15.5px;margin:0;line-height:1.3}
+#anaEkran .aeAlt{font-size:12px;color:var(--text-soft);margin-top:2px;line-height:1.4}
+#anaEkran ol{margin:0;padding:0;list-style:none;counter-reset:ae}
+#anaEkran li{counter-increment:ae;display:flex;align-items:center;gap:10px;font-size:14px;padding:8px 0;border-top:1px solid var(--line);line-height:1.4}
+#anaEkran li::before{content:counter(ae);flex:none;width:22px;height:22px;border-radius:50%;background:var(--panel2);
+  color:var(--text-soft);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+#anaEkran li svg{width:20px;height:20px;flex:none;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-left:auto}
+#anaEkran .aeDugme{display:flex;gap:8px;margin-top:12px}
+#anaEkran .aeDugme button{flex:1;padding:10px;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer}
+#anaEkran .aeTamam{background:var(--accent);color:var(--on-accent);border:none}
+#anaEkran .aeAsla{background:none;border:1px solid var(--line2);color:var(--text-soft)}
+#anaEkran .aeOk{position:absolute;left:50%;bottom:-11px;transform:translateX(-50%);width:20px;height:20px;
+  background:var(--panel);border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);rotate:45deg;display:none}
+#anaEkran.altOk .aeOk{display:block}
 </style>
 </head>
 <body>
@@ -5641,6 +5663,7 @@ function startAs(id){
     setTimeout(()=>{ if(typeof window.sohbetAc==="function") window.sohbetAc(); }, 700);
   if(id){ setViewer(id); benAta(id); }
   else { layoutRadial(); }        // nötr: kimse merkez değil
+  if(typeof anaEkranZamanla==="function") anaEkranZamanla();   // iPhone: ana ekrana ekleme yönergesi
   welcome.style.transition="opacity .5s"; welcome.style.opacity="0";
   setTimeout(()=>welcome.remove(),500);
   fit();
@@ -6098,6 +6121,7 @@ function hesapMenusu(hedef){
   m.innerHTML=`<div style="color:var(--text);font-weight:600">${isAdmin?"🔓 Yönetici":"👤 Aile üyesi"}</div>
     <div style="color:var(--muted);margin-top:2px">${ad?`${escapeHtml(ad)} olarak`:"Kim olduğun seçilmedi"}</div>
     ${!isAdmin?`<button data-yonetici>🔓 Yönetici olarak gir</button>`:""}
+    ${iosCihaz() && !anaEkranda() ? `<button data-anaekran>📲 Ana ekrana ekle</button>`:""}
     <button data-degistir>🔄 Ben değilim — kişiyi değiştir</button>
     <button data-cikis style="color:var(--danger)">⎋ Çıkış yap</button>`;
   document.body.appendChild(m);
@@ -6112,6 +6136,7 @@ function hesapMenusu(hedef){
     if(typeof benAta==="function") benAta(null);
     toast(`Kim olduğunu ${typeof asistanaYaz==="function"?asistanaYaz():"asistana"} “Ben …” diye yaz ya da kişinin kartında “Bu benim”e dokun`);
     if(typeof updateStatus==="function") updateStatus(); };
+  const ae=m.querySelector("[data-anaekran]"); if(ae) ae.onclick=()=>{ kapat(); anaEkranRehberi(true); };
   const y=m.querySelector("[data-yonetici]");
   if(y) y.onclick=async()=>{ kapat(); if(await girisPenceresi("Yönetici şifreni gir.") && !isAdmin) toast("Bu şifre aile şifresi — yönetici şifresi gerekiyor"); };
 }
@@ -6441,8 +6466,61 @@ async function chatDelete(id, kapsam, container){
 // Telefon kilitliyken de "💬 Fahri · Aile Sohbeti" bildirimi. Service worker: /sw.js
 // Sunucu: api/sohbet?adim=vapid|abone|birak, gönderim api/_lib/push.js. Ayrıntı docs/sohbet.md.
 const BILDIRIM_DESTEK = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-const iosTarayici = ()=> /iPhone|iPad|iPod/.test(navigator.userAgent)
-  && !(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches));
+const iosTarayici = ()=> iosCihaz() && !anaEkranda();   // iPadOS dahil (masaüstü UA verir)
+// ---- iPhone / iPad: "Ana Ekrana Ekle" yönergesi ----
+// Site uygulama mağazasız çalışır; iPhone'da bildirim için ana ekrana eklenmesi ŞART (Apple kuralı).
+// Giriş sonrası bir kez kibarca gösterilir: "Anladım" → ANA_EKRAN.tekrarGun sonra yine,
+// "Bir daha gösterme" → hiç. Hesap menüsünden ve bildirim düğmesinden her zaman açılabilir.
+// Ayrıntı: docs/sohbet.md → "Ana ekrana ekleme (iPhone)".
+const AE_KEY="kok_ana_ekran";
+function iosCihaz(){
+  const ua=navigator.userAgent;
+  return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints>1);   // iPadOS masaüstü UA verir
+}
+function anaEkranda(){ return !!(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches)); }
+function anaEkranRehberi(zorla){
+  if(!iosCihaz() || anaEkranda()) { if(zorla) toast("Site zaten ana ekranda açık ✓"); return; }
+  const A=(typeof AYAR!=="undefined" && AYAR && AYAR.ANA_EKRAN) || null;
+  if(!zorla){
+    if(!A) return;
+    let d=null; try{ d=JSON.parse(localStorage.getItem(AE_KEY)||"null"); }catch(e){}
+    if(d && (d.asla || Date.now()-d.t < A.tekrarGun*86400000)) return;
+  }
+  document.getElementById("anaEkran")?.remove();
+  const ua=navigator.userAgent;
+  const uygulamaIci=/FBAN|FBAV|Instagram|Line\/|GSA\/|Twitter|LinkedInApp|Snapchat/.test(ua);
+  const safariDisi=/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  const PAYLAS='<svg viewBox="0 0 24 24"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+  const EKLE='<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+  const adimlar = uygulamaIci ? [
+      `Bu sayfa bir uygulamanın içinde açık. Sağ üstteki <b>⋯</b> menüsünden <b>“Safari'de aç”</b>a dokun`,
+      `Safari'de alttaki <b>Paylaş</b> simgesine dokun ${PAYLAS}`,
+      `<b>“Ana Ekrana Ekle”</b>yi seç, sonra <b>Ekle</b> ${EKLE}` ]
+    : [ safariDisi ? `Adres çubuğundaki <b>Paylaş</b> simgesine dokun ${PAYLAS}`
+                   : `Alttaki <b>Paylaş</b> simgesine dokun <span style="color:var(--muted);font-size:12px">(görünmüyorsa önce <b>⋯</b>)</span> ${PAYLAS}`,
+        `Aşağı kaydır, <b>“Ana Ekrana Ekle”</b>yi seç ${EKLE}`,
+        `Sağ üstte <b>Ekle</b>’ye dokun — simge ana ekranına gelir` ];
+  const k=document.createElement("div"); k.id="anaEkran"; k.setAttribute("role","dialog"); k.setAttribute("aria-label","Ana ekrana ekle");
+  if(!uygulamaIci && !safariDisi) k.classList.add("altOk");   // Safari'de paylaş düğmesi altta: ok aşağıyı gösterir
+  k.innerHTML=`<div class="aeBas"><img src="/simge-192.png" alt=""><div>
+      <h3>soyevrenim.com'u ana ekranına ekle</h3>
+      <div class="aeAlt">İndirme yok, mağaza yok. Uygulama gibi açılır; Aile Sohbeti bildirimleri de böyle gelir.</div></div></div>
+    <ol>${adimlar.map(a=>`<li><span>${a}</span></li>`).join("").replace(/ (<svg[\s\S]*?<\/svg>)<\/span>/g,"</span>$1")}</ol>
+    <div class="aeDugme"><button class="aeAsla" type="button">Bir daha gösterme</button><button class="aeTamam" type="button">Anladım</button></div>
+    <div class="aeOk"></div>`;
+  document.body.appendChild(k);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>k.classList.add("acik")));
+  const kapat=asla=>{ try{ localStorage.setItem(AE_KEY, JSON.stringify({t:Date.now(), asla:!!asla})); }catch(e){}
+    k.classList.remove("acik"); setTimeout(()=>k.remove(), 400); };
+  k.querySelector(".aeTamam").onclick=()=>kapat(false);
+  k.querySelector(".aeAsla").onclick=()=>kapat(true);
+}
+function anaEkranZamanla(){
+  if(!iosCihaz() || anaEkranda()) return;
+  const bekle=()=>{ const A=(typeof AYAR!=="undefined" && AYAR && AYAR.ANA_EKRAN); if(!A) return setTimeout(bekle, 1000);
+    setTimeout(()=>anaEkranRehberi(false), A.gecikmeSn*1000); };
+  bekle();
+}
 function b64uBayt(s){ const p="=".repeat((4-s.length%4)%4); const b=atob((s+p).replace(/-/g,"+").replace(/_/g,"/"));
   return Uint8Array.from(b, c=>c.charCodeAt(0)); }
 async function sohbetPost(adim, govde){
@@ -6532,7 +6610,7 @@ if(BILDIRIM_DESTEK){
   }
   if(bil) bil.onclick=async()=>{
     const d=bil.dataset.durum;
-    if(d==="ios"){ toast("iPhone'da bildirim için: Paylaş ⬆ → “Ana Ekrana Ekle”, sonra siteyi ana ekrandaki simgeden aç"); return; }
+    if(d==="ios"){ anaEkranRehberi(true); return; }
     if(d==="red"){ toast("Bildirim izni kapalı — tarayıcı ayarlarından bu site için bildirimlere izin ver"); return; }
     bil.disabled=true;
     try{

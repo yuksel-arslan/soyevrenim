@@ -89,6 +89,9 @@ export const KAYIT = {
   dogumMin: 1900,                           // doğum yılı alt sınırı (üst sınır: bu yıl)
 };
 
+// iPhone "Ana Ekrana Ekle" yönergesi (istemci): giriş sonrası gecikme ve "Anladım" sonrası tekrar aralığı
+export const ANA_EKRAN = { gecikmeSn: 6, tekrarGun: 14 };
+
 // Aile sohbeti: yeni mesaj yoklaması (rozet + bildirim) ve panel açıkken yenileme
 export const SOHBET = { yoklamaSn: 45, acikYoklamaSn: 15, yeniMax: 50 };
 
@@ -116,7 +119,7 @@ export function kamuAyar() {
       parcaMaxMb: SES.parcaMaxMb, maxKayitDk: SES.maxKayitDk },
     DEPOLAMA: { kotaBayt: DEPOLAMA.kotaBayt },
     MEDYA: { fotoMaxMb: MEDYA.fotoMaxMb, videoMaxMb: MEDYA.videoMaxMb, vekilMaxMb: MEDYA.vekilMaxMb },
-    SOHBET,
+    SOHBET, ANA_EKRAN,
     KAYIT: { adMin: KAYIT.adMin, adMax: KAYIT.adMax, iliskiler: KAYIT.iliskiler, dogumMin: KAYIT.dogumMin },
     ASISTAN: { ad: ASISTAN.ad, mesajMaxKarakter: ASISTAN.mesajMaxKarakter, gecmisTur: ASISTAN.gecmisTur },
   };
