@@ -1829,6 +1829,7 @@ function odakAc(id){
   if(typeof updateStatus==="function") updateStatus();
   const h=odakHedefleri(id);
   if(!h){ kadrajaGit(); return; }
+  odakKayit.theta=h.theta;   // dışarıdan babanın yeri için (disBabaCiz)
   // Aileyi kameranın KARŞI tarafına döndür: radyal yön ekranda dikey olur, satırlar
   // yatay görünür. (Yakın tarafta perspektif çok güçlü; küçük bir salınım bile satırları
   // ekrandan taşırıyordu.)
@@ -2609,6 +2610,7 @@ function draw(){
       if(goster) etiketAdaylari.push({n,p,r,depthK,depthAlpha,oncelik,isViewer,sel,hov,hl,onSpine,isFounder});
     }
   });
+  disBabaCiz(etiketAdaylari);
   isimleriYerlestir(etiketAdaylari);
 
   // ——— UZUN BAS geri bildirimi: basılı tutulan düğümün çevresinde dolan halka
@@ -2688,6 +2690,29 @@ function fotoCiz(n, url, p, r, alpha){
   ctx.restore();
   ctx.globalAlpha=1;
   return true;
+}
+// DIŞARIDAN BABA (odakta): kızın çocukları ağaçta annesinin altında çizilir; babası ağaçta
+// düğüm değil, yalnız adı yazılı (n.fatherExt). Odakta kişinin babası görünmüyordu — annenin
+// yanına, anne-baba satırına kesik çizgili bir "hayalet" düğüm olarak çizilir.
+function disBabaCiz(etiketAdaylari){
+  if(!BLOOM.focusIds || !odakKayit || odakKayit.theta==null) return;
+  const me=byId[odakKayit.id], ana=me && me._parent;
+  if(!me || !me.fatherExt || !ana || (me.parentRole||"baba")!=="anne") return;
+  const tx=-Math.sin(odakKayit.theta), ty=Math.cos(odakKayit.theta);
+  const wx=ana.x+tx*ODAK_ARALIK, wy=ana.y+ty*ODAK_ARALIK, h=nodeHeight(ana);
+  const p=project(wx,wy,h), pa=project(ana.x,ana.y,h), pm=project(me.x,me.y,nodeHeight(me));
+  const r=10.5*zoomK()*p.k;
+  ctx.save();
+  // evlilik (anne–baba) ve çocuk bağı: kesik çizgi = ağaç dışı kişi
+  ctx.setLineDash([5,4]); ctx.lineWidth=1.6; ctx.globalAlpha=0.8;
+  ctx.strokeStyle=getVar("--marriage"); ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(p.x,p.y); ctx.stroke();
+  ctx.strokeStyle=getVar("--edge"); ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(pm.x,pm.y); ctx.stroke();
+  ctx.setLineDash([3,3]); ctx.lineWidth=1.8; ctx.globalAlpha=0.9;
+  ctx.fillStyle=getVar("--bg"); ctx.strokeStyle=getVar("--male");
+  ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  etiketAdaylari.push({n:{id:"__disBaba", name:`${me.fatherExt} · baba`}, p, r, depthK:p.k, depthAlpha:0.85, oncelik:1,
+    isViewer:false, sel:false, hov:false, hl:false, onSpine:false, isFounder:false});
 }
 function isimleriYerlestir(adaylar){
   adaylar.sort((a,b)=> a.oncelik-b.oncelik || b.depthK-a.depthK);
@@ -3294,9 +3319,10 @@ function openInspector(n){
     pk.appendChild(mrow);
   }
   par.appendChild(pk);
-  // baba ekle (ağaç-ebeveyni yoksa veya dış babaysa)
+  // baba ekle: ağaçta babası yoksa VE dışarıdan baba da yazılı değilse
+  // (kızın çocuğu annesinin altında çizilir; babası "dışarıdan" adıyla durur — o zaman baba zaten var)
   const hasTreeFather = n._parent && (n.parentRole||"baba")==="baba";
-  if(!hasTreeFather){
+  if(!hasTreeFather && !n.fatherExt){
     const addF=document.createElement("button"); addF.className="tbtn"; addF.style.marginTop="8px";
     addF.style.width="100%"; addF.style.justifyContent="center"; addF.textContent="＋ Baba ekle";
     addF.onclick=()=>addParent(n,"baba");
