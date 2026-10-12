@@ -25,6 +25,7 @@ function temizKapsam(k){
   if(k==='genel') return 'genel';
   if(/^kisi:[\w]+$/.test(k)) return k;   // kisi:pXXXX
   if(/^ozel:[\w-]{1,40}:[\w-]{1,40}$/.test(k)) return k;   // ozel:pA:pB (tanışma sonrası iki kişilik)
+  if(/^hafta:\d{4}-\d{2}$/.test(k)) return k;   // hafta:2026-42 — Aile Meydanı "Haftanın sorusu" yanıtları
   return 'genel';
 }
 const kisiGecerli = (k) => /^[\w-]{1,40}$/.test(String(k || ''));

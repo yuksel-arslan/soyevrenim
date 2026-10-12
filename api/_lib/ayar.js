@@ -128,6 +128,29 @@ export const SOHBET = { yoklamaSn: 45, acikYoklamaSn: 15, yeniMax: 50 };
 // Tanışma daveti (api/sohbet.js → tanis-*): birbirini tanımayan aile üyeleri; kabul edilince özel sohbet
 export const TANISMA = { mesajMax: 400, listeMax: 30 };
 
+// Aile Meydanı (api/meydan.js): sosyalleşme — kutlama, haftanın sorusu, büyüğe sor, etkinlik, fotoğraf etiketi
+export const MEYDAN = {
+  dogumGunuOnGun: 30,      // "yaklaşan doğum günleri" penceresi
+  etkinlikGecmisGun: 30,   // geçmiş etkinlikler bu kadar gün listede kalır
+  metinMax: 600,           // soru / yanıt / kutlama / etkinlik açıklaması
+  listeMax: 50,
+  // Haftanın sorusu: ISO haftasına göre sırayla döner (herkes aynı hafta aynı soruyu görür)
+  haftaninSorulari: [
+    'Çocukken köyde en sevdiğin yer neresiydi?',
+    'Büyüklerinden duyduğun en eski aile hikâyesi ne?',
+    'Ailede hâlâ yapılan bir yemek tarifi var mı? Kimden kaldı?',
+    'Bayramlarda ailecek ne yapardınız?',
+    'Dedenin ya da ninenin sana öğrettiği bir söz, bir öğüt?',
+    'Aileden birinin seni en çok güldürdüğü an?',
+    'Lazca bildiğin bir söz ya da türkü var mı?',
+    'Derbent’e ya da Arhavi’ye son gidişini anlat.',
+    'Ailede kimin mesleği seni en çok etkiledi?',
+    'Evlilik ya da düğün hikâyesi bildiğin bir büyüğümüz var mı?',
+    'Eski bir aile fotoğrafını anlat: kim, nerede, ne zaman?',
+    'Gençlere ailemiz hakkında ne bilmelerini isterdin?',
+  ],
+};
+
 // Web Push bildirimleri (api/_lib/push.js)
 export const BILDIRIM = {
   ttlSn: 86400,            // telefon kapalıysa push servisi bu kadar saklar (1 gün)
@@ -153,6 +176,8 @@ export function kamuAyar() {
     DEPOLAMA: { kotaBayt: DEPOLAMA.kotaBayt },
     MEDYA: { fotoMaxMb: MEDYA.fotoMaxMb, videoMaxMb: MEDYA.videoMaxMb, vekilMaxMb: MEDYA.vekilMaxMb },
     SOHBET, ANA_EKRAN,
+    MEYDAN: { dogumGunuOnGun: MEYDAN.dogumGunuOnGun, metinMax: MEYDAN.metinMax, haftaninSorulari: MEYDAN.haftaninSorulari },
+    TANISMA,
     KAYIT: { adMin: KAYIT.adMin, adMax: KAYIT.adMax, iliskiler: KAYIT.iliskiler, dogumMin: KAYIT.dogumMin },
     ASISTAN: { ad: ASISTAN.ad, mesajMaxKarakter: ASISTAN.mesajMaxKarakter, gecmisTur: ASISTAN.gecmisTur },
   };

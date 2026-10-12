@@ -14,6 +14,7 @@ kendini denetler, çelişkide ilgilileri uyarır.
 - **Fotoğraflı avatarlar, iletişim, sosyal medya, anılar**
 - **Mobil uyumlu, dark/light/yadigâr**
 - **Kullanma kılavuzu** — aile üyeleri için kısa rehber: `/kilavuz.html` (karşılama ekranındaki bağlantı, alt/sol çubuktaki “Kılavuz” düğmesi ve hesap menüsü; tema sitedekiyle aynı)
+- **Aile Meydanı** — doğum günü kutlama, haftanın sorusu, büyüğe sor, etkinlikler, fotoğrafta kim var · [docs/meydan.md](docs/meydan.md)
 - **Tanışma daveti** — birbirini tanımayan akrabalara şık kart; kabulde iki kişilik özel sohbet · [docs/sohbet.md](docs/sohbet.md)
 - **Asistan** — soru yanıtlar, konuşarak kişi ekleme önerir (OpenAI GPT, günlük harcama tavanlı) · [docs/asistan.md](docs/asistan.md) · beceri: [docs/cinar-beceri.md](docs/cinar-beceri.md)
 - **Sesli hikâye** — kendi sesinle anlat; saklanır, yazıya çevrilir, anı olarak doğrudan karta eklenir · [docs/hikaye.md](docs/hikaye.md)
@@ -45,6 +46,7 @@ Kısaca:
 public/index.html   → ağacın kendisi (frontend)
 api/agac.js         → ağacı oku/kaydet
 api/giris.js        → aile/admin şifresiyle giriş, oturum jetonu üretir
+api/meydan.js       → Aile Meydanı (kutla, büyüğe sor, etkinlik)
 api/oneri.js        → öneriler (Çınar / sesli hikâye hazırlar; sahibi ya da yönetici "✓ Ağaca işle")
 api/medya.js        → foto/video yükleme (Blob)
 api/sohbet.js       → aile sohbeti / kişi yorumları
