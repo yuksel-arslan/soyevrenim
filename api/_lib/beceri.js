@@ -53,6 +53,8 @@ const SITE_GUNCEL = [
     metin: 'Nesil, kök Molla Memiş’e (0) uzaklıktır. Eş aynı nesildir; eşin kardeşleri de aynı nesil, onların anne-babası bir önceki, çocukları bir sonraki nesil sayılır.' },
   { baslik: 'Köken ekranı', anahtar: 'köken 1956 çizim fahri arslan eser tam ekran',
     metin: 'Dock’taki “Köken” Fahri Arslan’ın 1956 el çizimini açar. ⛶ düğmesi ya da çift dokunuş görseli tam ekran yapar; Esc ya da Kapat ile çıkılır. “Hikâye” düğmesi kökenin anlatısını ve kaynakları gösterir.' },
+  { baslik: 'Kullanma kılavuzu', anahtar: 'kılavuz nasıl kullanılır yardım rehber başlangıç öğren',
+    metin: 'Kısa kullanma kılavuzu: soyevrenim.com/kilavuz.html — giriş, ağaçta gezinme, Çınar, fotoğraf ve bilgi ekleme, hikâye, Aile Sohbeti, telefona ekleme, hesap ve yönetici işleri. Hesap menüsündeki “📖 Kullanma kılavuzu” da açar.' },
   { baslik: 'Çınar kimdir', anahtar: 'çınar asistan sen kimsin yapay zeka model',
     metin: 'Çınar sitenin asistanıdır: soyumuzu, bölgemizi, araştırma kaynaklarını ve siteyi bilir. Ağaca kendisi yazmaz; ekleme ve düzeltmeler yönetici onayına öneri olarak gider. Günlük ortak kota ve kişi başı mesaj hakkı vardır; dolunca hazır bilgilerle yanıtlar.' },
 ];

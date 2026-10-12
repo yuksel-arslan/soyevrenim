@@ -109,6 +109,33 @@ sıra numarası eklenir (Ali → Ali2; ekranda yine "Ali"), `tam-ad` çiftinde b
 (`localStorage.kok_cift_farkli`). Farklı cinsiyetteki kayıtlar asla birleştirilmez (kız ve oğlan aynı adı taşısa da ayrı kişidir).
 Canlı veritabanı yalnız bu ekrandan (yönetici oturumuyla) temizlenir; işlemler `gunluk`'e yazılır, geri alınabilir.
 
+## Veri denetimi (yönetici)
+
+Hesap menüsü → **🩺 Veri denetimi (N önemli)** ya da Çınar'a "saçmalıkları bul" / "veri denetimi".
+`veriDenetimi(veri)` bulguları önem sırasıyla listeler; ekran yalnız gösterir, kişinin adına dokununca kartı açılır.
+
+| Tür | Önem | Ne yakalar |
+|---|---|---|
+| `kirik-bag` | önemli | Bağın bir ucu ağaçta yok |
+| `es-adi-uyusmuyor` | önemli | Evli olduğu kişinin kaydındaki eş adı farklı — ad yanlışlıkla değişmiş olabilir ("Yüksel" → "Nurten") |
+| `anne-erkek` / `anne-alani` | önemli | Anne olarak erkek bağlı (çoğu zaman babanın kendisi; gerçek anne bağlanmamış) |
+| `ayni-profil` | önemli | Aynı fotoğraf+meslek bilgisi iki kişide (yanlış kişiye kopyalanmış) |
+| `dongu`, `kendisiyle-evli` | önemli | Kendi atası / kendisiyle evli |
+| `cift-kayit` | önemli/orta | Çift kayıt adayları (bkz. Çift kayıtlar) |
+| `es-bagsiz`, `ayni-foto`, `dogum-yili` | orta | Eş yazısı var ama evlilik bağı yok; aynı fotoğraf; ebeveynle çocuk arasında `DENETIM.ebeveynMinYas` yıldan az |
+| `kin-yanlis`, `rol-etiketi`, `bagsiz-kisi`, `taslak-ad` | küçük | Eş göstergesi yanlış; kızın çocuğunda rol "baba" yazılı; bağsız kişi; "Yeni kişi" |
+
+Kızların çocuklarının annelerinin altında çizilmesi (1956 çizimindeki gibi) hata sayılmaz.
+**Güvenli düzeltmeler** (`guvenliDuzelt`): yalnız kesin yanlışlar — bir erkeğin aynı çocuğun hem babası hem
+"annesi" yazılması; anne bağı ve anne alanı silinir, başka hiçbir şeye dokunulmaz.
+
+Önleyici düzeltmeler:
+- **Ad koruması:** kişinin kartındaki "Ad" kutusunda ad tamamen başka bir ada dönerse onay sorulur
+  (kişi aramak isteyen biri bu kutuya yazınca kişinin adı değişiyordu). Küçük düzeltmeler sormaz.
+- **Bulut esas:** bulut modunda profiller yalnız sunucudan gelir; tarayıcıda kalmış eski profiller atılır
+  (eskiden birleştiriliyordu: bir id başka kişiye geçtiyse eski foto/meslek yanlış kişide görünüyor ve
+  yöneticinin kaydıyla sunucuya yazılıyordu).
+
 ## Ortam değişkenleri
 
 `DATABASE_URL`, `OTURUM_GIZLI`.

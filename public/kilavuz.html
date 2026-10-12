@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Kullanma Kılavuzu · soyevrenim.com</title>
+<meta name="description" content="soyevrenim.com — Abdurrahman Oğulları soy evreni için kısa kullanma kılavuzu">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  // Sitedeki tema seçimi (yadigâr / gece / gündüz) burada da geçerli
+  try{ const t=localStorage.getItem("kok_theme_v2")||"yadigar"; if(t!=="dark") document.documentElement.setAttribute("data-theme", t); }catch(e){ document.documentElement.setAttribute("data-theme","yadigar"); }
+</script>
+<style>
+/* Renkler sitenin token'ları (public/index.html ile aynı) — yeni renk yok */
+:root{
+  --bg:#0b1220; --bg2:#0e1526; --panel:#131c30; --panel2:#182238;
+  --line:#26324a; --line2:#334259;
+  --text:#e6edf6; --text-soft:#8c9cb4; --muted:#5f6f88;
+  --male:#4aa3ff; --female:#ff6fae; --spine:#ffc94a; --you:#ffd642;
+  --dead:#8b97ab; --edge:#42597a; --edge-lit:#ffc94a; --marriage:#e08aef;
+  --accent:#3dd6ec; --danger:#ff6a5e; --ok:#4ade80;
+  --shadow:rgba(0,0,0,.45);
+  /* düğüm konturu / vefat iç halkası — temaya göre değişir */
+  --node-edge:rgba(255,255,255,.28); --node-inner:rgba(255,255,255,.35);
+  /* vurgu zemini uzerindeki yazi + tam ekran katman zemini */
+  --on-accent:#06121a; --overlay:rgba(8,12,20,.97); --welcome-1:#101a30; --welcome-2:#0b1220;
+}
+:root[data-theme="light"]{
+  --bg:#f4f6fb; --bg2:#ffffff; --panel:#ffffff; --panel2:#eef2f8;
+  --line:#dde3ec; --line2:#c6d0dd;
+  --text:#1a2438; --text-soft:#556076; --muted:#8794a8;
+  --male:#2f6fb8; --female:#c04d7d; --spine:#b8891f; --you:#c99a1e;
+  --dead:#9aa4b4; --edge:#c4cddb; --edge-lit:#c99a1e; --marriage:#a765b0;
+  --accent:#2596a8; --danger:#c8483e; --ok:#3a9a5a;
+  --shadow:rgba(30,50,90,.15);
+  --node-edge:rgba(20,32,54,.42); --node-inner:rgba(20,32,54,.30);
+  --on-accent:#ffffff; --overlay:rgba(244,246,251,.97); --welcome-1:#ffffff; --welcome-2:#eef2f8;
+}
+:root[data-theme="yadigar"]{
+  --bg:#e6dcc4; --bg2:#dfd4b9; --panel:#efe7d3; --panel2:#e2d8c0;
+  --line:#c3b596; --line2:#a89a7c;
+  --text:#2f2c26; --text-soft:#5d5749; --muted:#8a8271;
+  /* düğüm renkleri: çizimdeki yıkanmış yaprak dolguları */
+  --male:#7f96a8; --female:#b98a92; --spine:#a8863a; --you:#9c5a33;
+  --dead:#9a9080; --edge:#8a7c62; --edge-lit:#9a7526; --marriage:#7f6f92;
+  /* başlıktaki slate mavi-grisi mürekkep */
+  --accent:#4d5766; --danger:#9c4a3c; --ok:#5f7d48;
+  --shadow:rgba(80,62,36,.28);
+  /* Çizimdeki yapraklar gibi: açık dolgu + KOYU mürekkep kontur.
+     Kağıt üzerinde düğümü okunur kılan asıl unsur bu. */
+  --node-edge:rgba(47,44,38,.62); --node-inner:rgba(47,44,38,.42);
+  --on-accent:#efe7d3; --overlay:rgba(232,223,200,.97); --welcome-1:#efe7d3; --welcome-2:#ddd2b7;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 Inter,system-ui,sans-serif}
+.kap{max-width:760px;margin:0 auto;padding:20px 16px 64px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.marka{display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px;color:var(--text);text-decoration:none}
+.marka svg{flex:none}
+.marka span{color:var(--muted);font-weight:500;margin-left:-8px}
+.geri{font-size:14px;color:var(--text);text-decoration:none;border:1px solid var(--line2);border-radius:9px;padding:7px 12px;background:var(--panel)}
+h1{font-size:28px;line-height:1.25;margin:22px 0 6px;letter-spacing:-.4px}
+.alt{color:var(--text-soft);margin:0 0 18px}
+.icindekiler{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 24px;padding:0;list-style:none}
+.icindekiler a{display:inline-block;font-size:13px;color:var(--text);text-decoration:none;border:1px solid var(--line);border-radius:16px;padding:5px 11px;background:var(--panel)}
+section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:0 0 14px;scroll-margin-top:12px}
+h2{font-size:18px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+h2 .no{font:600 12px 'IBM Plex Mono',monospace;color:var(--muted)}
+p{margin:0 0 8px}
+ol,ul{margin:0 0 6px;padding-left:22px}
+li{margin:3px 0}
+b{font-weight:600}
+.dugme{display:inline-block;font-size:13.5px;font-weight:600;border:1px solid var(--line2);border-radius:7px;padding:0 7px;background:var(--panel2);white-space:nowrap}
+.not{border-left:3px solid var(--spine);background:var(--panel2);border-radius:0 8px 8px 0;padding:9px 12px;margin:8px 0 0;font-size:14.5px}
+.uyari{border-left-color:var(--danger)}
+.ornek{font-family:'IBM Plex Mono',monospace;font-size:13.5px;background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.yonetici{border-style:dashed}
+footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
+@media (max-width:480px){ h1{font-size:24px} section{padding:14px} }
+</style>
+</head>
+<body>
+<div class="kap">
+  <header>
+    <a class="marka" href="/"><svg class="logo" style="width:28px;height:28px;color:var(--spine)" viewBox="0 0 64 64" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"> <path d="M10.1 29.9 A23 23 0 0 1 53.9 29.9" stroke-width="1.8" opacity=".45"/> <path d="M32 44 C28.715 41.9 11.852 35.9 10.1 29.9"/><path d="M32 44 C29.975 30.4 19.58 24.4 18.5 18.4"/><path d="M32 44 C32.0 26.0 32.0 20.0 32.0 14.0"/><path d="M32 44 C34.025 30.4 44.42 24.4 45.5 18.4"/><path d="M32 44 C35.285 41.9 52.147999999999996 35.9 53.9 29.9"/> <path d="M32 44 V56"/> <path d="M32 56 C29 58 25 59 21 59 M32 56 C35 58 39 59 43 59"/> </g> <g fill="currentColor"><circle cx="10.1" cy="29.9" r="4.3"/><circle cx="18.5" cy="18.4" r="4.3"/><circle cx="32.0" cy="14.0" r="4.3"/><circle cx="45.5" cy="18.4" r="4.3"/><circle cx="53.9" cy="29.9" r="4.3"/><circle cx="32" cy="56.5" r="3.6"/></g></svg>soyevrenim<span>.com</span></a>
+    <a class="geri" href="/">← Siteye dön</a>
+  </header>
+
+  <h1>Kullanma kılavuzu</h1>
+  <p class="alt">Abdurrahman Oğulları soy evreni — 5 dakikada her şey.</p>
+
+  <ul class="icindekiler">
+    <li><a href="#giris">Giriş</a></li><li><a href="#gezinme">Ağaçta gezinme</a></li>
+    <li><a href="#cinar">Çınar</a></li><li><a href="#ekleme">Fotoğraf ve bilgi</a></li>
+    <li><a href="#hikaye">Hikâye</a></li><li><a href="#sohbet">Aile Sohbeti</a></li>
+    <li><a href="#telefon">Telefona ekle</a></li><li><a href="#hesap">Hesap ve çıkış</a></li>
+    <li><a href="#yonetici">Yönetici</a></li>
+  </ul>
+
+  <section id="giris">
+    <h2><span class="no">01</span> Giriş</h2>
+    <p>İndirme gerekmez: telefonda ya da bilgisayarda <b>soyevrenim.com</b>'u açman yeterli.</p>
+    <ol>
+      <li>“Bu evrene kim bakıyor?” kutusuna <b>adını</b> yaz ve listeden kendini seç. Soyadı ya da Türkçe harf farkı sorun olmaz (<span class="ornek">Yuksel</span> = Yüksel).</li>
+      <li>Düzenlemek, sohbet etmek ve Çınar'la konuşmak için <b>aile şifresi</b>yle gir. Şifreyi aile büyüklerinden al.</li>
+      <li>Sadece bakmak istersen <b>Sadece bakmak istiyorum</b>'a dokun.</li>
+    </ol>
+    <div class="not"><b>Ağaçta yok musun?</b> Listenin altındaki <span class="dugme">Listede yok musun? Kaydol →</span>'a dokun. Adını yaz, ağaçtaki bir yakınını seç ve bağını belirt (çocuğu, eşi ya da kardeşi). Yakınını seçmeden kayıt olmaz; aile şifresi gerekir.</div>
+  </section>
+
+  <section id="gezinme">
+    <h2><span class="no">02</span> Ağaçta gezinme</h2>
+    <ul>
+      <li><b>Dokun:</b> kişinin ailesi öne çıkar, sağ üstte kısa kartı görünür.</li>
+      <li><b>Uzun bas:</b> kişinin ayrıntı kartı açılır (bilgiler, fotoğraflar, anılar).</li>
+      <li><b>İki parmak / tekerlek:</b> yakınlaş, uzaklaş. Boşluğa dokun: tüm ağaç.</li>
+      <li><b>Kişi ara:</b> en üstteki <span class="dugme">kişi ara…</span> kutusu.</li>
+    </ul>
+    <p>Alttaki (bilgisayarda soldaki) düğmeler: <span class="dugme">Sığdır</span> <span class="dugme">Odak</span> (seçilenin yakınları) <span class="dugme">Yol bul</span> (iki kişi nasıl akraba) <span class="dugme">Nesil</span> <span class="dugme">Köken</span> (Fahri Arslan'ın 1956 çizimi) <span class="dugme">Tema</span>. Mobilde düğmelerin adı ikonun altında yazar; çubuk yana kayar.</p>
+    <div class="not">Renkler: <b>mavi</b> erkek, <b>pembe</b> kadın, <b>gri</b> rahmetli, <b>sarı</b> sen ve köke inen soy hattın; kesikli çizgi evlilik.</div>
+  </section>
+
+  <section id="cinar">
+    <h2><span class="no">03</span> Çınar (asistan)</h2>
+    <p>Çınar soyumuzu, kökenimizi, araştırma kaynaklarını, bölgeyi ve siteyi bilir. Alttaki <span class="dugme">Çınar</span> düğmesiyle aç; yaz ya da 🎤 ile söyle.</p>
+    <ul>
+      <li><span class="ornek">Emine ile Fahri nasıl akraba?</span></li>
+      <li><span class="ornek">Nereden geldik?</span> · <span class="ornek">Molla Memiş kimdir?</span></li>
+      <li><span class="ornek">1835 kayıtlarında atalarımızı nasıl bulurum?</span></li>
+      <li><span class="ornek">Ayşe, Fahri'nin kız kardeşi</span> → kişi ekleme önerisi olur</li>
+      <li><span class="ornek">Nevin Kaya ile Nevin Arslan (Kaya) aynı kişi</span> → çift kaydı birleştirme</li>
+    </ul>
+    <div class="not">Çınar ağaca kendisi yazmaz; eklemeler yöneticinin onayına gider. Herkesin günlük bir mesaj hakkı vardır; dolunca hazır bilgilerle yanıt verir.</div>
+  </section>
+
+  <section id="ekleme">
+    <h2><span class="no">04</span> Fotoğraf ve bilgi ekleme</h2>
+    <ol>
+      <li>Kişiye <b>uzun bas</b> → ayrıntı kartı açılır.</li>
+      <li><span class="dugme">＋ Fotoğraf ekle</span>: profil fotoğrafı. <span class="dugme">＋ Fotoğraf / Video ekle</span>: galeri. Fotoğraflar <b>onay beklemeden</b> hemen görünür.</li>
+      <li>Doğum yılı, meslek, eş gibi bilgileri karttaki alanlara yaz. Aile üyesinin değişikliği <span class="dugme">Onaya gönder</span> ile yöneticiye gider.</li>
+    </ol>
+    <div class="not uyari"><b>Dikkat:</b> kartın en üstündeki <b>“Ad”</b> kutusu kişinin adını değiştirir. Birini aramak için bu kutuyu değil, sayfanın en üstündeki <span class="dugme">kişi ara…</span> kutusunu kullan. Adı tamamen değiştirmeye çalışırsan site önce sorar.</div>
+  </section>
+
+  <section id="hikaye">
+    <h2><span class="no">05</span> Hikâye ve anı</h2>
+    <p>Büyüklerin anlattıkları kaybolmasın: kişinin kartında <span class="dugme">🎙 Hikâye anlat</span>'a dokun ve konuş. Kayıt yazıya çevrilir, anı olarak kişinin kartına eklenir (yönetici onaylar). Yazılı anı için <span class="dugme">＋ Anı ekle</span>.</p>
+  </section>
+
+  <section id="sohbet">
+    <h2><span class="no">06</span> Aile Sohbeti</h2>
+    <p>Tüm ailenin ortak odası. Alttaki <span class="dugme">Sohbet</span> düğmesiyle aç.</p>
+    <ul>
+      <li><span class="dugme">＋ Davet et</span>: bağlantıyı WhatsApp ya da mesajla paylaş (şifre bağlantıda yazmaz).</li>
+      <li><span class="dugme">🔕 Bildirim al</span>: telefon kilitliyken de yeni mesajlar haber verilir.</li>
+    </ul>
+  </section>
+
+  <section id="telefon">
+    <h2><span class="no">07</span> Telefonun ana ekranına ekle</h2>
+    <p>Site uygulama gibi açılır; iPhone'da bildirimler için bu adım <b>gerekli</b>.</p>
+    <ul>
+      <li><b>iPhone (Safari):</b> <span class="dugme">Paylaş ⬆</span> → <b>Ana Ekrana Ekle</b> → <b>Ekle</b>. Instagram/WhatsApp içinden açtıysan önce <b>Safari'de aç</b>.</li>
+      <li><b>Android (Chrome):</b> sağ üstte <span class="dugme">⋮</span> → <b>Ana ekrana ekle</b>.</li>
+    </ul>
+  </section>
+
+  <section id="hesap">
+    <h2><span class="no">08</span> Hesap ve çıkış</h2>
+    <ul>
+      <li>Site seni yanlış kişi sanıyorsa: kendi kartını aç → <span class="dugme">🙋 Bu benim</span>, ya da Çınar'a <span class="ornek">Ben Yüksel</span> yaz.</li>
+      <li>Hesap menüsü (sayfadaki <span class="dugme">👤 Aile üyesi</span> / <span class="dugme">🔓 Yönetici</span> yazısına dokun): <span class="dugme">🔄 Ben değilim</span>, <span class="dugme">📲 Ana ekrana ekle</span>, <span class="dugme">⎋ Çıkış yap</span>. Çıkınca karşılama ekranına dönersin.</li>
+    </ul>
+  </section>
+
+  <section id="yonetici" class="yonetici">
+    <h2><span class="no">09</span> Yönetici için</h2>
+    <ul>
+      <li><span class="dugme">Onay kutusu</span>: aile üyelerinin önerilerini onayla ya da reddet.</li>
+      <li>Hesap menüsü → <span class="dugme">🩺 Veri denetimi</span>: ağaçtaki tutarsızlıklar (yanlış anne bağı, eşi farklı yazılmış kişi, kopyalanmış profil…) önem sırasıyla listelenir; ada dokununca kart açılır. Kesin yanlışlar <span class="dugme">Düzelt</span> ile temizlenir.</li>
+      <li>Hesap menüsü → <span class="dugme">🧹 Çift kayıtlar</span>: aynı kişinin iki kaydını <b>Birleştir</b> ya da <b>Farklı kişiler</b> (ada sıra numarası eklenir: Hasan2, ekranda yine “Hasan”).</li>
+      <li>Kişi kartında <span class="dugme">🔗 Kişisel giriş bağlantısı gönder</span>: o kişi şifresiz, kendisi olarak girer.</li>
+      <li>Kural: anne-babası aynı iki kişi aynı adı taşıyamaz.</li>
+    </ul>
+  </section>
+
+  <footer>Takıldığın yerde Çınar'a sor ya da Aile Sohbeti'ne yaz. · soyevrenim.com · 1615'ten beri</footer>
+</div>
+</body>
+</html>
