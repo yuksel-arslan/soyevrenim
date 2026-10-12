@@ -1,7 +1,8 @@
 # Sesli hikâye — `/api/ses` · `/api/hikaye`
 
 Kişi kartında **🎙 Hikâye anlat**: aile büyükleri kendi sesleriyle anlatır; ses saklanır, yazıya çevrilir, noktalama ve
-paragraf eklenir, geçen kişi/yer/tarih çıkarılır ve sonuç **anı önerisi** olarak onay kutusuna düşer.
+paragraf eklenir, geçen kişi/yer/tarih çıkarılır ve sonuç **anı olarak doğrudan kişinin kartına** eklenir (onay yok). Hikâyede geçen ve ağaçta olmayan
+kişiler ayrıca öneri olarak "📥 Öneriler"de bekler; anlatan "✓ Ağaca işle" ile ekler.
 
 ## Akış
 
@@ -24,11 +25,11 @@ Vercel Cron 00:30 UTC (03:30 TR) → GET /api/hikaye?adim=kuyruk → kota elverd
 - **Uzun dökümler** `SES.duzenleParcaKarakter` ile cümle sınırından parçalanır (her istek `MESAJ_MAX_TOKEN` civarında).
 - **Kişi önerileri:** hikâyede akrabalığı açıkça söylenen ve ağaçta olmayan kişi, hedef kişi **tek anlamlı** bulunursa aynı
   öneriye `kisi_ekle` olarak eklenir; belirsizse eklenmez.
-- **Anı alanları** (ağaç JSON'unda, onaydan sonra): `kaynak:'ses'`, `ses_anahtar`, `ses_parcalar`, `transkript` (ham),
+- **Anı alanları** (ağaç JSON'unda): `kaynak:'ses'`, `ses_anahtar`, `ses_parcalar`, `transkript` (ham),
   `text` (düzenlenmiş, ≤ `HIKAYE_MAX_CHARS` = 20.000; yazılı anıların 1000 karakter sınırı uygulanmaz), `baslik`,
   `anlatan`, `anlatan_id`, `sure_sn`, `yerler`, `kisiler`, `date`.
 - **Oynatma / indirme:** anıda `<audio>` + "⇩ İndir". Kova özeldir; `/api/ses/oku` kısa ömürlü imzalı URL'e yönlendirir.
-- Onay beklerken kişi kartında "Kaydedilen sesli hikâyeler" altında oynatıcıyla görünür.
+- Yazıya çevrilmeyi beklerken kişi kartında "Kaydedilen sesli hikâyeler" altında oynatıcıyla görünür.
 
 ## Uçlar
 

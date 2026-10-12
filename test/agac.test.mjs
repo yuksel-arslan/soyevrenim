@@ -291,3 +291,22 @@ test('veriDenetimi: temiz ağaçta bulgu yok; kızın çocukları annesinin alt�
   edges: [{ from: 'b', to: 'k' }, { from: 'k', to: 'c' }], marriages: [{ from: 'b', to: 'a' }], motherEdges: [{ from: 'a', to: 'k' }] };
   assert.deepEqual(veriDenetimi(v), []);
 });
+
+test('cinsiyetSuphesi: ad sözlüğü, ağaçtaki çoğunluk, aynı cinsten eş; yapı destekliyorsa ve unisex adda sessiz', async () => {
+  const { cinsiyetSuphesi } = await import('../api/_lib/agac.js');
+  const v = { nodes: [
+    { id: 'a', name: 'Aysel', sex: 'E' },                        // sözlük: kadın adı
+    { id: 'm', name: 'Muzaffer', sex: 'K' }, { id: 'c', name: 'Necmi', sex: 'E' },   // anne olarak bağlı → işaret yok
+    { id: 'y', name: 'Yüksel', sex: 'K' },                       // unisex
+    { id: 'x1', name: 'Zuhal', sex: 'K' }, { id: 'x2', name: 'Zuhal', sex: 'K' }, { id: 'x3', name: 'Zuhal', sex: 'E' },   // çoğunluk
+    { id: 'e1', name: 'Kemal', sex: 'E' }, { id: 'e2', name: 'Deniz', sex: 'E' },     // aynı cinsten eş
+    { id: 'ev', name: 'Evlat1', sex: 'E' },
+  ], edges: [], marriages: [{ from: 'e1', to: 'e2' }], motherEdges: [{ from: 'm', to: 'c' }] };
+  const l = Object.fromEntries(cinsiyetSuphesi(v).map((c) => [c.id, c]));
+  assert.ok(l.a && /kadın adı/.test(l.a.neden[0]) && l.a.oneri === 'K');
+  assert.ok(!l.m, 'anne olarak bağlı Muzaffer işaretlenmez');
+  assert.ok(!l.y, 'unisex');
+  assert.ok(l.x3 && !l.x1);
+  assert.ok(l.e1 && l.e2 && /eşi/.test(l.e1.neden.join()));
+  assert.ok(!l.ev, 'taslak ad');
+});

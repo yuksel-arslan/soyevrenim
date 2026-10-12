@@ -1,7 +1,7 @@
-// api/_lib/{agac,soy-tarihi,uzmanlik}.js → public/lib/ (istemci aynı kodu kullansın).
+// api/_lib/{agac,adlar,soy-tarihi,uzmanlik}.js → public/lib/ (istemci aynı kodu kullansın).
 // Vercel "build" adımında çalışır; --kontrol ile yalnızca eşitliği doğrular.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-const DOSYALAR = ['agac.js', 'soy-tarihi.js', 'uzmanlik.js'];
+const DOSYALAR = ['agac.js', 'adlar.js', 'soy-tarihi.js', 'uzmanlik.js'];
 const kontrol = process.argv.includes('--kontrol');
 let hata = false;
 mkdirSync(new URL('../public/lib/', import.meta.url), { recursive: true });

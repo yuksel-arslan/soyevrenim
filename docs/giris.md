@@ -91,10 +91,9 @@ kaldığı için ekran değişmiyordu. Çıkış sürerken geç dönen bir oturu
 ## Rol görünürlüğü
 
 - Durum satırında her zaman rol: **🔓 Yönetici** ya da **👤 Aile üyesi** (girişsizse yok).
-- Aile üyesinin değişikliği öneri olur; onay çubuğu bunu söyler ("Aile üyesi olarak düzenledin —
-  değişiklik yöneticinin onayına gider") ve **🔓 Yöneticiyim** düğmesi sunar: yönetici şifresiyle
-  girilince bekleyen değişiklikler onaysız, doğrudan kaydedilir. Aile olarak gönderilmiş öneriler
-  yönetici girişinden sonra onay kutusunda görünür (sayaç rozetiyle).
+- Aile üyesi de yönetici gibi **doğrudan kaydeder** (onay kuyruğu kaldırıldı; tek sınır toplu silme, bkz.
+  `docs/agac.md → Onay yok`). "Onaya gönder" çubuğu artık gösterilmez. Onay kutusu aile üyesi için
+  **📥 Öneriler**dir: kendi Çınar / sesli hikâye önerileri, "✓ Ağaca işle" ya da "✕ Vazgeç".
 
 ## Çıkış (hesap menüsü)
 
