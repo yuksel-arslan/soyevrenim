@@ -9,6 +9,7 @@ import { jetonDogrula } from './giris.js';
 import { db } from './_lib/db.js';
 import { farkCikar, ozetle, yamaUygula, yamaHatasiMi } from './_lib/oneri.js';
 import { yeniKardesIhlali, kardesIhlaliMetni } from './_lib/agac.js';
+import { damgala, celiskiBul, uyarilariYaz } from './_lib/denetim.js';
 
 // giriş jetonundan rol çıkar (aile / admin / null)
 function oturumRol(body){
@@ -89,7 +90,7 @@ export default async function handler(req, res){
       if(!yonetici && !kisi) return res.status(401).json({ok:false, hata:'Giriş gerekli'});
       const id = parseInt(body.id,10);
       const karar = (body.karar||'').toString();   // 'onayla' | 'reddet'
-      const rows = await sql`select veri, durum, islem, kisi_id from oneri where id=${id}`;
+      const rows = await sql`select veri, durum, islem, kisi_id, gonderen_ad from oneri where id=${id}`;
       if(!rows[0]) return res.status(404).json({ok:false, hata:'Öneri yok'});
       if(!yonetici && rows[0].kisi_id !== kisi) return res.status(403).json({ok:false, hata:'Bu öneri senin değil'});
       if(rows[0].durum!=='bekliyor') return res.status(400).json({ok:false, hata:'Zaten karara bağlanmış'});
@@ -98,18 +99,23 @@ export default async function handler(req, res){
         // Yamalı öneri (asistan / sesli hikâye): yama GÜNCEL ağaca uygulanır — bu arada
         // onaylanmış başka önerileri ezmez. Tam-ağaç önerisi (elle düzenleme) eskisi gibi yazılır.
         let yeniVeri = rows[0].veri;
+        const cur = (await sql`select veri from agac where id=1`)[0]?.veri || {nodes:[]};
         if(rows[0].islem){
-          const cur = (await sql`select veri from agac where id=1`)[0]?.veri || {nodes:[]};
           try{ yeniVeri = yamaUygula(cur, rows[0].islem); }
           catch(e){
             if(yamaHatasiMi(e)) return res.status(409).json({ok:false, hata:'Öneri artık uygulanamıyor: '+e.message});
             throw e;
           }
         }
+        // Öz-denetim: eklenen/değişen kişilere öneri sahibinin damgası; yeni çelişkiler hatırlatılır
+        const kimO = { kisi: rows[0].kisi_id || null, ad: String(rows[0].gonderen_ad || '').replace(/\s*\(.*\)$/, '') };
+        yeniVeri = damgala(cur, yeniVeri, kimO);
+        const celiskiler = celiskiBul(cur, yeniVeri, kimO);
         await sql`update agac set veri = ${JSON.stringify(yeniVeri)}::jsonb, guncelleme=now() where id=1`;
+        try{ await uyarilariYaz(sql, celiskiler, kimO); }catch(e){}
         await sql`insert into gunluk (veri, guncelleyen) values (${JSON.stringify(yeniVeri)}::jsonb, ${(yonetici?'onay #':'işlendi #')+id})`;
         await sql`update oneri set durum='onaylandi', karar_zaman=now() where id=${id}`;
-        return res.status(200).json({ok:true, durum:'onaylandi'});
+        return res.status(200).json({ok:true, durum:'onaylandi', uyarilar: celiskiler.map((c)=>({mesaj:c.mesaj, ids:c.ids}))});
       } else {
         await sql`update oneri set durum='reddedildi', karar_zaman=now() where id=${id}`;
         return res.status(200).json({ok:true, durum:'reddedildi'});

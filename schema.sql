@@ -131,3 +131,17 @@ create table if not exists bildirim_anahtar (
   acik  text not null,
   ozel  text not null
 );
+
+-- Öz-denetim hatırlatmaları: bir kayıt, başkasının eklediği/değiştirdiği bilgiyle çelişince
+-- ilgili kişiye yazılır (api/_lib/denetim.js). Tek başına: sql/uyari.sql
+create table if not exists uyari (
+  id          bigserial primary key,
+  kisi_id     text not null,           -- hatırlatılacak kişi (ağaçtaki id)
+  mesaj       text not null,
+  ids         jsonb not null default '[]'::jsonb,   -- ilgili kişiler (kartı açmak için)
+  kaynak_kisi text,                    -- çelişkiyi doğuran kaydı yapan
+  kaynak_ad   text,
+  olusma      timestamptz not null default now(),
+  okundu      boolean not null default false
+);
+create index if not exists uyari_kisi on uyari (kisi_id, okundu, olusma desc);

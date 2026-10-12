@@ -3162,7 +3162,9 @@ function openInspector(n){
   iDot.onclick=()=>pickPhoto(n);
   iName.textContent=dispName(n.name);
   const gen=nesilOf(n);
-  iMeta.textContent=`${gen}. nesil · ${byId[n.id]?n.id:""}`;
+  // Kim ekledi / en son kim değiştirdi (öz-denetim damgası) — çelişkide kime sorulacağı belli olsun
+  const damga=(d,etiket)=>d&&d.ad?` · ${etiket}: ${d.ad}${d.zaman?" ("+new Date(d.zaman).toLocaleDateString("tr-TR",{day:"numeric",month:"short",year:"numeric"})+")":""}`:"";
+  iMeta.textContent=`${gen}. nesil · ${byId[n.id]?n.id:""}${damga(n.ekleyen,"ekleyen")}${n.duzenleyen&&(!n.ekleyen||n.duzenleyen.kisi!==n.ekleyen.kisi||n.duzenleyen.zaman!==n.ekleyen.zaman)?damga(n.duzenleyen,"son değiştiren"):""}`;
 
   iBody.innerHTML="";
   // düzenlenebilir alanlar
@@ -6103,7 +6105,7 @@ function currentGraphJSON(){
     evren: { ad: EVREN.ad, slogan: EVREN.slogan||"" },
     nodes: nodes.map(n=>({ id:n.id, name:n.name, sex:n.sex, alive:n.alive!==false,
       spouse:n.spouse||[], kin:n.kin||null, mother:n.mother||null,
-      parentRole:n.parentRole||"baba", fatherExt:n.fatherExt||null, tel:n.tel||null, kayit:n.kayit||undefined,
+      parentRole:n.parentRole||"baba", fatherExt:n.fatherExt||null, tel:n.tel||null, kayit:n.kayit||undefined, ekleyen:n.ekleyen||undefined, duzenleyen:n.duzenleyen||undefined,
       profile: PROFILES[n.id] || undefined })),
     edges: edges.map(e=>({from:e.from,to:e.to})),
     marriages: (marriages||[]).map(m=>({from:m.from,to:m.to,type:"marriage"})),
@@ -6207,6 +6209,7 @@ function cloudSave(immediate){
       if(r && r.ok){
         const j=await r.json().catch(()=>({}));
         dirty=false; if(j.guncelleme) CLOUD.lastServer=j.guncelleme;   // kendi kaydımızı "yeni" sanmasın
+        if(j.uyarilar && j.uyarilar.length) uyariGoster(j.uyarilar, "⚠ Kaydedildi — ama bir çelişki olabilir");
         CLOUD.taban = veri;
         updateStatus();
       } else if(r && r.status===409){
@@ -6404,7 +6407,8 @@ async function oturumDogrula(){
       // Oturumda kişi yoksa ama bu cihazda seçiliyse oturuma işle; varsa cihaz seçimini oturumdan al
       if(!j.kisi && benId){ sessionToken=j.jeton; oturumaKisiIsle(benId); }
       else { oturumSakla(j); if(j.kisi && j.kisi!==benId) benAta(j.kisi, true);
-        if(typeof showApprovalBtn==="function") setTimeout(showApprovalBtn, 0); }   // "📥 Önerilerim" aile üyesine de
+        if(typeof showApprovalBtn==="function") setTimeout(showApprovalBtn, 0);   // "📥 Önerilerim" aile üyesine de
+        setTimeout(hatirlatmalariGetir, new URLSearchParams(location.search).has("uyari") ? 300 : 2500); }
     }
     else if(r.status===401) oturumKapat("Oturumun süresi dolmuş — devam etmek için yeniden giriş yap");
   }catch(e){}   // ağ hatası oturumu düşürmesin
@@ -6482,6 +6486,43 @@ function kisileriBirlestir(a, b, sonra){
     }catch(e){ toast("Birleştirilemedi: "+e.message); }
   };
 }
+// ---- ÖZ-DENETİM uyarıları (api/_lib/denetim.js) ----
+// (1) Kaydettikten hemen sonra: bu kaydın getirdiği çelişki (başkasının eklediği kişiyi yeniden ekleme,
+//     başkasının girdiği bilgiyi değiştirme…) kaydedene gösterilir.
+// (2) Girişte: başkasının kaydı SENİN eklediğin/değiştirdiğin bilgiyle çeliştiyse hatırlatma gelir.
+function uyariGoster(liste, baslik, okunduIds){
+  if(!liste || !liste.length) return;
+  document.getElementById("uyariPen")?.remove();
+  const ort=document.createElement("div"); ort.id="uyariPen";
+  ort.style.cssText="position:fixed;inset:0;z-index:61;background:var(--overlay);display:flex;align-items:center;justify-content:center;padding:16px";
+  ort.innerHTML=`<div style="width:min(520px,100%);max-height:84vh;overflow:auto;background:var(--panel);border:1px solid var(--spine);border-radius:14px;padding:18px;box-shadow:0 16px 50px var(--shadow)">
+    <div style="font-weight:700;font-size:16px">${escapeHtml(baslik)}</div>
+    <div style="font-size:12.5px;color:var(--text-soft);margin:4px 0 8px;line-height:1.5">Sistem kayıtları kendiliğinden denetler. Hiçbir şey silinmedi; doğrusu hangisiyse kişinin kartından düzelt ya da Aile Sohbeti'nde birbirinize sorun.</div>
+    ${liste.map(u=>`<div style="border:1px solid var(--line);border-left:3px solid var(--spine);border-radius:8px;padding:9px 11px;margin-top:8px;font-size:13.5px;line-height:1.5">
+      ${u.kaynak_ad?`<div style="font-size:11px;color:var(--muted);margin-bottom:2px">${escapeHtml(u.kaynak_ad)}'nin kaydı · ${new Date(u.olusma).toLocaleString("tr-TR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div>`:""}
+      <div>${escapeHtml(u.mesaj)}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${(u.ids||[]).filter(i=>byId[i]).slice(0,6).map(i=>`<button class="tbtn" data-kart="${i}" style="font-size:12px;padding:4px 9px">${escapeHtml(dispName(byId[i].name))}</button>`).join("")}</div></div>`).join("")}
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="tbtn" data-sohbet>💬 Aile Sohbeti</button>
+      <button class="tbtn" data-tamam style="background:var(--accent);color:var(--on-accent);border-color:var(--accent)">Tamam, gördüm</button></div></div>`;
+  document.body.appendChild(ort);
+  const kapat=()=>{ ort.remove();
+    if(okunduIds) fetch("/api/agac?adim=uyari-okundu",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jeton:sessionToken||"", ids:okunduIds})}).catch(()=>{}); };
+  ort.querySelector("[data-tamam]").onclick=kapat;
+  ort.querySelector("[data-sohbet]").onclick=()=>{ kapat(); if(typeof window.sohbetAc==="function") window.sohbetAc(); };
+  ort.querySelectorAll("[data-kart]").forEach(b=>b.onclick=()=>{ const n=byId[b.dataset.kart]; if(!n) return; kapat(); selectNode(n); openInspector(n); if(typeof merkezeAl==="function") merkezeAl(n); });
+}
+window.uyariGoster=uyariGoster;
+async function hatirlatmalariGetir(){
+  if(!sessionToken || !CLOUD.on) return;
+  try{
+    const r=await fetch("/api/agac?adim=uyarilar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jeton:sessionToken})});
+    const j=await r.json();
+    if(j.ok && j.uyarilar && j.uyarilar.length)
+      uyariGoster(j.uyarilar, `⚠ Eklediğin bilgilerle ilgili ${j.uyarilar.length} hatırlatma`, j.uyarilar.map(u=>Number(u.id)));
+  }catch(e){}
+}
+
 // ---- VERİ DENETİMİ (yönetici): ağaçtaki tutarsızlıkları listeler ----
 // AgacLib.veriDenetimi bulguları önem sırasıyla verir; ekran yalnız GÖSTERİR. Tek otomatik işlem
 // "Güvenli düzeltmeler" (AgacLib.guvenliDuzelt: babanın aynı zamanda "anne" yazıldığı kesin yanlışlar).
@@ -6631,6 +6672,7 @@ async function sifreyleGir(sifre){
   }
   if(typeof chatShowBtn==="function") chatShowBtn();
   if(typeof showApprovalBtn==="function") showApprovalBtn();
+  setTimeout(()=>{ if(typeof hatirlatmalariGetir==="function") hatirlatmalariGetir(); }, 1500);
   if(typeof updateStatus==="function") updateStatus();
   if(typeof updatePendingBar==="function") updatePendingBar();
   toast(j.rol==="admin" ? "Yönetici olarak girildi" : "Aile üyesi olarak girildi — değişikliklerin doğrudan kaydedilir");
@@ -6735,6 +6777,7 @@ async function karar(id, karar){
     const j=await r.json();
     if(j.ok){
       toast(karar==="onayla"?"✓ Ağaca işlendi":"Vazgeçildi");
+      if(j.uyarilar && j.uyarilar.length) uyariGoster(j.uyarilar, "⚠ İşlendi — ama bir çelişki olabilir");
       if(karar==="onayla"){ // ağacı tazele
         const g=await (await fetch(CLOUD.url)).json();
         if(g.ok && g.veri){ absorbCloudProfiles(g.veri); loadGraph(g.veri); layoutRadial();

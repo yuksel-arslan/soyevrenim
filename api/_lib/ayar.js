@@ -102,6 +102,14 @@ export const GIRIS = {
 // Her kayıt gunluk'e yazılır, geri alınabilir.
 export const AILE = { silmeMax: 3 };
 
+// Öz-denetim (api/_lib/denetim.js): kayıtta yeni çıkan çelişkiler kaydedene ve ilgili kişilere bildirilir
+export const DENETIM_UYARI = {
+  onemler: ['yuksek', 'orta'],  // bu önemdeki YENİ bulgular uyarılır (küçükler denetim ekranında kalır)
+  enCok: 8,                     // tek kayıtta en fazla uyarı
+  farkMax: 4,                   // bir kişide listelenen en fazla değişen alan
+  listeMax: 50,                 // kişinin okunmamış hatırlatma listesi
+};
+
 // Kayıt: ağaçta olmayan aile üyesi kendini ekler — mevcut bir kişiye BAĞLI olmak zorunda
 // (api/agac.js?adim=kayit, api/_lib/kayit.js). Bağsız kayıt yok; aile şifresi gerekir.
 export const KAYIT = {
