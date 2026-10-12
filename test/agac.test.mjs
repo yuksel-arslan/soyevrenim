@@ -233,3 +233,29 @@ test('kural: anne-babası aynı iki kişi aynı adı taşıyamaz; yalnız YENİ 
   // mevcut ihlal yeni kaydı engellemez
   assert.deepEqual(yeniKardesIhlali(y, y), []);
 });
+
+test('ciftKayitlar: kural çifti + ad/soyad örtüşmesi; tek adlı adaşlar ve farklı babalılar önerilmez', async () => {
+  const { ciftKayitlar } = await import('../api/_lib/agac.js');
+  const v = { nodes: [
+    { id: 'b', name: 'Asım', sex: 'E' }, { id: 'a1', name: 'Ali', sex: 'E' }, { id: 'a2', name: 'Ali', sex: 'E' },
+    { id: 'h1', name: 'Hasan1', sex: 'E' }, { id: 'h2', name: 'Hasan2', sex: 'E' },
+    { id: 'm1', name: 'Mehmet', sex: 'E' }, { id: 'm2', name: 'Mehmet', sex: 'E' },
+    { id: 'ck', name: 'Celal Kaya', sex: 'E' }, { id: 'n1', name: 'Nevin Kaya', sex: 'K' }, { id: 'n2', name: 'Nevin Arslan (Kaya)', sex: 'K' },
+    { id: 'x', name: 'Osman', sex: 'E' }, { id: 'n3', name: 'Nevin Kaya', sex: 'K' },
+  ], edges: [{ from: 'b', to: 'a1' }, { from: 'b', to: 'a2' }, { from: 'b', to: 'h1' }, { from: 'b', to: 'h2' }, { from: 'ck', to: 'n1' }, { from: 'x', to: 'n3' }],
+  marriages: [], motherEdges: [] };
+  const l = ciftKayitlar(v).map((c) => `${c.neden}:${c.ids.slice().sort().join('+')}`);
+  assert.ok(l.includes('kural:a1+a2'));
+  assert.ok(l.includes('tam-ad:n1+n2'), 'Nevin Kaya ⊂ Nevin Arslan (Kaya)');
+  assert.ok(!l.some((x) => x.includes('h1')), 'sıra numaralı adlar farklı');
+  assert.ok(!l.some((x) => x.includes('m1')), 'tek adlı, anne-babasız adaşlar önerilmez');
+  assert.ok(!l.includes('tam-ad:n1+n3'), 'babaları farklı');
+});
+
+test('kural ve birleştirme: kız ve oğlan aynı adı taşısa da ayrı kişi', async () => {
+  const { ayniAdliKardesler, kisiBirlestir } = await import('../api/_lib/agac.js');
+  const v = { nodes: [{ id: 't', name: 'Tevfik', sex: 'E' }, { id: 'k', name: 'Evlat1', sex: 'K' }, { id: 'o', name: 'Evlat1', sex: 'E' }],
+    edges: [{ from: 't', to: 'k' }, { from: 't', to: 'o' }], marriages: [], motherEdges: [] };
+  assert.deepEqual(ayniAdliKardesler(v), []);
+  assert.throws(() => kisiBirlestir(v, 'k', 'o'), /Farklı cinsiyet/);
+});

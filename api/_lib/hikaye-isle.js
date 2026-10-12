@@ -3,7 +3,7 @@
 import { db, agacOku } from './db.js';
 import { SES, STT, LLM, HIKAYE_MAX_CHARS, GUNLUK_SISTEM } from './ayar.js';
 import { kotaDurumu, sttIzin, kullanimKaydet } from './kota.js';
-import { yaziyaCevir, sohbet, SaglayiciKotaHatasi } from './groq.js';
+import { yaziyaCevir, sohbet, SaglayiciKotaHatasi } from './llm.js';
 import { r2Url } from './r2.js';
 import { grafKur, kisiAra, adiGoster, normalize } from './agac.js';
 import { oneriEkle, yamaUygula, yamaHatasiMi } from './oneri.js';

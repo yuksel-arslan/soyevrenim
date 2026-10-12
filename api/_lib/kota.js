@@ -1,4 +1,4 @@
-// KOTA — Groq ücretsiz günlük sınırları (sistem geneli) + kişi başı adil pay.
+// KOTA — günlük harcama tavanı (sistem geneli, ücretli OpenAI) + kişi başı adil pay.
 // Sayaçlar kullanim tablosundan okunur; ayrı sayaç tutulmaz. Gün = UTC günü.
 import { db, sayi, gunBasi } from './db.js';
 import { GUNLUK_SISTEM, GUNLUK_KISI, MESAJ_MAX_TOKEN, STT } from './ayar.js';
@@ -57,7 +57,7 @@ export async function kullanimKaydet({ kisiId, tur, model, girdi = 0, cikti = 0,
 }
 
 export const KOTA_MESAJI = {
-  sistem: 'Bugünkü ücretsiz asistan kotası doldu, yarın 03:00\'te yenilenir.',
+  sistem: 'Bugünkü ortak asistan kotası doldu, yarın 03:00\'te yenilenir.',
   kisi: `Bugünkü asistan hakkın doldu (${GUNLUK_KISI.mesaj} mesaj), yarın 03:00'te yenilenir.`,
   saglayici: 'Şu an çok yoğunum; hazır bilgilerimle yanıtladım.',
 };

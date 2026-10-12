@@ -1,21 +1,22 @@
 // Vercel Serverless Function — ASİSTAN (soru + konuşarak ekleme)
 // POST /api/asistan  {jeton, kisi_id, mesaj, gecmis:[{rol:'kullanici'|'asistan', metin}]}
 //
-// Ücretsiz katman: Groq (ayar.js → LLM). Sunucu tarafı araç döngüsü (en fazla ASISTAN.maxTur).
+// Model: OpenAI GPT (ayar.js → LLM; ücretli, günlük tavanla sınırlı). Sunucu tarafı araç döngüsü (en fazla ASISTAN.maxTur).
 // Çağrı öncesi sistem + kişi günlük kotası kontrol edilir; dolu ya da sağlayıcı 429 verirse
 // {yedek:true} döner → istemci hazır bilgilerle (calistirKomut) yanıtlar.
 // Model ağaca YAZMAZ: ekleme/düzeltme oneri_olustur ile onay kuyruğuna düşer.
 //
-// Env: GROQ_API_KEY, DATABASE_URL, OTURUM_GIZLI   · Ayrıntı: docs/asistan.md
+// Env: OPENAI_API_KEY, DATABASE_URL, OTURUM_GIZLI   · Ayrıntı: docs/asistan.md
 import { cors, govde } from './_lib/db.js';
 import { LLM, ASISTAN, MESAJ_MAX_TOKEN, tahminiToken } from './_lib/ayar.js';
 import { kimlikCoz, KimlikHatasi } from './_lib/kimlik.js';
 import { kotaDurumu, llmIzin, kullanimKaydet, KOTA_MESAJI } from './_lib/kota.js';
-import { sohbet, SaglayiciKotaHatasi } from './_lib/groq.js';
+import { sohbet, SaglayiciKotaHatasi } from './_lib/llm.js';
 import { grafKur, kisiAra, kisiKisa, yakinlar, yolBul, adiGoster, normalize, nesilHaritasi, akrabalikAnlatisi, ilgiEki } from './_lib/agac.js';
 import { soyTarihiOzet } from './_lib/soy-tarihi.js';
 import { uzmanBilgi, lazcaMi } from './_lib/uzmanlik.js';
 import { oneriEkle, yamaHatasiMi } from './_lib/oneri.js';
+import { bilgiAra, YONTEM } from './_lib/beceri.js';
 
 const SISTEM = `Adın ${ASISTAN.ad}. Abdurrahman Oğullarının (1615'ten beri) soy evreninin asistanısın; çınar gibi kökleri derin, gölgesinde aileyi toplayan bir bilgesin. Türkçe, kısa ve sıcak yaz.
 Kendini bir aile büyüğü gibi tanıtma; kimsenin ağzından konuşma, kimse adına anı ya da söz uydurma.
@@ -27,11 +28,15 @@ Kurallar:
 4. Ağaca doğrudan yazamazsın. Kişi ekleme, ilişki kurma, bilgi düzeltme isteğinde oneri_olustur kullan ve değişikliğin yönetici onayına gittiğini söyle.
 5. Yeni kişi eklerken: hedef kişiyi kisi_ara ile kesinleştir; cinsiyeti ifadeden çıkar ("kız kardeşi", "kızı", "annesi" → K); aynı adda bir kişi zaten o ilişkideyse eklemeden önce sor.
 6. Akrabalık sorusunda yol_bul kullan. Yanıtı aracın "anlati" alanı üzerine kur: bir aile büyüğünün anlatacağı gibi sıcak ve akıcı anlat (kim kimin nesi, ortak ata kim, dallar nerede ayrılmış); "A → B → C" gibi liste ya da "12 adım" gibi mekanik ifade kullanma.
-7. Soyun kökeni, göçü, tarihi, yerler (Arhavi, Potocur, Derbent), Molla Memiş, kollar ya da ağacın genel sayıları sorulursa soy_tarihi kullan. Fahri Arslan'ın notunu (aile kaydı) kaynaklı bilgiden ayır; "Teyit gerekli" ya da "Yorum" etiketli bilgiyi kesinmiş gibi söyleme.
-8. Bölge tarihi (Lazlar, Osmanlı dönemi, Lazistan, köy adları), site kullanımı (kişi ekleme, öneri, hikâye kaydı, temalar, kota) ya da Lazca sorularında uzman_bilgi kullan (beceri: bolge | site | lazca). Bilgi yoksa uydurma, bilmediğini söyle.
+7. Soyun kökeni, göçü, tarihi, yerler, Molla Memiş, Osmanlı arşivi ve araştırma sorularında önce bilgi_ara kullan; genel köken özeti ya da ağacın sayıları (kişi, nesil, yaşayan, kollar) için soy_tarihi. Fahri Arslan'ın notunu (aile kaydı) kaynaklı bilgiden ayır; "Teyit gerekli" ya da "Yorum" etiketli bilgiyi kesinmiş gibi söyleme.
+8. Bölge tarihi (Lazlar, Osmanlı dönemi, Lazistan, köy adları), site kullanımı ya da Lazca sorularında bilgi_ara kullan (alan: bolge | site | lazca); ayrıntılı konu listesi gerekirse uzman_bilgi. Bilgi yoksa uydurma, bilmediğini söyle.
 9. Lazca: kullanıcı Lazca yazarsa ya da isterse kısa Lazca cümleler kur ve her zaman Türkçe karşılığını ver. Emin olmadığın Lazca sözcüğü uydurma; uzman_bilgi(lazca) ifadelerini kullan, gerisini Türkçe söyle.
 10. Kişisel iletişim bilgisi (telefon, adres, e-posta) verme.
-11. Sıcak ve saygılı ol; aile büyüklerinden söz ederken "rahmetli" gibi geleneksel ifadeleri yerinde kullanabilirsin.`;
+11. Sıcak ve saygılı ol; aile büyüklerinden söz ederken "rahmetli" gibi geleneksel ifadeleri yerinde kullanabilirsin.
+12. Kişi kimliklerini (id: p1222…, n1 gibi) ASLA yazma; kişileri adı, baba/anne adı ve nesliyle ayırt et. Düz metin yaz: Markdown (**kalın**, # başlık, tablo) kullanma, ekran bunları göstermez.
+13. Kullanıcı iki kaydın aynı kişi olduğunu söylerse ("X ile Y aynı kişi", "birleştir") karşı soru sorma: birleştirmeyi site yapar (yönetici onaylar). Yalnızca "İki kaydı birleştirmek için yöneticiye ilettim" de.
+
+${YONTEM}`;
 
 const ILISKI = ['cocugu', 'esi', 'kardesi', 'babasi', 'annesi'];
 const ARACLAR = [
@@ -43,6 +48,10 @@ const ARACLAR = [
     parameters: { type: 'object', properties: { a_id: { type: 'string' }, b_id: { type: 'string' } }, required: ['a_id', 'b_id'] } } },
   { type: 'function', function: { name: 'ani_ara', description: 'Anılarda sözcük arar (isteğe bağlı tek kişiyle sınırlı).',
     parameters: { type: 'object', properties: { sorgu: { type: 'string' }, kisi_id: { type: 'string' } }, required: ['sorgu'] } } },
+  { type: 'function', function: { name: 'bilgi_ara', description:
+    'ÇINAR BECERİSİ bilgi tabanında arar: soy (köken, Fahri Arslan notu, zaman, yerler, adlar), arastirma (Osmanlı arşiv defterleri ve ne bulunabileceği, araştırma önerileri ve rehberi, arşiv sözlüğü, kaynakça), bolge (Arhavi–Fındıklı tarihi), lazca, site (soyevrenim.com kullanımı ve özellikleri). Soruya en uygun birkaç parçayı kaynak ve güven etiketiyle döner. Belirli bir soru için ÖNCE bunu kullan.',
+    parameters: { type: 'object', properties: { sorgu: { type: 'string', description: 'Sorunun anahtar sözcükleri' },
+      alan: { type: 'string', enum: ['soy', 'arastirma', 'bolge', 'lazca', 'site'], description: 'İsteğe bağlı: aramayı bir alanla sınırla' } }, required: ['sorgu'] } } },
   { type: 'function', function: { name: 'uzman_bilgi', description:
     'Uzmanlık modülleri: bolge (Arhavi–Fındıklı/Doğu Karadeniz tarihi), site (soyevrenim.com kullanımı), lazca (selamlaşma, teşekkür, akrabalık adları). Kaynaklı ve güven etiketli bilgi döner.',
     parameters: { type: 'object', properties: { sorgu: { type: 'string' }, beceri: { type: 'string', enum: ['bolge', 'site', 'lazca'] } }, required: ['sorgu'] } } },
@@ -123,6 +132,7 @@ function aracCalistirici(ctx) {
       }
       return { sonuc, not: sonuc.length ? undefined : 'anı bulunamadı' };
     },
+    bilgi_ara: ({ sorgu, alan }) => bilgiAra(sorgu, alan),
     uzman_bilgi: ({ sorgu, beceri }) => uzmanBilgi(sorgu, beceri),
     soy_tarihi: () => {
       const d = nesilHaritasi(g);

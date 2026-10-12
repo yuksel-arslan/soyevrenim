@@ -4415,7 +4415,94 @@ function uzmanYaniti(metin){
   return `${selam}${k.metin}${kay?`\n\nKaynak: ${kay}`:""}`;
 }
 const UZMAN_ESIK=4;   // en az bir tam anahtar sözcük/öbek eşleşmesi
+// ---- "X ile Y aynı kişi" → BİRLEŞTİR (yerel, modelden önce) ----
+// Model ağaca yazamaz; birleştirme kararı yöneticinindir. Yönetici yazdıysa "Evet, birleştir"
+// birleştirme penceresini açar (kisileriBirlestir); aile üyesi yazdıysa yöneticiye öneri gider.
+const BIRLESTIR_DESEN=/^(.+?)\s+(?:ile|ve)\s+(.+?)\s*(?:[,.]\s*)?(?:aynı\s+kişi(?:dir|ler|lerdir)?|aynı\s+insan|tek\s+kişi|birleştir(?:ilsin|ilmeli|in)?|birleştir\b)/i;
+function birlestirAdTemizle(s){
+  return String(s||"").replace(/[“”"«»]/g,"").replace(/['’](y?[ıiuü]|n[ıiuü]n|[ıiuü]n)\b/gi,"").replace(/\b(kayd[ıi]|kayıtları)\b/gi,"").trim();
+}
+function birlestirAdBul(ad){
+  // "Asım oğlu Ali" / "Celal Kaya kızı Nevin": baba adıyla daralt
+  const bk=ad.match(/^(.+?)\s+(oğlu|kızı|oglu|kizi)\s+(.+)$/i);
+  const adAra=a=>{ const q=adKatla(a);
+    const tam=nodes.filter(n=>adKatla(dispName(n.name))===q || adKatla(n.name)===q);
+    return tam.length ? tam : kisiAraAd(a, false, 6); };
+  if(bk){
+    const baba=adKatla(bk[1]), kiz=/k[ıi]z/i.test(bk[2]);
+    const l=adAra(bk[3]).filter(n=>n._parent && adKatla(dispName(n._parent.name))===baba && (n.sex==="K")===kiz);
+    if(l.length) return l;
+  }
+  return adAra(ad);
+}
+function birlestirKomutu(metin){
+  const m=metin.match(BIRLESTIR_DESEN) || metin.toLocaleLowerCase("tr").match(BIRLESTIR_DESEN);
+  if(!m) return null;
+  const ad1=birlestirAdTemizle(m[1]), ad2=birlestirAdTemizle(m[2]);
+  const l1=birlestirAdBul(ad1), l2=birlestirAdBul(ad2);
+  if(!l1.length || !l2.length) return `“${!l1.length?ad1:ad2}” adında birini ağaçta bulamadım.`;
+  return birlestirSec(l1, l2, ad1, ad2, null);
+}
+// İki adımlı seçim: önce birinci kayıt, sonra (ondan farklı) ikinci kayıt. Adaşlar baba adı ve nesille.
+// Adaşları ayırt eden kısa ek: eşi, doğum yılı, çocuk sayısı, fotoğraf (id gösterilmez)
+function ayirtEdici(n){
+  const p=PROFILES[n.id]||{}, e=[];
+  const es=(marriages||[]).map(m=>m.from===n.id?m.to:m.to===n.id?m.from:null).filter(Boolean).map(i=>byId[i]).filter(Boolean)[0];
+  if(es) e.push("eşi "+dispName(es.name)); else if((n.spouse||[])[0]) e.push("eşi "+dispName(String(n.spouse[0]).replace(" (aileden)","")));
+  if(p.info && p.info.dogum) e.push("d. "+p.info.dogum);
+  const c=(n._kids||[]).length; e.push(c ? c+" çocuk" : "çocuk yok");
+  if(p.photo) e.push("fotoğraflı");
+  return e.join(", ");
+}
+function birlestirSec(l1, l2, ad1, ad2, a){
+  const tanit=n=>`${dispName(n.name)}${kimlikSatiri(n)?" ("+kimlikSatiri(n)+")":""}`;
+  const etiket=(n,liste)=>`${tanit(n)} · ${nesilOf(n)}. nesil${liste.filter(x=>tanit(x)===tanit(n)&&nesilOf(x)===nesilOf(n)).length>1?" · "+ayirtEdici(n):""}`;
+  if(!a){
+    if(l1.length>1) return { metin:`“${ad1}” adında ${l1.length} kişi var. Birinci kayıt hangisi?`,
+      secenekler:l1.slice(0,8).map(n=>({ etiket:etiket(n,l1), eylem:()=>birlestirSec(l1, l2, ad1, ad2, n) })) };
+    a=l1[0];
+  }
+  const kalan=l2.filter(n=>n.id!==a.id);
+  if(!kalan.length) return `“${ad2}” adında ${tanit(a)} dışında kimse yok; birleştirilecek ikinci bir kayıt bulamadım.`;
+  if(kalan.length>1) return { metin:`${tanit(a)} hangi kayıtla aynı kişi?`,
+    secenekler:kalan.slice(0,8).map(n=>({ etiket:etiket(n,kalan), eylem:()=>birlestirSor(a, n) })) };
+  return birlestirSor(a, kalan[0]);
+}
+function birlestirSor(a, b){
+  if(!a || !b || a.id===b.id) return "Aynı kaydı kendisiyle birleştiremem — iki farklı kayıt seç.";
+  if(a.sex!==b.sex) return `${dispName(a.name)} ile ${dispName(b.name)} farklı cinsiyette kayıtlı; aynı kişi olamaz. Önce kayıtlardan birinin cinsiyetini düzelt.`;
+  // tutulacak kayıt: fotoğraflı / bağı çok olan (pencerede ad yine seçilir)
+  const puan=n=>((PROFILES[n.id]||{}).photo?3:0)+(n._kids||[]).length+((marriages||[]).filter(x=>x.from===n.id||x.to===n.id).length);
+  const [tut,sil]=puan(b)>puan(a)?[b,a]:[a,b];
+  const tanit=n=>`${dispName(n.name)}${kimlikSatiri(n)?" ("+kimlikSatiri(n)+")":""}`;
+  const ozet=`“${tanit(tut)}” ile “${tanit(sil)}” tek kişi olarak birleştirilsin mi? Anne-baba, eş ve çocuk bağları, fotoğraf ve bilgiler tek kayıtta toplanır.`;
+  if(isAdmin) return { metin:ozet, secenekler:[{ etiket:"⇄ Evet, birleştir", eylem:()=>{ kisileriBirlestir(tut, sil); return "Hangi adın kalacağını seç ve “Birleştir”e dokun."; } }] };
+  if(!sessionToken) return "İki kaydı birleştirmek için önce aile şifresiyle giriş yap; birleştirme yöneticinin onayıyla yapılır.";
+  return { metin:ozet+" Birleştirmeyi yönetici onaylar.", secenekler:[{ etiket:"⇄ Yöneticiye öner", eylem:()=>{ birlestirOner(tut, sil); return "Gönderiliyor…"; } }] };
+}
+async function birlestirOner(tut, sil){
+  try{
+    const { veri } = AgacLib.kisiBirlestir(currentGraphJSON(), tut.id, sil.id);
+    const kk=kimlikId();
+    const r=await yetkiliIstek(()=>fetch("/api/oneri?adim=gonder",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ veri, jeton:sessionToken||"", gonderen_ad: kk&&byId[kk]?dispName(byId[kk].name):"", kisi_id:kk||null })}),
+      "Öneriyi göndermek için oturumunu yenile.");
+    const j=await r.json();
+    if(typeof window.__rehberYaz==="function") window.__rehberYaz(j.ok ? `✓ “${dispName(tut.name)}” ve “${dispName(sil.name)}” kayıtlarının birleştirilmesi yöneticinin onayına gitti.` : (j.hata||"Gönderilemedi"));
+  }catch(e){ if(typeof window.__rehberYaz==="function") window.__rehberYaz("Bağlantı hatası — tekrar dene."); }
+}
+
 const KOMUTLAR=[
+  { ad:"birlestir", desen:BIRLESTIR_DESEN, calistir:(m,metin)=>birlestirKomutu(metin) },
+  { ad:"cift", desen:/(çift|mükerrer|tekrar(lanan)?|kopya)\s+kay[ıi]t|veritaban[ıi]n?[ıi]?\s+temizle|kayıtları\s+temizle/i,
+    calistir:()=>{
+      if(!window.AgacLib || !AgacLib.ciftKayitlar) return null;
+      const l=AgacLib.ciftKayitlar(currentGraphJSON());
+      if(!isAdmin) return l.length ? `Ağaçta aynı kişi olabilecek ${l.length} çift kayıt var. Temizliği yönetici yapar; “X ile Y aynı kişi” yazarsan yöneticiye öneri olarak iletirim.` : "Çift kayıt görünmüyor — ağaç temiz ✓";
+      if(!l.length) return "Çift kayıt görünmüyor — ağaç temiz ✓";
+      setTimeout(ciftKayitlariAc, 150);
+      return `${l.length} çift kayıt buldum; listeyi açtım. Her çift için “Birleştir” ya da “Farklı kişiler”i seç.`;
+    } },
   { ad:"uzman", desen:/.*/,
     calistir:(m,metin)=>{
       // Kişi/akrabalık soruları önce kendi komutlarına gitsin: kesme işaretli ad AĞAÇTA bir
@@ -4900,6 +4987,15 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     });
   }
   function yaz(t){ mesaj.textContent=t; }
+  window.__rehberYaz=yaz;
+  // Model yanıtı düz metin gösterilir: **kalın** / # başlık işaretleri ve iç kimlikler (id = p12…, n1)
+  // görünmesin. Sistem istemi de bunu yasaklıyor; bu son savunma hattı.
+  function yanitTemizle(t){
+    return String(t||"")
+      .replace(/\*\*(.+?)\*\*/g,"$1").replace(/__(.+?)__/g,"$1").replace(/^#{1,6}\s+/gm,"").replace(/`([^`]+)`/g,"$1")
+      .replace(/\s*\((?:id\s*[:=]\s*)?[pn][0-9A-Z][0-9A-Za-z]{0,20}(?:\s*(?:veya|ya da|,|\/)\s*(?:id\s*[:=]\s*)?[pn][0-9A-Z][0-9A-Za-z]{0,20})*\)/g,"")
+      .replace(/\s*\bid\s*[:=]\s*[pn][0-9A-Z][0-9A-Za-z]{0,20}\b/gi,"");
+  }
   // Bağlama göre seçenek çipleri (ör. kişi sorulunca "Ailesi / Soy zinciri / …").
   // Seçenek yerel bir eylemdir; sonucu yazılır, seçenekler yerinde kalır.
   // "↩ Diğer sorular" genel örneklere döner.
@@ -5024,12 +5120,12 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     }
   }
 
-  // ---- ASİSTAN (ücretsiz kota, sunucuda araç döngüsü) ----
+  // ---- ASİSTAN (ortak günlük kota, sunucuda araç döngüsü) ----
   // Girdi önce asistana gider. Kimlik/kota yoksa ya da sağlayıcı yoğunsa mevcut
-  // calistirKomut() ücretsiz yedek olarak yanıtlar ve bir satırla söylenir.
+  // calistirKomut() kotasız yerel yedek olarak yanıtlar ve bir satırla söylenir.
   // Yalnızca ARAYÜZ komutları (köken, istatistik, kol, nesil aralığı…) doğrudan
   // yerelde çalışır: asistanın ekranı yönetme aracı yok, kota harcamaya da gerek yok.
-  const YEREL=new Set(["ben","koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
+  const YEREL=new Set(["cift","ben","koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
   function yerelArayuzMu(t){
     for(const k of KOMUTLAR){
       if(k.ad==="uzman") continue;   // bilgi becerisi arayüz komutu değil: asistan önce denesin
@@ -5078,6 +5174,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       return;
     }
     notYaz("");
+    { const bk=birlestirKomutu(t); if(bk){ sonucGoster(typeof bk==="string"?{metin:bk}:bk); return; } }   // "X ile Y aynı kişi"
     if(yerelArayuzMu(t) || !CLOUD.on){ calistirKomut(t); return; }
     const kisi=kimlikId();
     if(!kisi){
@@ -5096,7 +5193,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
       if(j.kota) kotaGoster(j.kota);
       if(!j.ok){ calistirKomut(t); notYaz(j.mesaj||"Şu an tam yanıt veremedim; hazır bilgilerimle yanıtladım."); return; }
       gecmis.push({rol:"kullanici",metin:t},{rol:"asistan",metin:j.yanit});
-      yaz(j.yanit); ciplerKur();
+      yaz(yanitTemizle(j.yanit)); ciplerKur();
       const g=j.gorsel||{};
       if(g.yol && typeof yolBul==="function") yolBul(g.yol[0], g.yol[1]);
       else if(g.kisi && byId[g.kisi]){ selectNode(byId[g.kisi]); if(typeof merkezeAl==="function") merkezeAl(byId[g.kisi]); }
@@ -5264,7 +5361,7 @@ function kotaGoster(k){
   const oran=ortakOran(k), kalan=Math.max(0,k.limit.kisi.mesaj-k.kisi.mesaj);
   document.getElementById("rehberKotaDolu").style.width=`${Math.round(oran*100)}%`;
   document.getElementById("rehberKotaYazi").textContent =
-    `Ortak ücretsiz kota %${trSayi(oran*100)}` + (kimlikId()? ` · bugünkü hakkın ${kalan}/${k.limit.kisi.mesaj} mesaj` : "") + " · ayrıntı ›";
+    `Ortak günlük kota %${trSayi(oran*100)}` + (kimlikId()? ` · bugünkü hakkın ${kalan}/${k.limit.kisi.mesaj} mesaj` : "") + " · ayrıntı ›";
   b.style.display="block";
 }
 async function kotaTazele(){
@@ -6200,6 +6297,7 @@ function hesapMenusu(hedef){
   m.innerHTML=`<div style="color:var(--text);font-weight:600">${isAdmin?"🔓 Yönetici":"👤 Aile üyesi"}</div>
     <div style="color:var(--muted);margin-top:2px">${ad?`${escapeHtml(ad)} olarak`:"Kim olduğun seçilmedi"}</div>
     ${!isAdmin?`<button data-yonetici>🔓 Yönetici olarak gir</button>`:""}
+    ${isAdmin?`<button data-cift>🧹 Çift kayıtlar${window.AgacLib&&AgacLib.ciftKayitlar?" ("+AgacLib.ciftKayitlar(currentGraphJSON()).length+")":""}</button>`:""}
     ${iosCihaz() && !anaEkranda() ? `<button data-anaekran>📲 Ana ekrana ekle</button>`:""}
     <button data-degistir>🔄 Ben değilim — kişiyi değiştir</button>
     <button data-cikis style="color:var(--danger)">⎋ Çıkış yap</button>`;
@@ -6216,6 +6314,7 @@ function hesapMenusu(hedef){
     toast(`Kim olduğunu ${typeof asistanaYaz==="function"?asistanaYaz():"asistana"} “Ben …” diye yaz ya da kişinin kartında “Bu benim”e dokun`);
     if(typeof updateStatus==="function") updateStatus(); };
   const ae=m.querySelector("[data-anaekran]"); if(ae) ae.onclick=()=>{ kapat(); anaEkranRehberi(true); };
+  const ck=m.querySelector("[data-cift]"); if(ck) ck.onclick=()=>{ kapat(); ciftKayitlariAc(); };
   const y=m.querySelector("[data-yonetici]");
   if(y) y.onclick=async()=>{ kapat(); if(await girisPenceresi("Yönetici şifreni gir.") && !isAdmin) toast("Bu şifre aile şifresi — yönetici şifresi gerekiyor"); };
 }
@@ -6271,8 +6370,9 @@ async function yetkiliIstek(yap, neden){
 }
 // Yönetici: aynı kişinin iki kaydını birleştir. Bağlar (baba/anne/evlilik), fotoğraf, bilgiler,
 // anılar tek kayıtta toplanır; hangi adın kalacağını yönetici seçer. Kural: AgacLib.kisiBirlestir.
-function kisileriBirlestir(a, b){
+function kisileriBirlestir(a, b, sonra){
   if(!isAdmin || !window.AgacLib) return;
+  if((a.sex||"")!==(b.sex||"")){ toast("Farklı cinsiyetteki iki kayıt aynı kişi olamaz — önce cinsiyeti düzelt"); if(typeof sonra==="function") sonra(); return; }
   document.getElementById("birlestirPen")?.remove();
   const ort=document.createElement("div"); ort.id="birlestirPen";
   ort.style.cssText="position:fixed;inset:0;z-index:60;background:var(--overlay);display:flex;align-items:center;justify-content:center;padding:16px";
@@ -6287,7 +6387,7 @@ function kisileriBirlestir(a, b){
     <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">
       <button class="tbtn" data-iptal>Vazgeç</button><button class="tbtn" data-tamam style="background:var(--accent);color:var(--on-accent);border-color:var(--accent)">Birleştir</button></div></div>`;
   document.body.appendChild(ort);
-  ort.querySelector("[data-iptal]").onclick=()=>ort.remove();
+  ort.querySelector("[data-iptal]").onclick=()=>{ ort.remove(); if(typeof sonra==="function") sonra(); };
   ort.querySelector("[data-tamam]").onclick=()=>{
     const ad=(ort.querySelector("input[name=bAd]:checked").value==="1" ? b : a).name;
     try{
@@ -6302,8 +6402,60 @@ function kisileriBirlestir(a, b){
       touch();   // yönetici: buluta kaydedilir
       const n=byId[a.id]; if(n){ selectNode(n); }
       toast(`“${eskiAd}” kaydı “${dispName(ad)}” ile birleştirildi ✓`);
+      if(typeof sonra==="function") setTimeout(sonra, 300);
     }catch(e){ toast("Birleştirilemedi: "+e.message); }
   };
+}
+// ---- ÇİFT KAYITLAR (yönetici): veritabanını temizleme ekranı ----
+// AgacLib.ciftKayitlar: "kural" (anne-babası ve adı aynı) ve "tam-ad" (ad+soyad örtüşüyor) çiftleri.
+// Her çift için: ⇄ Birleştir (kisileriBirlestir) ya da "Farklı kişiler": kural çiftinde ikinciye sıra
+// numarası eklenir (Ali → Ali2; ekranda yine "Ali"), tam-ad çiftinde bu tarayıcıda gizlenir.
+const CIFT_YOK_KEY="kok_cift_farkli";
+function ciftKayitlariAc(){
+  if(!isAdmin){ toast("Çift kayıt temizliği yalnız yöneticiye açık"); return; }
+  if(!window.AgacLib || !AgacLib.ciftKayitlar) return;
+  let farkli=[]; try{ farkli=JSON.parse(localStorage.getItem(CIFT_YOK_KEY)||"[]"); }catch(e){}
+  const l=AgacLib.ciftKayitlar(currentGraphJSON()).filter(c=>!farkli.includes(c.ids.slice().sort().join("|")) && byId[c.ids[0]] && byId[c.ids[1]]);
+  document.getElementById("ciftPen")?.remove();
+  const ort=document.createElement("div"); ort.id="ciftPen";
+  ort.style.cssText="position:fixed;inset:0;z-index:59;background:var(--overlay);display:flex;align-items:center;justify-content:center;padding:16px";
+  const kisi=n=>`<b>${escapeHtml(dispName(n.name))}</b><br><small style="color:var(--muted)">${escapeHtml(kimlikSatiri(n)||"anne-babası kayıtlı değil")} · ${nesilOf(n)}. nesil · ${escapeHtml(ayirtEdici(n))}</small>`;
+  const NEDEN={ kural:"Anne-babası ve adı aynı", "tam-ad":"Ad ve soyad örtüşüyor" };
+  ort.innerHTML=`<div style="width:min(560px,100%);max-height:86vh;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:18px;box-shadow:0 16px 50px var(--shadow)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="font-weight:700;font-size:16px">🧹 Çift kayıtlar</div>
+      <button class="tbtn" data-kapat>Kapat</button></div>
+    <div style="font-size:13px;color:var(--text-soft);line-height:1.5;margin:6px 0 10px">${l.length
+      ? `Aynı kişi olabilecek <b>${l.length}</b> çift. Aynı kişiyse <b>Birleştir</b>; farklı kişilerse <b>Farklı kişiler</b>.`
+      : "Çift kayıt görünmüyor — veritabanı temiz ✓"}</div>
+    ${l.map((c,i)=>{ const [a,b]=c.ids.map(id=>byId[id]); return `<div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">${NEDEN[c.neden]||c.neden}</div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;font-size:13.5px">
+        <div>${kisi(a)}</div><div style="color:var(--muted)">↔</div><div>${kisi(b)}</div></div>
+      <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
+        <button class="tbtn" data-farkli="${i}">Farklı kişiler${c.neden==="kural"?" (sıra no ekle)":""}</button>
+        <button class="tbtn" data-birlestir="${i}" style="background:var(--accent);color:var(--on-accent);border-color:var(--accent)">⇄ Birleştir</button></div></div>`; }).join("")}
+  </div>`;
+  document.body.appendChild(ort);
+  ort.querySelector("[data-kapat]").onclick=()=>ort.remove();
+  ort.querySelectorAll("[data-birlestir]").forEach(bt=>bt.onclick=()=>{
+    const c=l[+bt.dataset.birlestir]; ort.remove(); kisileriBirlestir(byId[c.ids[0]], byId[c.ids[1]], ciftKayitlariAc); });
+  ort.querySelectorAll("[data-farkli]").forEach(bt=>bt.onclick=()=>{
+    const c=l[+bt.dataset.farkli];
+    if(c.neden==="kural"){
+      // ikinci kayda kullanılmayan ilk sıra numarası: Ali → Ali2 (ekranda yine "Ali")
+      const n=byId[c.ids[1]], kok=String(n.name).replace(/\d+$/,"");
+      // karşılaştırma sıra numarasıyla (adKatla sayıları siler — onunla döngü bitmezdi)
+      const k=x=>String(x).toLocaleLowerCase("tr").trim();
+      const kardes=new Set(nodes.filter(x=>x!==n && x._parent===n._parent).map(x=>k(x.name)));
+      let i=2; while(kardes.has(k(kok+i)) && i<1000) i++;
+      n.name=kok+i; touch();
+      toast(`İkinci kayıt “${kok+i}” oldu — ekranda yine “${dispName(kok)}” görünür`);
+    } else {
+      farkli.push(c.ids.slice().sort().join("|"));
+      try{ localStorage.setItem(CIFT_YOK_KEY, JSON.stringify(farkli)); }catch(e){}
+    }
+    ciftKayitlariAc();
+  });
 }
 async function kisiselBaglanti(n){
   const r=await yetkiliIstek(()=>fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},

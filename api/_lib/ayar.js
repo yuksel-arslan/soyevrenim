@@ -1,23 +1,33 @@
 // MODEL · KOTA · LİMİT — tek kaynak. Kodun başka hiçbir yerinde bu sayılar yazılmaz.
 // İstemci kamuya açık olanları /api/kullanim?adim=ayar ile alır.
 //
-// Model: tamamen ücretsiz katman. Ödeme yok. Groq'un ücretsiz günlük sınırları SİSTEM
-// GENELİDİR; adil paylaşım için kişi başı ayrıca sınırlanır. Gün sınırı UTC 00:00
-// (Türkiye 03:00) — Groq sayaçlarıyla aynı an.
+// Model: OpenAI (GPT). ÜCRETLİDİR — kullandıkça ödenir. Aşağıdaki günlük sınırlar artık bir
+// HARCAMA TAVANI: sistem geneli + kişi başı (adil paylaşım). Gün sınırı UTC 00:00 (Türkiye 03:00).
+// Sağlayıcı tek satırla değişir (SAGLAYICI içinden); anahtar ortam değişkeninden okunur.
 
-export const LLM = { saglayici: 'groq', model: 'openai/gpt-oss-120b' }; // ileride tek satırla değişebilir
-export const STT = { saglayici: 'groq', model: 'whisper-large-v3-turbo' };
-export const GUNLUK_SISTEM = { token: 190000, istek: 950, sesSn: 27000 }; // Groq sınırının %95'i
-export const GUNLUK_KISI = { mesaj: 20, sesDk: 30 };  // ortak kotayı adil paylaştırmak için
-export const MESAJ_MAX_TOKEN = 4000;                 // tüm ağacı isteme koyma, araçla getir
+export const LLM = { saglayici: 'openai', model: 'gpt-5-mini' };   // Çınar + hikâye düzenleme
+export const STT = { saglayici: 'openai', model: 'whisper-1' };    // ses → yazı (süre bilgisini verir)
+export const GUNLUK_SISTEM = { token: 190000, istek: 950, sesSn: 27000 }; // günlük harcama tavanı
+export const GUNLUK_KISI = { mesaj: 20, sesDk: 30 };  // ortak tavanı adil paylaştırmak için
+export const MESAJ_MAX_TOKEN = 5000;                 // tek istek bütçesi (istem + araçlar + beceri yöntemi); tüm ağacı isteme koyma, araçla getir
 export const HIKAYE_MAX_CHARS = 20000;
 
 // — Sağlayıcı uçları —
 export const SAGLAYICI = {
+  openai: {
+    sohbet: 'https://api.openai.com/v1/chat/completions',
+    yaziya: 'https://api.openai.com/v1/audio/transcriptions',
+    anahtarEnv: 'OPENAI_API_KEY',
+    sesUrl: false,          // ses DOSYA olarak yüklenir (sunucu R2'den indirip gönderir)
+    ekAlan: {},             // sağlayıcıya özgü ek istek alanı yok
+  },
+  // Eski sağlayıcı (kullanılmıyor; geri dönmek için LLM/STT.saglayici = 'groq')
   groq: {
     sohbet: 'https://api.groq.com/openai/v1/chat/completions',
     yaziya: 'https://api.groq.com/openai/v1/audio/transcriptions',
     anahtarEnv: 'GROQ_API_KEY',
+    sesUrl: true,           // sesi imzalı URL'den kendisi indirir
+    ekAlan: { include_reasoning: false },
   },
 };
 
@@ -26,7 +36,7 @@ export const ASISTAN = {
   ad: 'Çınar',             // asistanın adı (tek kaynak: sunucu istemi + istemci başlığı)
   maxTur: 4,               // sunucu tarafı araç döngüsü üst sınırı
   ciktiMaxToken: 1200,     // tek yanıt (gerekçe dahil) üst sınırı
-  gerekce: 'low',          // gpt-oss reasoning_effort — kısa düşün, kota harcama
+  gerekce: 'low',          // reasoning_effort — kısa düşün, az harca
   gecmisTur: 6,            // istemciden kabul edilen önceki mesaj sayısı
   mesajMaxKarakter: 600,   // kullanıcı mesajı
   aracSonucMaxKarakter: 2500,
@@ -35,6 +45,13 @@ export const ASISTAN = {
   aniParcaKarakter: 300,
   kisiAniMax: 6,
   tokenKarakter: 3,        // kaba tahmin: 1 token ≈ 3 karakter (Türkçe, temkinli)
+};
+
+// — Çınar becerisi (bilgi_ara aracı, api/_lib/beceri.js) —
+export const BECERI = {
+  sonucMax: 4,             // tek aramada döndürülen en fazla parça
+  minPuan: 2,              // bu puanın altındaki parça "ilgisiz" sayılır
+  kokHarf: 5,              // Türkçe ekler için kaba kök uzunluğu ("defterinde" ~ "defte")
 };
 
 // — Ses / hikâye —
@@ -46,7 +63,7 @@ export const SES = {
   parcaMaxMb: 25,          // whisper tek dosya sınırı; üstü reddedilir (parçalama kayıtta yapılır)
   maxKayitDk: 120,
   dil: 'tr',
-  whisperMinSn: 10,        // Groq istek başına en az 10 sn sayar
+  whisperMinSn: 10,        // kısa kayıt için kota sayımında en az bu kadar saniye
   duzenleParcaKarakter: 4500, // LLM düzenleme parçası (girdi+çıktı MESAJ_MAX_TOKEN civarında kalır)
   duzenleCiktiMaxToken: 3000,
   duzenleMinOran: 0.9,     // düzenlenmiş metin ham metnin sözcüklerinin en az %90'ını korumalı

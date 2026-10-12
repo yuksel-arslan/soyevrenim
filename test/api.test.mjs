@@ -17,7 +17,7 @@ test.before(async () => {
   ({ default: kullanim } = await import('../api/kullanim.js'));
   ({ default: oneri } = await import('../api/oneri.js'));
   ({ GUNLUK_SISTEM, GUNLUK_KISI } = await import('../api/_lib/ayar.js'));
-  ({ SaglayiciKotaHatasi } = await import('../api/_lib/groq.js'));
+  ({ SaglayiciKotaHatasi } = await import('../api/_lib/llm.js'));
   const { jetonUret } = await import('../api/giris.js');
   jeton = jetonUret('aile'); adminJeton = jetonUret('admin');
 });
@@ -106,7 +106,7 @@ test('kota dolu (sistem) → yedek + doğru mesaj; LLM çağrılmaz', { skip: at
   globalThis.__SOY_TEST.llm = senaryoLlm([]);
   const r = await cagir(asistan, { body: { jeton, kisi_id: KISI, mesaj: 'Fahri kimdir?' } });
   assert.equal(r.govde.yedek, true); assert.equal(r.govde.sebep, 'sistem');
-  assert.equal(r.govde.mesaj, "Bugünkü ücretsiz asistan kotası doldu, yarın 03:00'te yenilenir.");
+  assert.equal(r.govde.mesaj, "Bugünkü ortak asistan kotası doldu, yarın 03:00'te yenilenir.");
   assert.equal(globalThis.__SOY_TEST.llm.istekler.length, 0);
 });
 
@@ -201,6 +201,23 @@ test('soy sorusu → soy_tarihi aracı: Fahri Arslan notu + ağaç sayıları; a
   assert.match(llm.istekler[0].messages[0].content, /kimsenin ağzından konuşma/);
   const { MESAJ_MAX_TOKEN, tahminiToken } = await import('../api/_lib/ayar.js');
   for (const i of llm.istekler) assert.ok(tahminiToken(JSON.stringify(i.messages)) + tahminiToken(JSON.stringify(i.tools || [])) <= MESAJ_MAX_TOKEN);
+});
+
+test('araştırma sorusu → bilgi_ara: model kaynaklı parçayı alır; beceri yöntemi istemde', { skip: atla }, async () => {
+  const llm = senaryoLlm([
+    { content: null, tool_calls: [arac('bilgi_ara', { sorgu: '1835 nüfus defteri Derbend', alan: 'arastirma' })] },
+    (g) => {
+      const s = JSON.parse(g.messages.at(-1).content);
+      assert.match(s.sonuc[0].baslik, /1835/);
+      assert.match(s.sonuc[0].kaynak, /Hiçyılmaz/);
+      return { content: "Kaynaklarda geçiyor: 1835 Arhavi nüfus defteri yayımlandı.\nKaynak: Hiçyılmaz" };
+    },
+  ]);
+  globalThis.__SOY_TEST.llm = llm;
+  const r = await cagir(asistan, { body: { jeton, kisi_id: KISI, mesaj: '1835 kayıtlarında atalarımızı nasıl bulurum?' } });
+  assert.equal(r.govde.ok, true);
+  assert.match(llm.istekler[0].messages[0].content, /ÇINAR BECERİSİ/);
+  assert.ok(llm.istekler[0].tools.some((t) => t.function.name === 'bilgi_ara'));
 });
 
 test('Lazca yazan kullanıcı: istemde Lazca kuralı; uzman_bilgi(lazca) Türkçe karşılıklı ifade döner', { skip: atla }, async () => {
