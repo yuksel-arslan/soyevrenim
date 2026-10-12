@@ -80,6 +80,18 @@ export const GIRIS = {
   davetGun: 180,           // kişisel giriş bağlantısı geçerliliği
 };
 
+// Kayıt: ağaçta olmayan aile üyesi kendini ekler — mevcut bir kişiye BAĞLI olmak zorunda
+// (api/agac.js?adim=kayit, api/_lib/kayit.js). Bağsız kayıt yok; aile şifresi gerekir.
+export const KAYIT = {
+  adMin: 2, adMax: 40,                      // ad + soyad karakter sınırı
+  iliskiler: ['cocuk', 'es', 'kardes'],     // "kimin nesisin": çocuğu, eşi, kardeşi
+  deneme: 3,                                // eşzamanlı kayıtta yeniden deneme
+  dogumMin: 1900,                           // doğum yılı alt sınırı (üst sınır: bu yıl)
+};
+
+// iPhone "Ana Ekrana Ekle" yönergesi (istemci): giriş sonrası gecikme ve "Anladım" sonrası tekrar aralığı
+export const ANA_EKRAN = { gecikmeSn: 6, tekrarGun: 14 };
+
 // Aile sohbeti: yeni mesaj yoklaması (rozet + bildirim) ve panel açıkken yenileme
 export const SOHBET = { yoklamaSn: 45, acikYoklamaSn: 15, yeniMax: 50 };
 
@@ -107,7 +119,8 @@ export function kamuAyar() {
       parcaMaxMb: SES.parcaMaxMb, maxKayitDk: SES.maxKayitDk },
     DEPOLAMA: { kotaBayt: DEPOLAMA.kotaBayt },
     MEDYA: { fotoMaxMb: MEDYA.fotoMaxMb, videoMaxMb: MEDYA.videoMaxMb, vekilMaxMb: MEDYA.vekilMaxMb },
-    SOHBET,
+    SOHBET, ANA_EKRAN,
+    KAYIT: { adMin: KAYIT.adMin, adMax: KAYIT.adMax, iliskiler: KAYIT.iliskiler, dogumMin: KAYIT.dogumMin },
     ASISTAN: { ad: ASISTAN.ad, mesajMaxKarakter: ASISTAN.mesajMaxKarakter, gecmisTur: ASISTAN.gecmisTur },
   };
 }

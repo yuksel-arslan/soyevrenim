@@ -47,6 +47,39 @@ Ağaçtaki her ferdin kalıcı bir **id**'si var (`p12222123`). Giriş ortak şi
   açıkça seçilen kişiden gelir.
 - Süreler `api/_lib/ayar.js → GIRIS` (`oturumGun`, `davetGun`). Test: `test/giris.test.mjs`.
 
+## Ad arama (karşılama)
+
+"Bu evrene kim bakıyor?" kutusu harf/Türkçe karakter (Yuksel = Yüksel) ve soyad toleranslıdır:
+ilk sözcük (ad) eşleşmeli, diğerleri (soyad, baba adı) sıralamaya puan katar. Eskiden yazılanın
+tamamı adın içinde aranıyordu; "Yüksel Arslan" yazan (ağaçta yalnız "Yüksel") "yaşayan biri
+bulunamadı" görüp giremiyordu. Listenin altında her zaman **"Listede yok musun? Kaydol →"** var.
+Ağaç henüz yüklenmediyse "Ağaç yükleniyor…" denir.
+
+## Kayıt (ağaçta olmayan aile üyesi)
+
+Kayıt formu karşılamada açılır: ad, soyad (isteğe bağlı), cinsiyet, doğum yılı (isteğe bağlı),
+**ağaçtaki yakını** (arama ile seçilir, vefat etmiş biri de olabilir) ve bağ: **çocuğu / eşi / kardeşi**.
+**Bağsız kayıt yok** — yakını seçilmeden düğme çalışmaz, sunucu da reddeder. Aile şifresi gerekir
+(oturum açıksa sorulmaz).
+
+`POST /api/agac?adim=kayit` `{ad, soyad, cinsiyet:'E'|'K', dogum, iliski:'cocuk'|'es'|'kardes', bag, sifre | jeton}`
+
+| Durum | Yanıt |
+|---|---|
+| Şifre yok / yanlış, oturum yok | `401` |
+| Ad, cinsiyet, ilişki, doğum yılı geçersiz; kardeş için yakınının anne-babası ağaçta yok | `400` |
+| Yakını ağaçta yok | `404` |
+| Aynı bağla aynı adda biri zaten var | `409 {var: id}` — istemci "Evet, bu benim" ile o kişi olarak girer |
+| Başarılı | `{ok, kisi, ad, rol, jeton, guncelleme}` — jeton yeni kişiye bağlı; doğrudan girilir |
+
+- Bağlama kuralı (`api/_lib/kayit.js → kayitEkle`): çocuğu → babadan ağaç bağı (`edges`), anneden
+  anne bağı (`motherEdges`); yakının ağaçta tek eşi varsa o eş de ebeveyn olur. Eşi → `marriages`,
+  yakının adla yazılmış eş kaydı ("Nevin Kaya") bu kişiye döner. Kardeşi → aynı anne/baba.
+- Yeni kişide `kayit: {zaman, bag, iliski}` iz kalır (yönetici kimin nasıl eklendiğini görür, gerekirse siler).
+- Ağaca yazım koşullu ve yeniden denemeli (`agacYamala`), `gunluk`'e de yazılır.
+- Sınırlar `api/_lib/ayar.js → KAYIT` (`adMin`, `adMax`, `iliskiler`, `deneme`, `dogumMin`).
+- Test: `test/kayit.test.mjs`.
+
 ## Rol görünürlüğü
 
 - Durum satırında her zaman rol: **🔓 Yönetici** ya da **👤 Aile üyesi** (girişsizse yok).

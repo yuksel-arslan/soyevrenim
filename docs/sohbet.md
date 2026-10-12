@@ -62,6 +62,22 @@ Bağımlılıksız Web Push: `api/_lib/push.js` (Node `crypto`).
 - Test: `test/push.test.mjs` — şifreli yük bağımsız çözücüyle açılır, JWT açık anahtarla doğrulanır,
   uçtan uca (taklit push servisi) yazana gitmediği ve 410'un silindiği denetlenir.
 
+## Ana ekrana ekleme (iPhone)
+
+Site indirme/mağaza gerektirmez; her telefonda tarayıcıdan çalışır. Ancak **iPhone'da push yalnızca
+ana ekrana eklenmiş sitede** gelir (Apple kuralı, iOS 16.4+). Bu yüzden iPhone/iPad'de (iPadOS
+masaüstü UA'sı dahil) ve site ana ekrandan açılmamışsa alt sayfada yönerge çıkar:
+
+1. Paylaş simgesi (Safari'de altta; görünmüyorsa önce ⋯) · 2. "Ana Ekrana Ekle" · 3. Ekle.
+
+- Instagram/Facebook gibi **uygulama içi tarayıcıda** önce "Safari'de aç" adımı eklenir;
+  Chrome/Firefox (iOS) için "adres çubuğundaki Paylaş" denir.
+- Ne zaman: karşılama kapanınca `ANA_EKRAN.gecikmeSn` saniye sonra. **Anladım** → `ANA_EKRAN.tekrarGun`
+  gün sonra yine; **Bir daha gösterme** → hiç (`localStorage.kok_ana_ekran`).
+- Her zaman açılabilir: hesap menüsü → **📲 Ana ekrana ekle**, ya da sohbetteki **🔕 Bildirim al** (iPhone'da).
+- Android ve masaüstünde gösterilmez (orada tarayıcıdan da bildirim gelir).
+- Kod: `public/index.html → anaEkranRehberi / anaEkranZamanla / iosCihaz / anaEkranda`; ayar `api/_lib/ayar.js → ANA_EKRAN`.
+
 ## Giriş (istemci)
 
 Şifre kutusu artık üç yerde, hepsi `sifreyleGir()` ortak fonksiyonunu kullanır:

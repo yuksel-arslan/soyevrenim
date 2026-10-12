@@ -40,6 +40,15 @@ Türler (`MEDYA.turler`): jpg, png, webp, gif, heic, mp4, mov, webm.
 R2 kovasında CORS: site adresine `PUT`, `GET`, başlık `content-type` (bkz. `KURULUM.md`).
 Eski Vercel Blob adresleriyle kaydedilmiş fotoğraflar (varsa) olduğu gibi görünmeye devam eder.
 
+## Onaysız kayıt (aile üyesi)
+
+Aile üyesinin yüklediği **profil fotoğrafı ve galeri öğesi yönetici onayı beklemez**:
+`POST /api/agac?adim=medya {jeton, kisi_id, alan:'photo'|'gallery', url, video}` yalnız o kişinin
+medya alanını değiştirir (ağacın geri kalanına dokunmaz). `url` kendi depomuzdan olmalı
+(`/api/medya?adim=oku&anahtar=…`, `medyaUrlGecerli`); başka adres `400`. Oturumsuz `401`.
+Yönetici eskisi gibi tam kayıt (`saveProfile → cloudSave`) yapar. Eskiden aile üyesinin fotoğrafı
+"Onaya gönder" çubuğuna düşüyor ve onaylanmadıkça görünmüyordu.
+
 ## Ortam değişkenleri
 
 `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` (ses ile ortak), `OTURUM_GIZLI`.
