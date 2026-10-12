@@ -6376,6 +6376,7 @@ function hesapMenusu(hedef){
     ${isAdmin?`<button data-denetim>🩺 Veri denetimi${window.AgacLib&&AgacLib.veriDenetimi?" ("+AgacLib.veriDenetimi(currentGraphJSON()).filter(x=>x.onem==="yuksek").length+" önemli)":""}</button>`:""}
     ${isAdmin?`<button data-cift>🧹 Çift kayıtlar${window.AgacLib&&AgacLib.ciftKayitlar?" ("+AgacLib.ciftKayitlar(currentGraphJSON()).length+")":""}</button>`:""}
     ${iosCihaz() && !anaEkranda() ? `<button data-anaekran>📲 Ana ekrana ekle</button>`:""}
+    <button data-kilavuz>📖 Kullanma kılavuzu</button>
     <button data-degistir>🔄 Ben değilim — kişiyi değiştir</button>
     <button data-cikis style="color:var(--danger)">⎋ Çıkış yap</button>`;
   document.body.appendChild(m);
@@ -6391,6 +6392,7 @@ function hesapMenusu(hedef){
     toast(`Kim olduğunu ${typeof asistanaYaz==="function"?asistanaYaz():"asistana"} “Ben …” diye yaz ya da kişinin kartında “Bu benim”e dokun`);
     if(typeof updateStatus==="function") updateStatus(); };
   const ae=m.querySelector("[data-anaekran]"); if(ae) ae.onclick=()=>{ kapat(); anaEkranRehberi(true); };
+  m.querySelector("[data-kilavuz]").onclick=()=>{ kapat(); window.open("/kilavuz.html","_blank","noopener"); };
   const ck=m.querySelector("[data-cift]"); if(ck) ck.onclick=()=>{ kapat(); ciftKayitlariAc(); };
   const dn=m.querySelector("[data-denetim]"); if(dn) dn.onclick=()=>{ kapat(); veriDenetimiAc(); };
   const y=m.querySelector("[data-yonetici]");

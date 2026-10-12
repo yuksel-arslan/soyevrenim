@@ -13,6 +13,7 @@ onayından geçer.
 - **Foto & video** — Cloudflare R2'de (sesli hikâyelerle aynı depo) ortak saklanır, herkes görür
 - **Fotoğraflı avatarlar, iletişim, sosyal medya, anılar**
 - **Mobil uyumlu, dark/light/yadigâr**
+- **Kullanma kılavuzu** — aile üyeleri için kısa rehber: `/kilavuz.html` (hesap menüsü → 📖 Kullanma kılavuzu; tema sitedekiyle aynı)
 - **Asistan** — soru yanıtlar, konuşarak kişi ekleme önerir (OpenAI GPT, günlük harcama tavanlı) · [docs/asistan.md](docs/asistan.md) · beceri: [docs/cinar-beceri.md](docs/cinar-beceri.md)
 - **Sesli hikâye** — kendi sesinle anlat; saklanır, yazıya çevrilir, anı olarak onaya gider · [docs/hikaye.md](docs/hikaye.md)
 - **Kökenimiz ve araştırma köşesi** — Fahri Arslan'ın 1956 notu, Osmanlı arşiv kayıtları, gençler için adım adım rehber, sözlük ve kaynakça · [docs/kaynakca.md](docs/kaynakca.md)
