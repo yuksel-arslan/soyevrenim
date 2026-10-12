@@ -125,6 +125,9 @@ export const ANA_EKRAN = { gecikmeSn: 6, tekrarGun: 14 };
 // Aile sohbeti: yeni mesaj yoklaması (rozet + bildirim) ve panel açıkken yenileme
 export const SOHBET = { yoklamaSn: 45, acikYoklamaSn: 15, yeniMax: 50 };
 
+// Tanışma daveti (api/sohbet.js → tanis-*): birbirini tanımayan aile üyeleri; kabul edilince özel sohbet
+export const TANISMA = { mesajMax: 400, listeMax: 30 };
+
 // Web Push bildirimleri (api/_lib/push.js)
 export const BILDIRIM = {
   ttlSn: 86400,            // telefon kapalıysa push servisi bu kadar saklar (1 gün)

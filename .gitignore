@@ -15,3 +15,6 @@ Thumbs.db
 *.log
 .idea/
 .vscode/
+
+# test ekran görüntüleri depoya girmesin
+gorsel/

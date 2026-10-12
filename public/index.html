@@ -509,6 +509,44 @@ body:has(.inspector.show) #activeCard{display:none !important}
 #cinarSerit .csAc{color:var(--spine);font-weight:700;flex:none}
 #cinarSerit .csKapat{flex:none;width:30px;height:30px;border-radius:50%;border:none;background:none;color:var(--muted);font-size:18px;cursor:pointer}
 @media (min-width:641px){ #cinarSerit{display:none} }
+/* ===== TANIŞMA DAVETİ KARTI (yalnız tema token'ları) ===== */
+.davetKart{position:relative;overflow:hidden;width:100%;max-width:380px;margin:0 auto;border-radius:22px;padding:26px 22px 20px;
+  background:radial-gradient(130% 90% at 50% 0%,var(--panel2),var(--bg2) 70%);border:1px solid var(--spine);
+  box-shadow:0 24px 60px var(--shadow);color:var(--text);text-align:center;font-family:Inter,system-ui,sans-serif}
+.davetKart .dkIz{position:absolute;right:-30px;bottom:-34px;width:170px;height:170px;color:var(--spine);opacity:.08;pointer-events:none}
+.davetKart .dkUst{font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:3px;color:var(--spine);text-transform:uppercase}
+.davetKart .dkKisiler{display:flex;align-items:center;justify-content:center;gap:10px;margin:18px 0 10px}
+.davetKart .dkAv{width:78px;height:78px;border-radius:50%;flex:none;border:2px solid var(--spine);background:var(--bg2) center/cover no-repeat;
+  display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:var(--on-accent);box-shadow:0 8px 20px var(--shadow)}
+.davetKart .dkBag{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--spine);font-size:22px}
+.davetKart .dkBag i{display:block;width:34px;height:1px;background:var(--spine);opacity:.6}
+.davetKart .dkAdlar{font-size:20px;font-weight:700;letter-spacing:-.3px;line-height:1.25}
+.davetKart .dkAdlar span{color:var(--spine);font-weight:500;margin:0 6px}
+.davetKart .dkBaslik{margin-top:10px;font-size:13px;font-weight:700;color:var(--spine)}
+.davetKart .dkOzet{margin-top:4px;font-size:13.5px;line-height:1.55;color:var(--text-soft)}
+.davetKart .dkNot{margin:14px 0 0;padding:12px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line);
+  font-size:14.5px;line-height:1.55;font-style:italic;color:var(--text);text-align:left;white-space:pre-wrap}
+.davetKart .dkNot b{display:block;font-style:normal;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:6px;text-align:right}
+.davetKart .dkAlt{margin-top:16px;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:1.5px;color:var(--muted)}
+.davetPen{position:fixed;inset:0;z-index:62;background:var(--overlay);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+.davetPen .dpKutu{width:min(440px,100%);max-height:92vh;overflow:auto;padding:4px}
+.davetPen textarea{width:100%;box-sizing:border-box;margin-top:12px;min-height:84px;font:15px/1.5 Inter,system-ui,sans-serif;color:var(--text);
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;resize:vertical;outline:none}
+.davetPen textarea:focus{border-color:var(--accent)}
+.davetPen .dpDugmeler{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.davetPen .dpDugmeler button{flex:1;min-width:120px;padding:11px;border-radius:11px;font-weight:600;font-size:14px;cursor:pointer;border:1px solid var(--line2);background:var(--panel);color:var(--text)}
+.davetPen .dpDugmeler .birincil{background:var(--spine);border-color:var(--spine);color:var(--on-accent)}
+.tanisListe .tlBolum{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:1.5px;color:var(--muted);margin:16px 0 6px;text-transform:uppercase}
+.tanisListe .tlSatir{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:12px;margin-top:6px;background:var(--panel)}
+.tanisListe .tlAv{width:40px;height:40px;border-radius:50%;flex:none;background:var(--bg2) center/cover no-repeat;border:1.5px solid var(--line2);
+  display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--on-accent)}
+.tanisListe .tlMetin{flex:1;min-width:0;font-size:13.5px;line-height:1.35}
+.tanisListe .tlMetin small{display:block;color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tanisListe .tlSatir button{flex:none;font-size:12.5px;padding:6px 10px;border-radius:9px;border:1px solid var(--spine);background:none;color:var(--text);cursor:pointer;font-weight:600}
+.ozelSohbet .osMesajlar{height:min(52vh,420px);overflow:auto;margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:8px;background:var(--bg2)}
+.ozelSohbet .osYaz{display:flex;gap:8px;margin-top:8px}
+.ozelSohbet .osYaz input{flex:1;min-width:0;font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
+.ozelSohbet .osYaz button{padding:10px 14px;border-radius:10px;border:none;background:var(--accent);color:var(--on-accent);font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -3560,6 +3598,12 @@ function renderProfileSections(n){
       });
     }
   }
+  if((sessionToken||isAdmin) && kimlikId() && kimlikId()!==n.id && n.alive!==false){
+    const td=document.createElement("button"); td.className="tbtn"; td.style.cssText="width:100%;justify-content:center;margin-bottom:8px;border-color:var(--spine)";
+    td.textContent=`🤝 ${dispName(n.name)} ile tanış — davet gönder`; td.title="Şık bir tanışma kartı gönder; kabul edince özel sohbet açılır";
+    td.onclick=()=>tanismaDavetiAc(n);
+    mem.appendChild(td);
+  }
   if((sessionToken||isAdmin) && benId!==n.id){
     const bb=document.createElement("button"); bb.className="tbtn"; bb.style.cssText="width:100%;justify-content:center;margin-bottom:8px";
     bb.textContent="🙋 Bu benim"; bb.title="Asistan ve hikâyeler seni bu kişi olarak tanısın";
@@ -4523,6 +4567,16 @@ function birlestirSor(a, b){
 
 const KOMUTLAR=[
   { ad:"birlestir", desen:BIRLESTIR_DESEN, calistir:(m,metin)=>birlestirKomutu(metin) },
+  { ad:"tanis", desen:/(tan[ıi][şs]ma|tan[ıi][şs]abilece[ğg]im|tan[ıi]mad[ıi][ğg][ıi]m\s+akraba|kimlerle\s+tan[ıi][şs])/i,
+    calistir:()=>{
+      if(!(sessionToken||isAdmin)) return "Tanışma daveti için önce aile şifresiyle giriş yap.";
+      if(!kimlikId()) return "Önce kim olduğunu söyle: “Ben Yüksel” gibi yaz ya da kendi kartında “🙋 Bu benim”e dokun.";
+      const l=tanisabilecekler(kimlikId()).slice(0,6);
+      setTimeout(tanismalarimAc, 150);
+      return l.length ? { metin:`Tanışabileceğin akrabalardan bazıları — birine dokun, şık bir davet kartı hazırlayayım:`,
+        secenekler:l.map(o=>({ etiket:`🤝 ${dispName(o.n.name)} · ${akrabalik(byId[kimlikId()],o.n).baslik}`, eylem:()=>{ tanismaDavetiAc(o.n); return "Davet kartını hazırladım — notunu yazıp gönder."; } })) }
+        : "Tanışmalarım listesini açtım.";
+    } },
   { ad:"denetim", desen:/(veri\s+denetim|tutars[ıi]zl[ıi]k|sa[çc]mal[ıi]k|hatal[ıi]\s+kay[ıi]t|yanl[ıi][şs]\s+kay[ıi]t|kay[ıi]tlar[ıi]\s+denetle|denetim)/i,
     calistir:()=>{
       if(!window.AgacLib || !AgacLib.veriDenetimi) return null;
@@ -5186,7 +5240,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   // calistirKomut() kotasız yerel yedek olarak yanıtlar ve bir satırla söylenir.
   // Yalnızca ARAYÜZ komutları (köken, istatistik, kol, nesil aralığı…) doğrudan
   // yerelde çalışır: asistanın ekranı yönetme aracı yok, kota harcamaya da gerek yok.
-  const YEREL=new Set(["denetim","cift","ben","koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
+  const YEREL=new Set(["tanis","denetim","cift","ben","koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
   function yerelArayuzMu(t){
     for(const k of KOMUTLAR){
       if(k.ad==="uzman") continue;   // bilgi becerisi arayüz komutu değil: asistan önce denesin
@@ -6374,6 +6428,7 @@ function hesapMenusu(hedef){
     ${isAdmin?`<button data-denetim>🩺 Veri denetimi${window.AgacLib&&AgacLib.veriDenetimi?" ("+AgacLib.veriDenetimi(currentGraphJSON()).filter(x=>x.onem==="yuksek").length+" önemli)":""}</button>`:""}
     ${isAdmin?`<button data-cift>🧹 Çift kayıtlar${window.AgacLib&&AgacLib.ciftKayitlar?" ("+AgacLib.ciftKayitlar(currentGraphJSON()).length+")":""}</button>`:""}
     ${iosCihaz() && !anaEkranda() ? `<button data-anaekran>📲 Ana ekrana ekle</button>`:""}
+    ${sessionToken||isAdmin?`<button data-tanis>🤝 Tanışmalarım</button>`:""}
     <button data-kilavuz>📖 Kullanma kılavuzu</button>
     <button data-degistir>🔄 Ben değilim — kişiyi değiştir</button>
     <button data-cikis style="color:var(--danger)">⎋ Çıkış yap</button>`;
@@ -6390,6 +6445,7 @@ function hesapMenusu(hedef){
     toast(`Kim olduğunu ${typeof asistanaYaz==="function"?asistanaYaz():"asistana"} “Ben …” diye yaz ya da kişinin kartında “Bu benim”e dokun`);
     if(typeof updateStatus==="function") updateStatus(); };
   const ae=m.querySelector("[data-anaekran]"); if(ae) ae.onclick=()=>{ kapat(); anaEkranRehberi(true); };
+  const tn=m.querySelector("[data-tanis]"); if(tn) tn.onclick=()=>{ kapat(); tanismalarimAc(); };
   m.querySelector("[data-kilavuz]").onclick=()=>{ kapat(); window.open("/kilavuz.html","_blank","noopener"); };
   const ck=m.querySelector("[data-cift]"); if(ck) ck.onclick=()=>{ kapat(); ciftKayitlariAc(); };
   const dn=m.querySelector("[data-denetim]"); if(dn) dn.onclick=()=>{ kapat(); veriDenetimiAc(); };
@@ -6408,7 +6464,8 @@ async function oturumDogrula(){
       if(!j.kisi && benId){ sessionToken=j.jeton; oturumaKisiIsle(benId); }
       else { oturumSakla(j); if(j.kisi && j.kisi!==benId) benAta(j.kisi, true);
         if(typeof showApprovalBtn==="function") setTimeout(showApprovalBtn, 0);   // "📥 Önerilerim" aile üyesine de
-        setTimeout(hatirlatmalariGetir, new URLSearchParams(location.search).has("uyari") ? 300 : 2500); }
+        setTimeout(hatirlatmalariGetir, new URLSearchParams(location.search).has("uyari") ? 300 : 2500);
+        setTimeout(gelenDavetleriKontrol, 4000); }
     }
     else if(r.status===401) oturumKapat("Oturumun süresi dolmuş — devam etmek için yeniden giriş yap");
   }catch(e){}   // ağ hatası oturumu düşürmesin
@@ -6486,6 +6543,215 @@ function kisileriBirlestir(a, b, sonra){
     }catch(e){ toast("Birleştirilemedi: "+e.message); }
   };
 }
+
+// ============================ TANIŞMA DAVETİ ============================
+// Birbirini tanımayan aile üyeleri (çoğu zaman gençler) şık bir kartla tanışma daveti gönderir.
+// Kart: iki kişinin fotoğrafı/baş harfi, akrabalık anlatısı (AgacLib.akrabalikAnlatisi), kişisel not.
+// Gönderim: site içi (alıcı girişte kartı görür + telefonuna bildirim) ya da RESİM olarak paylaş (WhatsApp…).
+// Kabul edilince iki kişiye özel sohbet açılır (kapsam ozel:<a>:<b>). Sunucu: api/sohbet.js → tanis-*.
+const LOGO_SVG=()=>{ const l=document.querySelector(".brand .logoIsaret"); return l?l.outerHTML.replace('class="logoIsaret"','class="dkIz"'):""; };
+const basHarf=n=>(dispName(n.name).trim()[0]||"?").toLocaleUpperCase("tr");
+function avatarStil(n){ const f=(PROFILES[n.id]||{}).photo; return f?`background-image:url('${f}')`:`background-color:${nodeColor(n)}`; }
+function akrabalik(a,b){
+  try{ if(window.AgacLib && AgacLib.akrabalikAnlatisi){ const r=AgacLib.akrabalikAnlatisi(agacGraf(), a.id, b.id); if(r) return r; } }catch(e){}
+  return { baslik:"Aynı soyun iki dalı", ozet:"İkiniz de Abdurrahman Oğulları'ndansınız." };
+}
+function davetKartiHTML(gonderen, alici, mesaj){
+  const r=akrabalik(gonderen, alici);
+  return `<div class="davetKart">${LOGO_SVG()}
+    <div class="dkUst">Tanışma daveti</div>
+    <div class="dkKisiler">
+      <div class="dkAv" style="${avatarStil(gonderen)}">${(PROFILES[gonderen.id]||{}).photo?"":escapeHtml(basHarf(gonderen))}</div>
+      <div class="dkBag"><i></i>🤝<i></i></div>
+      <div class="dkAv" style="${avatarStil(alici)}">${(PROFILES[alici.id]||{}).photo?"":escapeHtml(basHarf(alici))}</div>
+    </div>
+    <div class="dkAdlar">${escapeHtml(dispName(gonderen.name))}<span>&amp;</span>${escapeHtml(dispName(alici.name))}</div>
+    <div class="dkBaslik">${escapeHtml(r.baslik||"")}</div>
+    <div class="dkOzet">${escapeHtml(r.ozet||"")}</div>
+    ${mesaj?`<div class="dkNot">“${escapeHtml(mesaj)}”<b>— ${escapeHtml(dispName(gonderen.name))}</b></div>`:""}
+    <div class="dkAlt">soyevrenim.com · Abdurrahman Oğulları · 1615'ten beri</div>
+  </div>`;
+}
+function varsayilanNot(gonderen, alici){
+  return `Merhaba ${dispName(alici.name)}, ben ${dispName(gonderen.name)}. Akrabayız ama birbirimizi pek tanımıyoruz — tanışmak isterim!`;
+}
+// Kartı PNG'ye çiz (paylaşım için). Fotoğraf başka alan adından gelir; çizilemezse baş harf kullanılır.
+async function davetKartiPNG(gonderen, alici, mesaj){
+  const W=1080, H=1350, c=document.createElement("canvas"); c.width=W; c.height=H; const x=c.getContext("2d");
+  const V=k=>getVar(k)||"#888";
+  const g=x.createRadialGradient(W/2,0,60,W/2,H*0.35,H); g.addColorStop(0,V("--panel2")); g.addColorStop(1,V("--bg2"));
+  x.fillStyle=V("--bg"); x.fillRect(0,0,W,H);
+  const r=56; x.beginPath(); x.roundRect(40,40,W-80,H-80,r); x.fillStyle=g; x.fill(); x.lineWidth=4; x.strokeStyle=V("--spine"); x.stroke();
+  x.textAlign="center"; x.fillStyle=V("--spine"); x.font="600 30px 'IBM Plex Mono', monospace";
+  x.fillText("T A N I Ş M A   D A V E T İ", W/2, 150);
+  const resim=src=>new Promise(res=>{ if(!src) return res(null); const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>res(im); im.onerror=()=>res(null); im.src=src; });
+  const av=async(n,cx)=>{ const cy=330, R=118; x.save(); x.beginPath(); x.arc(cx,cy,R,0,6.283); x.closePath();
+    const im=await resim((PROFILES[n.id]||{}).photo);
+    if(im){ x.clip(); const k=Math.max(2*R/im.width,2*R/im.height); x.drawImage(im,cx-im.width*k/2,cy-im.height*k/2,im.width*k,im.height*k); }
+    else { x.fillStyle=nodeColor(n); x.fill(); x.fillStyle=V("--on-accent"); x.font="700 96px Inter, sans-serif"; x.textBaseline="middle"; x.fillText(basHarf(n),cx,cy+4); x.textBaseline="alphabetic"; }
+    x.restore(); x.beginPath(); x.arc(cx,cy,R,0,6.283); x.lineWidth=6; x.strokeStyle=V("--spine"); x.stroke(); };
+  await av(gonderen, W/2-190); await av(alici, W/2+190);
+  x.font="64px sans-serif"; x.fillText("🤝", W/2, 352);
+  x.fillStyle=V("--text"); x.font="700 64px Inter, sans-serif";
+  x.fillText(`${dispName(gonderen.name)} & ${dispName(alici.name)}`, W/2, 560, W-160);
+  const ak=akrabalik(gonderen, alici);
+  x.fillStyle=V("--spine"); x.font="700 38px Inter, sans-serif"; x.fillText(ak.baslik||"", W/2, 640, W-160);
+  const sar=(metin, y, font, renk, satirH, maxSatir)=>{ x.font=font; x.fillStyle=renk; const kel=String(metin).split(/\s+/); let satir="", n=0;
+    for(const k of kel){ const t=satir?satir+" "+k:k; if(x.measureText(t).width>W-220 && satir){ x.fillText(satir,W/2,y); y+=satirH; satir=k; if(++n>=maxSatir-1){ break; } } else satir=t; }
+    if(satir){ x.fillText(satir,W/2,y); y+=satirH; } return y; };
+  let y=sar(ak.ozet||"", 710, "400 34px Inter, sans-serif", V("--text-soft"), 48, 4);
+  if(mesaj){
+    // önce satırlara böl (kutu içi genişlik), sonra kutuyu metne göre boyutla
+    x.font="italic 400 36px Inter, sans-serif";
+    const satirlar=[]; let sat="";
+    for(const k of ("“"+mesaj+"”").split(/\s+/)){ const t=sat?sat+" "+k:k; if(x.measureText(t).width>W-320 && sat){ satirlar.push(sat); sat=k; } else sat=t; }
+    if(sat) satirlar.push(sat);
+    const L=satirlar.slice(0,7), kutuH=56+L.length*50+60;
+    y+=30; x.beginPath(); x.roundRect(110,y,W-220,kutuH,28); x.fillStyle=V("--panel"); x.fill(); x.lineWidth=2; x.strokeStyle=V("--line"); x.stroke();
+    x.fillStyle=V("--text"); L.forEach((l,i)=>x.fillText(l, W/2, y+66+i*50));
+    x.fillStyle=V("--muted"); x.font="600 28px Inter, sans-serif"; x.fillText("— "+dispName(gonderen.name), W/2, y+kutuH-30); }
+  x.fillStyle=V("--muted"); x.font="500 26px 'IBM Plex Mono', monospace"; x.fillText("soyevrenim.com · Abdurrahman Oğulları · 1615'ten beri", W/2, H-96);
+  return await new Promise(res=>c.toBlob(res,"image/png"));
+}
+function davetPenceresi(icerik){
+  document.querySelector(".davetPen")?.remove();
+  const ort=document.createElement("div"); ort.className="davetPen"; ort.innerHTML=`<div class="dpKutu">${icerik}</div>`;
+  ort.addEventListener("click",e=>{ if(e.target===ort) ort.remove(); });
+  document.body.appendChild(ort); return ort;
+}
+// Davet gönder (kişinin kartından ya da öneri listesinden)
+function tanismaDavetiAc(alici){
+  const benId=kimlikId(), ben=benId&&byId[benId];
+  if(!sessionToken && !isAdmin){ toast("Davet göndermek için aile şifresiyle giriş yap"); return; }
+  if(!ben){ toast("Önce kim olduğunu seç: kendi kartında “🙋 Bu benim”"); return; }
+  if(!alici || alici.id===ben.id) return;
+  const ort=davetPenceresi(`<div id="dkOnizleme"></div>
+    <textarea id="dkNot" maxlength="${(AYAR&&AYAR.TANISMA&&AYAR.TANISMA.mesajMax)||400}" aria-label="Kişisel not"></textarea>
+    <div class="dpDugmeler"><button data-vazgec>Vazgeç</button><button data-resim>🖼 Resim olarak paylaş</button><button class="birincil" data-gonder>🤝 Davet gönder</button></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;line-height:1.5">Davet ${escapeHtml(dispName(alici.name))}'a sitede iletilir (bildirim açıksa telefonuna da). Siteyi kullanmıyorsa “Resim olarak paylaş” ile WhatsApp'tan gönder.</div>`);
+  const not=ort.querySelector("#dkNot"), on=ort.querySelector("#dkOnizleme");
+  not.value=varsayilanNot(ben, alici);
+  const ciz=()=>{ on.innerHTML=davetKartiHTML(ben, alici, not.value.trim()); };
+  ciz(); not.addEventListener("input", ciz);
+  ort.querySelector("[data-vazgec]").onclick=()=>ort.remove();
+  ort.querySelector("[data-gonder]").onclick=async e=>{
+    e.target.disabled=true; e.target.textContent="Gönderiliyor…";
+    try{
+      const r=await yetkiliIstek(()=>fetch("/api/sohbet?adim=tanis-gonder",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({jeton:sessionToken||"", alici:alici.id, mesaj:not.value.trim(), gonderen_ad:dispName(ben.name)})}), "Davet göndermek için giriş yap.");
+      const j=await r.json();
+      if(j.ok){ ort.remove();
+        if(j.durum==="kabul"){ toast(`${dispName(alici.name)} ile zaten tanıştınız — sohbet açılıyor`); ozelSohbetAc(alici.id); }
+        else toast(`🤝 Davet ${dispName(alici.name)}'a gitti — kabul edince haber vereceğim`); }
+      else { toast(j.hata||"Gönderilemedi"); e.target.disabled=false; e.target.textContent="🤝 Davet gönder"; }
+    }catch(err){ toast("Bağlantı hatası"); e.target.disabled=false; e.target.textContent="🤝 Davet gönder"; }
+  };
+  ort.querySelector("[data-resim]").onclick=async()=>{
+    const blob=await davetKartiPNG(ben, alici, not.value.trim());
+    if(!blob){ toast("Resim oluşturulamadı"); return; }
+    const dosya=new File([blob], `tanisma-${dispName(alici.name)}.png`, {type:"image/png"});
+    const metin=`${not.value.trim()}\n\nsoyevrenim.com`;
+    if(navigator.canShare && navigator.canShare({files:[dosya]})){ try{ await navigator.share({files:[dosya], text:metin}); return; }catch(e){ if(e.name==="AbortError") return; } }
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=dosya.name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    toast("Kart resmi indirildi — WhatsApp'tan gönderebilirsin");
+  };
+}
+// Gelen davet: kart + Tanışalım / Şimdilik değil
+function gelenDavetGoster(d){
+  const benId=kimlikId(), ben=benId&&byId[benId], gonderen=byId[d.gonderen];
+  if(!ben || !gonderen) return;
+  const ort=davetPenceresi(`${davetKartiHTML(gonderen, ben, d.mesaj||"")}
+    <div class="dpDugmeler"><button data-red>Şimdilik değil</button><button class="birincil" data-kabul>Tanışalım 🤝</button></div>`);
+  const yanit=async kabul=>{
+    try{
+      const r=await fetch("/api/sohbet?adim=tanis-yanit",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({jeton:sessionToken||"", id:Number(d.id), kabul, yanitlayan_ad:dispName(ben.name)})});
+      const j=await r.json(); ort.remove();
+      if(j.ok && kabul){ toast(`🤝 ${dispName(gonderen.name)} ile tanıştınız!`); ozelSohbetAc(gonderen.id); }
+      else if(j.ok) toast("Tamam — davet kapandı");
+      else toast(j.hata||"Olmadı");
+    }catch(e){ toast("Bağlantı hatası"); }
+  };
+  ort.querySelector("[data-kabul]").onclick=()=>yanit(true);
+  ort.querySelector("[data-red]").onclick=()=>yanit(false);
+}
+// İki kişiye özel sohbet
+function ozelSohbetAc(karsiId){
+  const benId=kimlikId(), o=byId[karsiId]; if(!benId || !o) return;
+  const kapsam="ozel:"+[benId,karsiId].sort().join(":");
+  const ort=davetPenceresi(`<div class="ozelSohbet" style="background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:14px">
+    <div style="display:flex;align-items:center;gap:10px"><div class="dkAv" style="width:40px;height:40px;border-radius:50%;flex:none;border:1.5px solid var(--spine);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--on-accent);${avatarStil(o)}">${(PROFILES[o.id]||{}).photo?"":escapeHtml(basHarf(o))}</div>
+      <div style="flex:1;min-width:0"><b>${escapeHtml(dispName(o.name))}</b><div style="font-size:12px;color:var(--muted)">${escapeHtml(akrabalik(byId[benId],o).baslik||"")} · yalnız ikiniz görürsünüz</div></div>
+      <button class="tbtn" data-kapat>Kapat</button></div>
+    <div class="osMesajlar"></div>
+    <div class="osYaz"><input placeholder="Mesaj yaz…" maxlength="2000"><button>Gönder</button></div></div>`);
+  const kutu=ort.querySelector(".osMesajlar"), inp=ort.querySelector(".osYaz input");
+  chatLoad(kapsam, kutu);
+  const t=setInterval(()=>{ if(!document.body.contains(ort)) return clearInterval(t); chatLoad(kapsam, kutu); }, ((AYAR&&AYAR.SOHBET&&AYAR.SOHBET.acikYoklamaSn)||15)*1000);
+  ort.querySelector(".osYaz button").onclick=()=>chatSend(kapsam, inp, kutu);
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter") chatSend(kapsam, inp, kutu); });
+  ort.querySelector("[data-kapat]").onclick=()=>ort.remove();
+  setTimeout(()=>inp.focus(), 100);
+}
+// SOSYALLEŞME ÖNERİLERİ: tanışabileceğin akrabalar — yaşayan, yakın aile değil (anne-baba, kardeş,
+// çocuk, eş hariç), aynı ya da komşu nesil; aynı şehir ve yaklaşan doğum günü öne çıkar.
+function tanisabilecekler(benId, haric){
+  const ben=byId[benId]; if(!ben) return [];
+  const yakin=new Set([benId, ...(ben._kids||[]).map(k=>k.id)]);
+  if(ben._parent){ yakin.add(ben._parent.id); (ben._parent._kids||[]).forEach(k=>yakin.add(k.id)); }
+  (marriages||[]).forEach(m=>{ if(m.from===benId) yakin.add(m.to); if(m.to===benId) yakin.add(m.from); });
+  (motherEdges||[]).forEach(m=>{ if(m.to===benId) yakin.add(m.from); if(m.from===benId) yakin.add(m.to); });
+  const benSehir=adKatla(((PROFILES[benId]||{}).info||{}).yer||((PROFILES[benId]||{}).info||{}).city||"");
+  const bugun=new Date();
+  const dogumGunu=n=>{ const d=String(((PROFILES[n.id]||{}).info||{}).dogum||""); const m=d.match(/^(\d{1,2})[./](\d{1,2})[./]\d{4}$/); if(!m) return null;
+    const t=new Date(bugun.getFullYear(), +m[2]-1, +m[1]); if(t<new Date(bugun.getFullYear(),bugun.getMonth(),bugun.getDate())) t.setFullYear(t.getFullYear()+1);
+    return Math.round((t-bugun)/864e5); };
+  const taslak=n=>/^(evlat|yeni kişi|bilinmiyor)\s*\d*$/i.test(dispName(n.name).trim()) || !dispName(n.name).trim();   // adı girilmemiş kayıtlar
+  return nodes.filter(n=>n.alive!==false && !taslak(n) && !yakin.has(n.id) && !(haric&&haric.has(n.id)) && Math.abs(nesilOf(n)-nesilOf(ben))<=1)
+    .map(n=>{ const sehir=adKatla(((PROFILES[n.id]||{}).info||{}).yer||((PROFILES[n.id]||{}).info||{}).city||""), dg=dogumGunu(n);
+      const neden=[]; let p=0;
+      if(benSehir && sehir && sehir===benSehir){ neden.push("aynı şehirde"); p+=3; }
+      if(dg!==null && dg<=30){ neden.push(dg===0?"bugün doğum günü 🎂":`${dg} gün sonra doğum günü 🎂`); p+=2; }
+      if(nesilOf(n)===nesilOf(ben)){ neden.push("aynı kuşak"); p+=1; }
+      if((PROFILES[n.id]||{}).photo) p+=0.5;
+      return {n, p, neden}; })
+    .sort((a,b)=>b.p-a.p).slice(0, 12);
+}
+// "🤝 Tanışmalarım": gelen davetler, tanıştıklarım (özel sohbet), gönderdiklerim, öneriler
+async function tanismalarimAc(){
+  const benId=kimlikId();
+  if(!sessionToken && !isAdmin){ toast("Tanışmalar için aile şifresiyle giriş yap"); return; }
+  if(!benId){ toast("Önce kim olduğunu seç: kendi kartında “🙋 Bu benim”"); return; }
+  let j={gelen:[],giden:[],tanistik:[]};
+  try{ j=await (await fetch("/api/sohbet?adim=tanis-liste",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jeton:sessionToken||""})})).json(); }catch(e){}
+  const satir=(n,alt,dugme,veri)=>n?`<div class="tlSatir"><div class="tlAv" style="${avatarStil(n)}">${(PROFILES[n.id]||{}).photo?"":escapeHtml(basHarf(n))}</div>
+    <div class="tlMetin"><b>${escapeHtml(dispName(n.name))}</b><small>${escapeHtml(alt)}</small></div>${dugme?`<button ${veri}>${dugme}</button>`:""}</div>`:"";
+  const tanistik=new Set((j.tanistik||[]).map(t=>t.kisi)), bekleyen=new Set((j.giden||[]).filter(g=>g.durum==="bekliyor").map(g=>g.alici));
+  const oner=tanisabilecekler(benId, new Set([...tanistik, ...bekleyen]));
+  const ort=davetPenceresi(`<div class="tanisListe" style="background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:16px">🤝 Tanışmalarım</b><button class="tbtn" data-kapat>Kapat</button></div>
+    ${(j.gelen||[]).length?`<div class="tlBolum">Gelen davetler</div>${j.gelen.map(d=>satir(byId[d.gonderen], d.mesaj||"Tanışmak istiyor", "Kartı aç", `data-gelen="${d.id}"`)).join("")}`:""}
+    ${(j.tanistik||[]).length?`<div class="tlBolum">Tanıştıklarım</div>${j.tanistik.map(t=>satir(byId[t.kisi], akrabalik(byId[benId],byId[t.kisi]||{id:t.kisi,name:""}).baslik||"", "💬 Sohbet", `data-sohbet="${t.kisi}"`)).join("")}`:""}
+    ${bekleyen.size?`<div class="tlBolum">Yanıt bekleyen davetlerim</div>${[...bekleyen].map(id=>satir(byId[id],"Davet gönderildi · yanıt bekleniyor","","")).join("")}`:""}
+    <div class="tlBolum">Tanışabileceğin akrabalar</div>
+    ${oner.length?oner.map(o=>satir(o.n, [akrabalik(byId[benId],o.n).baslik, ...o.neden].filter(Boolean).join(" · "), "🤝 Davet et", `data-davet="${o.n.id}"`)).join(""):`<div style="font-size:13px;color:var(--muted)">Şimdilik öneri yok.</div>`}
+  </div>`);
+  ort.querySelector("[data-kapat]").onclick=()=>ort.remove();
+  ort.querySelectorAll("[data-gelen]").forEach(b=>b.onclick=()=>{ const d=j.gelen.find(x=>String(x.id)===b.dataset.gelen); ort.remove(); gelenDavetGoster(d); });
+  ort.querySelectorAll("[data-sohbet]").forEach(b=>b.onclick=()=>{ ort.remove(); ozelSohbetAc(b.dataset.sohbet); });
+  ort.querySelectorAll("[data-davet]").forEach(b=>b.onclick=()=>{ ort.remove(); tanismaDavetiAc(byId[b.dataset.davet]); });
+}
+window.tanismalarimAc=tanismalarimAc;
+// Girişte: bekleyen gelen davet varsa kartı göster (bildirimden ?tanis=1 ile gelindiyse listeyi aç)
+async function gelenDavetleriKontrol(){
+  if(!sessionToken || !CLOUD.on || !kimlikId()) return;
+  if(new URLSearchParams(location.search).has("tanis")){ tanismalarimAc(); return; }
+  try{
+    const j=await (await fetch("/api/sohbet?adim=tanis-liste",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jeton:sessionToken})})).json();
+    if(j.ok && j.gelen && j.gelen.length && !document.getElementById("uyariPen")) gelenDavetGoster(j.gelen[0]);
+  }catch(e){}
+}
+
 // ---- ÖZ-DENETİM uyarıları (api/_lib/denetim.js) ----
 // (1) Kaydettikten hemen sonra: bu kaydın getirdiği çelişki (başkasının eklediği kişiyi yeniden ekleme,
 //     başkasının girdiği bilgiyi değiştirme…) kaydedene gösterilir.
@@ -6673,6 +6939,7 @@ async function sifreyleGir(sifre){
   if(typeof chatShowBtn==="function") chatShowBtn();
   if(typeof showApprovalBtn==="function") showApprovalBtn();
   setTimeout(()=>{ if(typeof hatirlatmalariGetir==="function") hatirlatmalariGetir(); }, 1500);
+  setTimeout(()=>{ if(typeof gelenDavetleriKontrol==="function") gelenDavetleriKontrol(); }, 3500);
   if(typeof updateStatus==="function") updateStatus();
   if(typeof updatePendingBar==="function") updatePendingBar();
   toast(j.rol==="admin" ? "Yönetici olarak girildi" : "Aile üyesi olarak girildi — değişikliklerin doğrudan kaydedilir");
@@ -6811,7 +7078,7 @@ function fmtChatTime(t){ return new Date(t).toLocaleString("tr-TR",{day:"numeric
 async function chatLoad(kapsam, container){
   try{
     const r=await fetch("/api/sohbet?adim=oku",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({kapsam})});
+      body:JSON.stringify({kapsam, jeton:sessionToken||""})});   // özel (ozel:a:b) sohbet jeton ister
     const j=await r.json();
     if(j.ok){ renderChat(j.mesajlar, container, kapsam);
       if(kapsam==="genel" && j.mesajlar.length) sohbetGoruldu(Math.max(...j.mesajlar.map(m=>Number(m.id)||0))); }

@@ -78,6 +78,31 @@ masaüstü UA'sı dahil) ve site ana ekrandan açılmamışsa alt sayfada yöner
 - Android ve masaüstünde gösterilmez (orada tarayıcıdan da bildirim gelir).
 - Kod: `public/index.html → anaEkranRehberi / anaEkranZamanla / iosCihaz / anaEkranda`; ayar `api/_lib/ayar.js → ANA_EKRAN`.
 
+## Tanışma daveti ve özel sohbet
+
+Birbirini tanımayan aile üyeleri (çoğu zaman gençler) şık bir **tanışma kartı** gönderir.
+
+- **Nereden:** kişinin kartında "🤝 … ile tanış — davet gönder" (yaşayan ve kendisi olmayan kişide),
+  hesap menüsü → "🤝 Tanışmalarım", ya da Çınar'a "tanışabileceğim akrabalar".
+- **Kart:** iki kişinin fotoğrafı/baş harfi, adlar, akrabalık anlatısı (`AgacLib.akrabalikAnlatisi` — örn.
+  "Aynı kökün iki dalı · ortak ataları Molla Memiş"), kişisel not. Yalnız tema token'ları; üç temada çalışır.
+- **Gönderim:** site içi (`tanis-gonder`; alıcının telefonuna push, girişte kart açılır) ya da **🖼 Resim olarak
+  paylaş** — kart 1080×1350 PNG çizilir (`davetKartiPNG`), telefonda paylaşım menüsü (WhatsApp…), yoksa indirilir.
+- **Yanıt:** "Tanışalım 🤝" → durum `kabul`, gönderene push, davet notu özel sohbetin ilk mesajı olur.
+  "Şimdilik değil" → `red`.
+- **Özel sohbet:** kapsam `ozel:<a>:<b>` (id'ler sıralı). Yalnız o iki kişi okur/yazar ve aralarında kabul edilmiş
+  tanışma olmalı (`ozelErisim`; aksi 403). Yeni mesaj karşı tarafa push olarak gider.
+- **Tanışabileceğin akrabalar** (`tanisabilecekler`): yaşayan, yakın aile değil (anne-baba, kardeş, çocuk, eş
+  hariç), aynı ya da komşu kuşak; aynı şehir ve 30 gün içindeki doğum günü öne çıkar; adı girilmemiş kayıtlar hariç.
+
+| Adım (POST `/api/sohbet?adim=…`) | Gövde | Yanıt |
+|---|---|---|
+| `tanis-gonder` | `{jeton, alici, mesaj, gonderen_ad}` | `{ok, id, durum}` (zaten tanıştıysanız `durum:'kabul', kapsam`) |
+| `tanis-liste` | `{jeton}` | `{gelen, giden, tanistik:[{kisi, kapsam}]}` |
+| `tanis-yanit` | `{jeton, id, kabul, yanitlayan_ad}` | `{ok, durum, kapsam}` — yalnız alıcı |
+
+Tablo `tanisma` (`sql/tanisma.sql`). Ayar `api/_lib/ayar.js → TANISMA` (`mesajMax`, `listeMax`). Test: `test/tanisma.test.mjs`.
+
 ## Giriş (istemci)
 
 Şifre kutusu artık üç yerde, hepsi `sifreyleGir()` ortak fonksiyonunu kullanır:
