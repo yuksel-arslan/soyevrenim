@@ -3044,7 +3044,16 @@ function selectNode(n){
 const PROFILE_KEY="kok_profiles_v1";
 let PROFILES={};
 try{ PROFILES=JSON.parse(localStorage.getItem(PROFILE_KEY)||"{}"); }catch(e){ PROFILES={}; }
-function getProfile(id){ return PROFILES[id] || {contact:{},info:{},social:{},photo:"",gallery:[],memories:[]}; }
+// Eksik alanlar tamamlanır: sunucunun yazdığı profiller kısmi olabilir (onaysız fotoğraf → {photo},
+// kayıt → {info:{dogum}}). Eskiden kart bunlarda "contact.phone" okurken çöküyor, fotoğraf görünmüyordu.
+function getProfile(id){
+  const p=PROFILES[id] || {};
+  for(const [k,v] of [["contact",{}],["info",{}],["social",{}],["gallery",[]],["memories",[]]])
+    if(!p[k] || typeof p[k]!=="object") p[k]=Array.isArray(v)?[]:{};
+  if(typeof p.photo!=="string") p.photo=p.photo?String(p.photo):"";
+  if(PROFILES[id]) PROFILES[id]=p;   // var olan profil yerinde tamamlanır
+  return p;
+}
 function saveProfile(id,p){ PROFILES[id]=p;
   // bulut modunda profiller ağaç verisinin parçası → buluta kaydet
   if(CLOUD.on){ try{ (byId[id]||{}).profile = p; }catch(e){} cloudSave(false); }
@@ -3128,6 +3137,7 @@ document.getElementById("iClose").onclick=()=>{ closeInspector(); };
 
 function openInspector(n){
   inspector.classList.add("show");
+  inspector.dataset.kisi=n.id;   // kart hangi kişiyi gösteriyor (yükleme sonrası tazeleme buna bakar)
   const prof=getProfile(n.id);
   // profil fotoğrafı (varsa) yoksa renkli dot + kamera simgesi
   if(prof.photo){ iDot.style.background=`center/cover url(${prof.photo})`; iDot.style.backgroundSize="cover"; iDot.textContent=""; }
@@ -3627,7 +3637,12 @@ function pickPhoto(n){
       const {url}=await uploadMedia(inp.files[0], 400);
       if(!await medyaKaydet(n, "photo", url)){ const p=getProfile(n.id); p.photo=url; PROFILES[n.id]=p; saveProfile(n.id,p); }
       const im=new Image(); im._src=url; im.onload=()=>{ n._img=im; }; im.src=url; n._img=im;
-      iDot.style.background=`center/cover url(${url})`; iDot.style.backgroundSize="cover";
+      // Kartın HER yeri yeni fotoğrafı göstersin: başlıktaki daire, "Profil fotoğrafı" bölümü
+      // (eskiden 📷 ve "＋ Fotoğraf ekle" olarak kalıyordu), sağ üst kart.
+      if(inspector.classList.contains("show") && inspector.dataset.kisi===n.id){
+        iDot.style.background=`center/cover url(${url})`; iDot.style.backgroundSize="cover"; iDot.textContent="";
+        if(typeof renderProfileSections._rerun==="function") renderProfileSections._rerun(n);
+      }
       if(activeNode && activeNode.id===n.id) showActiveCard(activeNode);
       toast("Profil fotoğrafı eklendi");
     }catch(e){ toast("Yükleme başarısız: "+e.message); } };
