@@ -524,3 +524,118 @@ export function ciftKayitlar(veri) {
   }
   return out.map((c) => ({ ...c, adlar: c.ids.map((i) => by[i] && by[i].name) }));
 }
+
+// Denetim eşikleri (istemci de bu dosyayı kullandığı için burada; ayar.js tarayıcıya kopyalanmıyor)
+export const DENETIM = { ebeveynMinYas: 13, profilMinAlan: 2 };
+
+// ---- VERİ DENETİMİ (yönetici "🩺 Veri denetimi" ekranı) ----
+// Ağaçtaki tutarsızlıkları bulur; hiçbirini kendisi düzeltmez. Her bulgu:
+// { tur, onem: 'yuksek'|'orta'|'dusuk', mesaj, ids }
+// Örnek: "Yüksel" kaydının adı yanlışlıkla "Nurten" yapılınca eşi Nevin'in eş yazısı hâlâ
+// "Yüksel" der → 'es-adi-uyusmuyor' bulgusu bunu yakalar.
+export function veriDenetimi(veri) {
+  const N = veri.nodes || [], by = Object.fromEntries(N.map((n) => [n.id, n]));
+  const ad = (n) => adiGoster(n && n.name);
+  const ilk = (s) => adAnahtari(String(s || '').replace(' (aileden)', '')).replace(/\d+/g, '').split(' ')[0] || '';
+  const esId = new Map();
+  for (const m of veri.marriages || []) for (const [a, b] of [[m.from, m.to], [m.to, m.from]]) {
+    if (!esId.has(a)) esId.set(a, []); esId.get(a).push(b);
+  }
+  const babaKenar = veri.edges || [], anneKenar = veri.motherEdges || [];
+  const babaOf0 = new Map(babaKenar.map((e) => [e.to, e.from]));
+  const out = [], ekle = (tur, onem, mesaj, ids) => out.push({ tur, onem, mesaj, ids });
+
+  // 1) Bağ var ama kişi yok (kırık bağ)
+  for (const [l, tur] of [[babaKenar, 'baba'], [anneKenar, 'anne'], [veri.marriages || [], 'evlilik']])
+    for (const e of l) if (!by[e.from] || !by[e.to])
+      ekle('kirik-bag', 'yuksek', `Kırık ${tur} bağı: ${by[e.from] ? ad(by[e.from]) : e.from} → ${by[e.to] ? ad(by[e.to]) : e.to} (kişilerden biri ağaçta yok)`, [e.from, e.to].filter((i) => by[i]));
+
+  // 2) Evli olduğu kişinin adı, eşin yazısında farklı (ad değişikliği / yanlış kişi)
+  for (const n of N) for (const e of esId.get(n.id) || []) {
+    const es = by[e]; if (!es) continue;
+    const yazilar = (es.spouse || []).map(ilk);
+    if (yazilar.length && !yazilar.includes(ilk(n.name)))
+      ekle('es-adi-uyusmuyor', 'yuksek', `${ad(n)}, ${ad(es)} ile evli görünüyor ama ${ad(es)} kaydındaki eş adı “${(es.spouse || []).map((s) => adiGoster(String(s).replace(' (aileden)', ''))).join(', ')}”. Ad yanlışlıkla değişmiş ya da bağ yanlış kişiye kurulmuş olabilir.`, [n.id, es.id]);
+  }
+  // 3) Eş yazısı ağaçta bir kişiyi gösteriyor ("(aileden)") ama evlilik bağı yok
+  for (const n of N) for (const s of n.spouse || []) {
+    if (!String(s).includes('(aileden)')) continue;
+    const esler = (esId.get(n.id) || []).map((i) => by[i]).filter(Boolean);
+    if (!esler.some((x) => ilk(x.name) === ilk(s)))
+      ekle('es-bagsiz', 'orta', `${ad(n)} kaydında eş “${adiGoster(String(s).replace(' (aileden)', ''))}” ağaçtan biri olarak yazılı ama aralarında evlilik bağı yok.`, [n.id]);
+  }
+  // 4) kin (eş göstergesi) olmayan ya da eş olmayan kişiyi gösteriyor
+  for (const n of N) if (n.kin && (!by[n.kin] || !(esId.get(n.id) || []).includes(n.kin)))
+    ekle('kin-yanlis', 'dusuk', `${ad(n)} kaydının eş göstergesi ${by[n.kin] ? `“${ad(by[n.kin])}” kişisini gösteriyor ama evli değiller` : 'ağaçta olmayan birini gösteriyor'}.`, [n.id, n.kin].filter((i) => by[i]));
+  // 5) Anne bağı yanlış kişide: anne olarak bir ERKEK bağlı (çoğu zaman babanın kendisi —
+  //    gerçek anne bağlanmamış). Kişi başına tek bulgu, çocuklar listelenir.
+  const grupla = (l) => { const g = new Map(); for (const e of l) { if (!g.has(e.from)) g.set(e.from, []); g.get(e.from).push(e.to); } return g; };
+  const anneErkek = grupla(anneKenar.filter((e) => by[e.from] && by[e.from].sex === 'E' && by[e.to]));
+  for (const [ebeveyn, cocuklar] of anneErkek) {
+    const ayni = cocuklar.filter((c) => babaOf0.get(c) === ebeveyn);
+    ekle('anne-erkek', 'yuksek', `${ad(by[ebeveyn])} erkek olduğu hâlde ${cocuklar.map((c) => ad(by[c])).join(', ')} kişisinin ANNESİ olarak kayıtlı${ayni.length ? ' (aynı zamanda babası — gerçek anne bağlanmamış)' : ''}. Anneyi düzelt.`, [ebeveyn, ...cocuklar]);
+  }
+  // 5b) Kızların çocukları ağaçta annelerinin altında çizilir (1956 çizimindeki gibi) — bu doğru;
+  //     yalnız çocuğun ebeveyn rolü "baba" yazılmışsa etiket yanlıştır (düşük önem).
+  const kadinAgac = grupla(babaKenar.filter((e) => by[e.from] && by[e.from].sex === 'K' && by[e.to] && (by[e.to].parentRole || 'baba') !== 'anne'));
+  for (const [ebeveyn, cocuklar] of kadinAgac)
+    ekle('rol-etiketi', 'dusuk', `${ad(by[ebeveyn])} kadın; ${cocuklar.map((c) => ad(by[c])).join(', ')} kaydında ebeveyn rolü "baba" yazılı ("anne" olmalı).`, [ebeveyn, ...cocuklar]);
+  // 5c) Anne alanı (n.mother) kadın olmayan birini ya da babayı gösteriyor
+  for (const n of N) if (n.mother && by[n.mother] && by[n.mother].sex === 'E' && !anneErkek.has(n.mother))
+    ekle('anne-alani', 'yuksek', `${ad(n)} kaydında anne olarak erkek bir kişi (${ad(by[n.mother])}) yazılı.`, [n.id, n.mother]);
+  for (const m of veri.marriages || []) if (by[m.from] && by[m.to] && (m.from === m.to))
+    ekle('kendisiyle-evli', 'yuksek', `${ad(by[m.from])} kendisiyle evli görünüyor.`, [m.from]);
+  // 6) Kendi atası (döngü): bir kişi kendi soyunun üstünde
+  const babaOf = new Map(babaKenar.map((e) => [e.to, e.from]));
+  for (const n of N) { let x = babaOf.get(n.id), i = 0; while (x && i < N.length) { if (x === n.id) { ekle('dongu', 'yuksek', `${ad(n)} kendi atası olarak görünüyor (baba bağlarında döngü).`, [n.id]); break; } x = babaOf.get(x); i++; } }
+  // 7) Doğum yılı: çocuk ebeveynden önce ya da ebeveyn çok genç (DENETIM.ebeveynMinYas)
+  for (const e of [...babaKenar, ...anneKenar]) {
+    const p = by[e.from], c = by[e.to]; const yp = dogumYili(p), yc = dogumYili(c);
+    if (yp && yc && yc - yp < DENETIM.ebeveynMinYas)
+      ekle('dogum-yili', 'orta', `${ad(c)} (${yc}) ile ebeveyni ${ad(p)} (${yp}) arasında yalnız ${yc - yp} yıl var.`, [p.id, c.id]);
+  }
+  // 8) Aynı profil iki kişide (yanlış kişiye kopyalanmış bilgi/fotoğraf)
+  const imza = new Map();
+  for (const n of N) {
+    const p = n.profile || {}, i = p.info || {};
+    const parca = [p.photo || '', ...Object.keys(i).sort().filter((k) => k !== 'dogum').map((k) => `${k}=${String(i[k]).trim()}`).filter((x) => !/=$/.test(x))];
+    if (parca.filter(Boolean).length < DENETIM.profilMinAlan) continue;
+    const k = parca.join('|'); if (!imza.has(k)) imza.set(k, []); imza.get(k).push(n);
+  }
+  for (const l of imza.values()) if (l.length > 1)
+    ekle('ayni-profil', 'yuksek', `Aynı profil (fotoğraf/meslek bilgisi) ${l.map(ad).join(', ')} kayıtlarında birebir aynı — bilgi yanlış kişiye kopyalanmış olabilir.`, l.map((n) => n.id));
+  // 9) Aynı fotoğraf iki kişide
+  const foto = new Map();
+  for (const n of N) { const f = n.profile && n.profile.photo; if (f) { if (!foto.has(f)) foto.set(f, []); foto.get(f).push(n); } }
+  for (const l of foto.values()) if (l.length > 1 && !out.some((o) => o.tur === 'ayni-profil' && l.every((n) => o.ids.includes(n.id))))
+    ekle('ayni-foto', 'orta', `Aynı profil fotoğrafı ${l.map(ad).join(', ')} kayıtlarında kullanılıyor.`, l.map((n) => n.id));
+  // 10) Hiçbir bağı olmayan kişi (ağaçta yüzüyor)
+  const bagli = new Set([...babaKenar, ...anneKenar, ...(veri.marriages || [])].flatMap((e) => [e.from, e.to]));
+  for (const n of N) if (!bagli.has(n.id) && N.length > 1)
+    ekle('bagsiz-kisi', 'dusuk', `${ad(n)} hiçbir kişiye bağlı değil.`, [n.id]);
+  // 11) Taslak ad kalmış
+  for (const n of N) if (/^yeni kişi$/i.test(ad(n)))
+    ekle('taslak-ad', 'dusuk', `Adı girilmemiş bir kayıt var (“Yeni kişi”).`, [n.id]);
+  // 12) Çift kayıt adayları
+  for (const c of ciftKayitlar(veri))
+    ekle('cift-kayit', c.neden === 'kural' ? 'orta' : 'yuksek', `Aynı kişi olabilir: ${c.adlar.map(adiGoster).join(' ↔ ')} (${c.neden === 'kural' ? 'anne-babası ve adı aynı' : 'ad ve soyad örtüşüyor'}).`, c.ids);
+
+  const sira = { yuksek: 0, orta: 1, dusuk: 2 };
+  return out.sort((a, b) => sira[a.onem] - sira[b.onem]);
+}
+
+// Güvenli otomatik düzeltme — YALNIZ kesin yanlışlar: bir erkeğin aynı çocuğun hem babası hem
+// "annesi" olarak kayıtlı olması (anne bağı ve anne alanı silinir; gerçek anne sonradan bağlanır).
+// Başka hiçbir şeye dokunmaz. Dönüş: { veri, sayi, ozet }
+export function guvenliDuzelt(veri0) {
+  const veri = JSON.parse(JSON.stringify(veri0));
+  const by = Object.fromEntries((veri.nodes || []).map((n) => [n.id, n]));
+  const baba = new Map((veri.edges || []).map((e) => [e.to, e.from]));
+  const yanlis = (e) => by[e.from] && by[e.from].sex === 'E' && baba.get(e.to) === e.from;
+  const once = (veri.motherEdges || []).length;
+  veri.motherEdges = (veri.motherEdges || []).filter((e) => !yanlis(e));
+  let alan = 0;
+  for (const n of veri.nodes || []) if (n.mother && by[n.mother] && by[n.mother].sex === 'E' && baba.get(n.id) === n.mother) { n.mother = null; alan++; }
+  const bag = once - veri.motherEdges.length;
+  return { veri, sayi: bag + alan, ozet: `${bag} yanlış anne bağı ve ${alan} yanlış anne alanı temizlendi` };
+}

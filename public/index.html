@@ -3299,6 +3299,15 @@ function openInspector(n){
   fName.onfocus=()=>{ adOnce=n.name; };
   fName.oninput=e=>{ n.name=e.target.value; iName.textContent=dispName(n.name); };
   fName.onchange=()=>{
+    // Ad tamamen başka bir ada dönüyorsa (düzeltme değil) açık onay iste: kişi aramak isteyen
+    // biri kartın "Ad" kutusuna yazınca kişinin adı değişiyordu ("Yüksel" → "Nurten").
+    const ilkAdK=x=>adKatla(dispName(x)).split(" ")[0]||"";
+    if(adOnce && ilkAdK(adOnce)!==ilkAdK(n.name) && !/^yeni kişi$/i.test(dispName(adOnce))){
+      const benzer=ilkAdK(adOnce).slice(0,3)===ilkAdK(n.name).slice(0,3);
+      if(!benzer && !confirm(`“${dispName(adOnce)}” kişisinin ADI “${dispName(n.name)}” olarak DEĞİŞTİRİLSİN Mİ?\n\nKişi aramak istiyorsan bu kutuyu değil, üstteki “kişi ara” kutusunu kullan.`)){
+        n.name=adOnce; fName.value=adOnce; iName.textContent=dispName(adOnce); return;
+      }
+    }
     const ihlal=window.AgacLib && AgacLib.ayniAdliKardesler ? AgacLib.ayniAdliKardesler(currentGraphJSON()).filter(x=>x.ids.includes(n.id)) : [];
     if(ihlal.length){
       const diger=byId[ihlal[0].ids.find(i=>i!==n.id)], denenen=dispName(n.name);
@@ -4522,6 +4531,15 @@ async function birlestirOner(tut, sil){
 
 const KOMUTLAR=[
   { ad:"birlestir", desen:BIRLESTIR_DESEN, calistir:(m,metin)=>birlestirKomutu(metin) },
+  { ad:"denetim", desen:/(veri\s+denetim|tutars[ıi]zl[ıi]k|sa[çc]mal[ıi]k|hatal[ıi]\s+kay[ıi]t|yanl[ıi][şs]\s+kay[ıi]t|kay[ıi]tlar[ıi]\s+denetle|denetim)/i,
+    calistir:()=>{
+      if(!window.AgacLib || !AgacLib.veriDenetimi) return null;
+      const l=AgacLib.veriDenetimi(currentGraphJSON()), y=l.filter(x=>x.onem==="yuksek").length;
+      if(!l.length) return "Ağaçta tutarsızlık bulmadım ✓";
+      if(!isAdmin) return `Ağaçta ${l.length} tutarsızlık görünüyor (${y} önemli). Düzeltmeyi yönetici yapar; gördüğün bir yanlışı kişinin kartından öneri olarak gönderebilirsin.`;
+      setTimeout(veriDenetimiAc, 150);
+      return `${l.length} bulgu var, ${y} tanesi önemli. Listeyi açtım: her bulgudaki ada dokununca kişinin kartı açılır.`;
+    } },
   { ad:"cift", desen:/(çift|mükerrer|tekrar(lanan)?|kopya)\s+kay[ıi]t|veritaban[ıi]n?[ıi]?\s+temizle|kayıtları\s+temizle/i,
     calistir:()=>{
       if(!window.AgacLib || !AgacLib.ciftKayitlar) return null;
@@ -5176,7 +5194,7 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
   // calistirKomut() kotasız yerel yedek olarak yanıtlar ve bir satırla söylenir.
   // Yalnızca ARAYÜZ komutları (köken, istatistik, kol, nesil aralığı…) doğrudan
   // yerelde çalışır: asistanın ekranı yönetme aracı yok, kota harcamaya da gerek yok.
-  const YEREL=new Set(["cift","ben","koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
+  const YEREL=new Set(["denetim","cift","ben","koken","istat","yasayan","tumu","bakim","kollar","kaynakca"]);
   function yerelArayuzMu(t){
     for(const k of KOMUTLAR){
       if(k.ad==="uzman") continue;   // bilgi becerisi arayüz komutu değil: asistan önce denesin
@@ -6113,9 +6131,14 @@ function secimiTazele(){
   if(selNode){ selNode=byId[selNode.id]||null; const f=selNode&&(PROFILES[selNode.id]||{}).photo;
     if(f){ iDot.style.background=`center/cover url(${f})`; iDot.style.backgroundSize="cover"; iDot.textContent=""; } }
 }
+// Bulut verisi esas: tarayıcıda (localStorage) kalmış eski profiller, sunucuda profili olmayan
+// kişiye yapışmasın. Eskiden birleştiriliyordu: bir id başka kişiye geçtiyse eski profil (foto, meslek)
+// yanlış kişide görünüyor ve yöneticinin sonraki kaydıyla sunucuya da yazılıyordu.
 function absorbCloudProfiles(g){
+  PROFILES={};
   // bulut ağaç verisindeki profilleri yerel PROFILES'e al (foto/video URL'leri dahil)
   (g.nodes||[]).forEach(n=>{ if(n.profile){ PROFILES[n.id]=n.profile; } });
+  try{ localStorage.setItem(PROFILE_KEY, JSON.stringify(PROFILES)); }catch(e){}   // eski yerel kopya da temizlensin
 }
 async function cloudLoad(){
   try{
@@ -6350,6 +6373,7 @@ function hesapMenusu(hedef){
   m.innerHTML=`<div style="color:var(--text);font-weight:600">${isAdmin?"🔓 Yönetici":"👤 Aile üyesi"}</div>
     <div style="color:var(--muted);margin-top:2px">${ad?`${escapeHtml(ad)} olarak`:"Kim olduğun seçilmedi"}</div>
     ${!isAdmin?`<button data-yonetici>🔓 Yönetici olarak gir</button>`:""}
+    ${isAdmin?`<button data-denetim>🩺 Veri denetimi${window.AgacLib&&AgacLib.veriDenetimi?" ("+AgacLib.veriDenetimi(currentGraphJSON()).filter(x=>x.onem==="yuksek").length+" önemli)":""}</button>`:""}
     ${isAdmin?`<button data-cift>🧹 Çift kayıtlar${window.AgacLib&&AgacLib.ciftKayitlar?" ("+AgacLib.ciftKayitlar(currentGraphJSON()).length+")":""}</button>`:""}
     ${iosCihaz() && !anaEkranda() ? `<button data-anaekran>📲 Ana ekrana ekle</button>`:""}
     <button data-degistir>🔄 Ben değilim — kişiyi değiştir</button>
@@ -6368,6 +6392,7 @@ function hesapMenusu(hedef){
     if(typeof updateStatus==="function") updateStatus(); };
   const ae=m.querySelector("[data-anaekran]"); if(ae) ae.onclick=()=>{ kapat(); anaEkranRehberi(true); };
   const ck=m.querySelector("[data-cift]"); if(ck) ck.onclick=()=>{ kapat(); ciftKayitlariAc(); };
+  const dn=m.querySelector("[data-denetim]"); if(dn) dn.onclick=()=>{ kapat(); veriDenetimiAc(); };
   const y=m.querySelector("[data-yonetici]");
   if(y) y.onclick=async()=>{ kapat(); if(await girisPenceresi("Yönetici şifreni gir.") && !isAdmin) toast("Bu şifre aile şifresi — yönetici şifresi gerekiyor"); };
 }
@@ -6459,6 +6484,46 @@ function kisileriBirlestir(a, b, sonra){
     }catch(e){ toast("Birleştirilemedi: "+e.message); }
   };
 }
+// ---- VERİ DENETİMİ (yönetici): ağaçtaki tutarsızlıkları listeler ----
+// AgacLib.veriDenetimi bulguları önem sırasıyla verir; ekran yalnız GÖSTERİR. Tek otomatik işlem
+// "Güvenli düzeltmeler" (AgacLib.guvenliDuzelt: babanın aynı zamanda "anne" yazıldığı kesin yanlışlar).
+function veriDenetimiAc(){
+  if(!isAdmin){ toast("Veri denetimi yalnız yöneticiye açık"); return; }
+  if(!window.AgacLib || !AgacLib.veriDenetimi) return;
+  const veri=currentGraphJSON();
+  const l=AgacLib.veriDenetimi(veri), gd=AgacLib.guvenliDuzelt(veri);
+  document.getElementById("denetimPen")?.remove();
+  const ort=document.createElement("div"); ort.id="denetimPen";
+  ort.style.cssText="position:fixed;inset:0;z-index:59;background:var(--overlay);display:flex;align-items:center;justify-content:center;padding:16px";
+  const ONEM={ yuksek:["Önemli","var(--danger)"], orta:["Kontrol et","var(--spine)"], dusuk:["Küçük","var(--muted)"] };
+  const say=k=>l.filter(x=>x.onem===k).length;
+  ort.innerHTML=`<div style="width:min(620px,100%);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:18px;box-shadow:0 16px 50px var(--shadow)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="font-weight:700;font-size:16px">🩺 Veri denetimi</div>
+      <button class="tbtn" data-kapat>Kapat</button></div>
+    <div style="font-size:13px;color:var(--text-soft);line-height:1.5;margin:6px 0 10px">${l.length
+      ? `<b>${l.length}</b> bulgu · <span style="color:var(--danger)">${say("yuksek")} önemli</span> · ${say("orta")} kontrol · ${say("dusuk")} küçük. Kişinin adına dokun: kartı açılır, oradan düzelt.`
+      : "Tutarsızlık bulunmadı — ağaç temiz ✓"}</div>
+    ${gd.sayi?`<div style="border:1px dashed var(--accent);border-radius:10px;padding:10px;margin-bottom:8px;font-size:13px;display:flex;gap:10px;align-items:center;justify-content:space-between">
+      <span>Kesin yanlışlar: babanın aynı zamanda “anne” yazıldığı <b>${gd.sayi}</b> kayıt. Güvenle temizlenebilir (gerçek anneyi sonra bağlarsın).</span>
+      <button class="tbtn" data-guvenli style="flex:none;background:var(--accent);color:var(--on-accent);border-color:var(--accent)">Düzelt</button></div>`:""}
+    ${l.some(x=>x.tur==="cift-kayit")?`<button class="tbtn" data-cift style="width:100%;justify-content:center;margin-bottom:8px">🧹 Çift kayıtları aç</button>`:""}
+    ${l.map(x=>`<div style="border:1px solid var(--line);border-left:3px solid ${ONEM[x.onem][1]};border-radius:8px;padding:9px 11px;margin-top:7px;font-size:13px;line-height:1.5">
+      <div style="font-size:10.5px;color:${ONEM[x.onem][1]};font-weight:700;letter-spacing:.3px;margin-bottom:2px">${ONEM[x.onem][0].toLocaleUpperCase("tr")}</div>
+      <div>${escapeHtml(x.mesaj)}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${x.ids.filter(i=>byId[i]).slice(0,8).map(i=>`<button class="tbtn" data-kart="${i}" style="font-size:12px;padding:4px 9px">${escapeHtml(dispName(byId[i].name))}</button>`).join("")}</div></div>`).join("")}
+  </div>`;
+  document.body.appendChild(ort);
+  ort.querySelector("[data-kapat]").onclick=()=>ort.remove();
+  ort.querySelectorAll("[data-kart]").forEach(b=>b.onclick=()=>{ const n=byId[b.dataset.kart]; if(!n) return; ort.remove(); selectNode(n); openInspector(n); if(typeof merkezeAl==="function") merkezeAl(n); });
+  const c=ort.querySelector("[data-cift]"); if(c) c.onclick=()=>{ ort.remove(); ciftKayitlariAc(); };
+  const g=ort.querySelector("[data-guvenli]");
+  if(g) g.onclick=()=>{
+    if(!confirm(gd.ozet.replace("temizlendi","temizlenecek")+". Onaylıyor musun?")) return;
+    sunucuSurumunuUygula(gd.veri); touch();
+    toast("✓ "+gd.ozet); veriDenetimiAc();
+  };
+}
+
 // ---- ÇİFT KAYITLAR (yönetici): veritabanını temizleme ekranı ----
 // AgacLib.ciftKayitlar: "kural" (anne-babası ve adı aynı) ve "tam-ad" (ad+soyad örtüşüyor) çiftleri.
 // Her çift için: ⇄ Birleştir (kisileriBirlestir) ya da "Farklı kişiler": kural çiftinde ikinciye sıra

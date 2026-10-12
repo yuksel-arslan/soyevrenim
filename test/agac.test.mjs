@@ -259,3 +259,35 @@ test('kural ve birleştirme: kız ve oğlan aynı adı taşısa da ayrı kişi',
   assert.deepEqual(ayniAdliKardesler(v), []);
   assert.throws(() => kisiBirlestir(v, 'k', 'o'), /Farklı cinsiyet/);
 });
+
+test('veriDenetimi: ad yanlışlıkla değişince (Yüksel → Nurten) eşin yazısı ele verir; kopya profil; baba=anne', async () => {
+  const { veriDenetimi, guvenliDuzelt } = await import('../api/_lib/agac.js');
+  const prof = { photo: '/api/medya?adim=oku&anahtar=x', info: { job: 'İnşaat Mühendisi', work: 'Emekli' } };
+  const v = { nodes: [
+    { id: 'f', name: 'Fahri', sex: 'E' },
+    { id: 'y', name: 'Nurten', sex: 'E', spouse: ['Nevin Kaya (aileden)'], kin: 'nv', profile: prof },   // adı yanlışlıkla değişmiş
+    { id: 'nv', name: 'Nevin Kaya', sex: 'K', spouse: ['Yüksel (aileden)'], kin: 'y' },
+    { id: 'fk', name: 'Fahri Kaan', sex: 'E', mother: 'y' },
+    { id: 'z', name: 'Zehra', sex: 'K', profile: JSON.parse(JSON.stringify(prof)) },                     // kopyalanmış profil
+  ], edges: [{ from: 'f', to: 'y' }, { from: 'y', to: 'fk' }, { from: 'f', to: 'z' }],
+  marriages: [{ from: 'y', to: 'nv' }], motherEdges: [{ from: 'y', to: 'fk', type: 'mother' }] };
+  const l = veriDenetimi(v), tur = (t) => l.filter((x) => x.tur === t);
+  assert.ok(tur('es-adi-uyusmuyor').some((x) => x.ids.includes('y') && /Yüksel/.test(x.mesaj)), 'eş yazısı "Yüksel" diyor');
+  assert.ok(tur('ayni-profil').some((x) => x.ids.includes('y') && x.ids.includes('z')));
+  assert.ok(tur('anne-erkek').some((x) => /aynı zamanda babası/.test(x.mesaj)));
+  assert.equal(l[0].onem, 'yuksek', 'önem sırası');
+  const g = guvenliDuzelt(v);
+  assert.equal(g.sayi, 2);
+  assert.deepEqual(g.veri.motherEdges, []);
+  assert.equal(g.veri.nodes.find((n) => n.id === 'fk').mother, null);
+  assert.equal(v.motherEdges.length, 1, 'girdi değişmez');
+  assert.deepEqual(g.veri.edges, v.edges, 'baba bağlarına dokunulmaz');
+});
+
+test('veriDenetimi: temiz ağaçta bulgu yok; kızın çocukları annesinin altında çizilmesi hata sayılmaz', async () => {
+  const { veriDenetimi } = await import('../api/_lib/agac.js');
+  const v = { nodes: [{ id: 'b', name: 'Ali', sex: 'E', spouse: ['Ayşe (aileden)'] }, { id: 'a', name: 'Ayşe', sex: 'K', spouse: ['Ali (aileden)'] },
+    { id: 'k', name: 'Emine', sex: 'K' }, { id: 'c', name: 'Nurten', sex: 'K', parentRole: 'anne', mother: 'k' }],
+  edges: [{ from: 'b', to: 'k' }, { from: 'k', to: 'c' }], marriages: [{ from: 'b', to: 'a' }], motherEdges: [{ from: 'a', to: 'k' }] };
+  assert.deepEqual(veriDenetimi(v), []);
+});
