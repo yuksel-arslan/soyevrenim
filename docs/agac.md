@@ -164,3 +164,12 @@ Ayarlar `api/_lib/ayar.js → DENETIM_UYARI`, `AILE`. Test: `test/denetim.test.m
 ## Ortam değişkenleri
 
 `DATABASE_URL`, `OTURUM_GIZLI`.
+
+## Dışarıdan baba (kızın çocukları)
+
+Kızların çocukları ağaçta annelerinin altında çizilir (`parentRole:'anne'`); babası ağaçta düğüm değil,
+yalnız adı yazılıdır (`fatherExt`, ör. "Ahmet Kaya").
+- Kartta "Ebeveyn" bölümünde "baba · dışarıdan" satırı görünür; bu durumda **"＋ Baba ekle" gösterilmez**
+  (baba zaten var; eskiden düğme hem görünüyor hem de basılırsa çocuğu anneden koparıp yeni babaya bağlıyordu).
+- **Odak görünümünde** (`disBabaCiz`) baba, annenin yanında kesik çizgili bir düğüm olarak çizilir:
+  anneyle evlilik çizgisi ve çocuğa kesik bağ. Gerçek bir kişi değildir; dokunulamaz.
