@@ -9,6 +9,7 @@
 <!-- Ana ekrana eklenebilir uygulama (iPhone'da push bildirimi bunu gerektirir) -->
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/simge-192.png">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Soy Evreni">
 <meta name="theme-color" content="#0b1220">
@@ -256,6 +257,10 @@ body:has(.inspector.show) #activeCard{display:none !important}
     border:1px solid var(--line);backdrop-filter:blur(8px);max-width:calc(100vw - 24px);overflow-x:auto}
   .dock button{width:46px;height:46px;font-size:18px;flex:none}
   .dock .sep{width:1px;height:auto;margin:4px 2px}
+  /* Dokunmatikte "title" ipucu görünmez: ikonun anlamı altında kısa etiketle yazılır */
+  .dock button[data-etiket]{width:54px;height:54px;flex-direction:column;gap:2px;padding:4px 0 3px}
+  .dock button[data-etiket]::after{content:attr(data-etiket);font-size:9.5px;line-height:1.1;font-weight:600;
+    letter-spacing:.1px;white-space:nowrap;max-width:52px;overflow:hidden;text-overflow:ellipsis;color:inherit;opacity:.85}
 
   /* sağ panel: tam ekran alt sheet gibi */
   .inspector{width:100%;max-width:100%;top:auto;bottom:0;height:86vh;
@@ -340,6 +345,7 @@ body:has(.inspector.show) #activeCard{display:none !important}
   .brand{font-size:13px}
   .search input{width:96px}
   .dock button{width:42px;height:42px}
+  .dock button[data-etiket]{width:50px;height:52px}
 }
 
 /* ===== Ailemizin bu ayı (kullanım paneli) + sesli hikâye — yalnızca tema token'ları ===== */
@@ -538,9 +544,10 @@ body:has(.inspector.show) #activeCard{display:none !important}
         <option value="es">Eşiyim (gelin / damat)</option>
         <option value="kardes">Kardeşiyim</option>
       </select>
-      <input id="kBagAra" placeholder="yakınının adını yaz…" style="margin-top:6px">
+      <input id="kBagAra" placeholder="yakınının adını yaz…" autocomplete="off" style="margin-top:6px">
       <div id="kBagSonuc"></div>
       <div id="kBagSecili"><span></span><button type="button">değiştir</button></div>
+      <input type="text" name="username" value="aile" autocomplete="username" hidden>
       <div id="kSifreAlan"><label for="kSifre">Aile şifresi</label>
         <input id="kSifre" type="password" autocomplete="current-password"></div>
       <div class="kDugme"><button type="button" id="kVazgec">Vazgeç</button><button type="button" id="kKaydol">Kaydol ve gir</button></div>
@@ -548,18 +555,19 @@ body:has(.inspector.show) #activeCard{display:none !important}
     </form>
 
     <!-- AİLE ŞİFRESİ ile giriş (yalnızca bulut/canlı modda görünür) -->
-    <div id="smsLogin" style="display:none;margin-top:22px;border-top:1px solid #1c2740;padding-top:20px">
+    <form id="smsLogin" onsubmit="return false" style="display:none;margin-top:22px;border-top:1px solid var(--line);padding-top:20px">
+      <input type="text" name="username" value="aile" autocomplete="username" hidden>
       <div style="font-size:13px;color:var(--text-soft);margin-bottom:10px">
         Katılmak için aile şifresiyle giriş yap</div>
       <input id="ailePass" type="password" placeholder="Aile şifresi" autocomplete="current-password"
         style="width:100%;font-size:16px;color:var(--text);background:var(--panel);border:1px solid var(--line);
         border-radius:9px;padding:12px 14px;outline:none;text-align:center;margin-bottom:8px">
-      <button id="aileGir" style="width:100%;font-size:14px;font-weight:600;color:var(--on-accent);
+      <button id="aileGir" type="button" style="width:100%;font-size:14px;font-weight:600;color:var(--on-accent);
         background:var(--accent);border:none;border-radius:9px;padding:12px;cursor:pointer">Gir</button>
-      <div id="smsErr" style="font-size:12px;color:#e0645a;margin-top:8px;min-height:16px"></div>
+      <div id="smsErr" style="font-size:12px;color:var(--danger);margin-top:8px;min-height:16px"></div>
       <div style="font-size:11px;color:var(--muted);margin-top:6px">
         Şifreyi aile büyüklerinden alabilirsin. Girenler değişiklik önerebilir ve sohbete yazabilir.</div>
-    </div>
+    </form>
 
     <div id="welcomeStats" style="margin-top:28px;display:flex;gap:22px;justify-content:center;
       font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:11px"></div>
@@ -2103,7 +2111,9 @@ async function oturumaKisiIsle(kisi){
   }catch(e){}
 }
 // Oturumu (jeton + rol + kişi) sakla — tek yer
+let cikisSurerken=false;
 function oturumSakla(j){
+  if(cikisSurerken) return;
   sessionToken=j.jeton; sessionRol=j.rol; sessionKisiId=j.kisi||null;
   try{ localStorage.setItem("kok_session", JSON.stringify({jeton:j.jeton, rol:j.rol, kisi:j.kisi||null})); }catch(e){}
 }
@@ -2467,12 +2477,22 @@ function draw(){
       }
     } else {
       // renkli daire (foto yok) — hafif ışıltıyla canlı
+      // PERFORMANS (INP): shadowBlur canvas'ın en pahalı işlemi; her karede ~250 düğüme
+      // uygulanınca ana iş parçacığı sürekli meşgul kalıyor, tıklamalar 200 ms+ bekliyordu.
+      // Işıltı yalnız vurgulu/seçili/üstündeki düğümde gerçek bulanıklık; diğerlerinde aynı
+      // hissi veren ucuz yarı saydam hale.
       const col=nodeColor(n);
-      ctx.save();
-      ctx.shadowColor=col; ctx.shadowBlur=hl||sel||hov?10:5;
-      ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
-      ctx.fillStyle=col; ctx.globalAlpha=dimAlpha; ctx.fill();
-      ctx.restore();
+      if(hl||sel||hov){
+        ctx.save();
+        ctx.shadowColor=col; ctx.shadowBlur=10;
+        ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283);
+        ctx.fillStyle=col; ctx.globalAlpha=dimAlpha; ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.fillStyle=col;
+        ctx.globalAlpha=dimAlpha*0.22; ctx.beginPath(); ctx.arc(p.x,p.y,r+2.5,0,6.283); ctx.fill();
+        ctx.globalAlpha=dimAlpha; ctx.beginPath(); ctx.arc(p.x,p.y,r,0,6.283); ctx.fill();
+      }
       ctx.globalAlpha=1;
       // Düğüm konturu tema değişkeninden gelir. Eskiden rgba(255,255,255,.28)
       // sabit kodluydu: karanlık temada iyi, açık/kağıt temada görünmezdi.
@@ -2643,7 +2663,18 @@ function dalCiz(pa,pb){
 function roundRect(ctx,x,y,w,h,r){ ctx.beginPath();
   ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
   ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-function loop(){ tick(); draw(); }
+// PERFORMANS (INP): ağaç "nefes alan" salınımla HER KARE yeniden çiziliyordu; ana iş parçacığı
+// hiç boşalmadığı için tıklamalar sıradaki kareyi bekliyordu (Kapat düğmesinde 216 ms).
+// Kullanıcı bir şey yapmıyorken salınım yarı hızda (her 2. karede) çizilir — göze fark etmez;
+// herhangi bir girişten sonra CIZIM.etkinMs boyunca tam hız.
+const CIZIM={ bostaAtla:2, etkinMs:1500 };
+let sonGiris=0, kareNo=0;
+["pointerdown","pointermove","wheel","keydown","touchstart"].forEach(t=>addEventListener(t,()=>{ sonGiris=performance.now(); },{passive:true, capture:true}));
+function loop(){
+  const etkin = performance.now()-sonGiris < CIZIM.etkinMs || panning || dragNode || physics;
+  if(!etkin && (++kareNo % CIZIM.bostaAtla)){ requestAnimationFrame(loop); return; }
+  tick(); draw();
+}
 requestAnimationFrame(loop);
 
 // ---- pointer: pan / drag / select ----
@@ -3239,7 +3270,21 @@ function openInspector(n){
   iBody.querySelectorAll(".kidlist .k[data-id]").forEach(row=>{
     row.onclick=()=>{ const t=byId[row.dataset.id]; if(t){selectNode(t);focus(t);} };
   });
-  document.getElementById("fName").oninput=e=>{ n.name=e.target.value; iName.textContent=dispName(n.name); touch(); };
+  // KURAL: anne-babası aynı iki kişi aynı adı taşıyamaz — ad girilince (kutudan çıkınca) denetlenir,
+  // ihlalde eski ada döner. Sunucu da aynı kuralı uygular (AgacLib.ayniAdliKardesler).
+  const fName=document.getElementById("fName"); let adOnce=n.name;
+  fName.onfocus=()=>{ adOnce=n.name; };
+  fName.oninput=e=>{ n.name=e.target.value; iName.textContent=dispName(n.name); };
+  fName.onchange=()=>{
+    const ihlal=window.AgacLib && AgacLib.ayniAdliKardesler ? AgacLib.ayniAdliKardesler(currentGraphJSON()).filter(x=>x.ids.includes(n.id)) : [];
+    if(ihlal.length){
+      const diger=byId[ihlal[0].ids.find(i=>i!==n.id)], denenen=dispName(n.name);
+      n.name=adOnce; fName.value=adOnce; iName.textContent=dispName(adOnce);
+      toast(`⚠ Anne-babası aynı iki kişi aynı adı taşıyamaz${diger?` — “${dispName(diger.name)}” zaten var`:""}. Aynı kişiyse birleştir; farklıysa adın sonuna sıra numarası ekle (ör. ${denenen}2 — ekranda yine “${denenen}” görünür).`);
+      return;
+    }
+    adOnce=n.name; touch();
+  };
   document.getElementById("fSex").onchange=e=>{ n.sex=e.target.value;
     // Erkek yapılan kişinin "anne bağları" geride kalmasın: aynı çocuğa zaten baba bağı
     // varsa anne bağı kopyadır, kaldırılır (bkz. sql/anne-bagi-temizligi.sql — eski
@@ -3317,11 +3362,12 @@ function applyEditPermission(n){
     // (aile şifresi de, yönetici şifresi de aynı kutudan girer).
     banner.style.background="rgba(140,156,180,.12)"; banner.style.color=getVar("--text-soft");
     banner.innerHTML=`<div style="margin-bottom:8px">👁 Sadece görüntüleme — düzenlemek için giriş yap</div>
-      <div style="display:flex;gap:6px">
+      <form onsubmit="return false" style="display:flex;gap:6px">
+        <input type="text" name="username" value="aile" autocomplete="username" hidden>
         <input id="permSifre" type="password" placeholder="Aile ya da yönetici şifresi" autocomplete="current-password"
           style="flex:1;min-width:0;font-size:16px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg2);color:var(--text)">
-        <button id="permGir" class="tbtn" style="flex:none">Giriş</button>
-      </div>`;
+        <button id="permGir" type="button" class="tbtn" style="flex:none">Giriş</button>
+      </form>`;
     const inp=banner.querySelector("#permSifre"), btn=banner.querySelector("#permGir");
     const gir=async()=>{ btn.disabled=true; const j=await sifreyleGir(inp.value); btn.disabled=false;
       if(!j.ok){ toast(j.hata); return; }
@@ -3466,6 +3512,17 @@ function renderProfileSections(n){
     kb.textContent="🔗 Kişisel giriş bağlantısı gönder"; kb.title="Bu kişi bağlantıyı açınca şifresiz, doğrudan kendisi olarak girer";
     kb.onclick=()=>kisiselBaglanti(n);
     mem.appendChild(kb);
+    // Aynı kişinin iki kaydı (ör. "Nevin Kaya" ve "Nevin Arslan (Kaya)"): yöneticiye birleştir önerisi
+    if(window.AgacLib && AgacLib.olasiKopyalar){
+      AgacLib.olasiKopyalar(currentGraphJSON(), n.id).forEach(k=>{
+        const kn=byId[k.id]; if(!kn) return;
+        const mb=document.createElement("button"); mb.className="tbtn"; mb.style.cssText="width:100%;justify-content:center;margin-bottom:8px;white-space:normal;text-align:center";
+        mb.textContent=`⇄ “${dispName(kn.name)}”${kimlikSatiri(kn)?" ("+kimlikSatiri(kn)+")":""} ile aynı kişi mi? Birleştir`;
+        mb.title="İki kayıt tek kişi olur: bağlar, fotoğraf ve bilgiler birleşir";
+        mb.onclick=()=>kisileriBirlestir(n, kn);
+        mem.appendChild(mb);
+      });
+    }
   }
   if((sessionToken||isAdmin) && benId!==n.id){
     const bb=document.createElement("button"); bb.className="tbtn"; bb.style.cssText="width:100%;justify-content:center;margin-bottom:8px";
@@ -5809,6 +5866,20 @@ setTimeout(()=>whoInput.focus(),300);
 })();
 applyEvren();
 
+// Dock ikon etiketleri: mobilde ikonun altında görünür (dokunmatikte title ipucu çıkmaz).
+// Uzun açıklama title'da kalır; ekran okuyucu için aria-label da verilir.
+(function dockEtiketleri(){
+  const E={ fitBtn:"Sığdır", zinBtn:"Yakın", zoutBtn:"Uzak", physBtn:"Fizik", reparentBtn:"Bağ",
+    rehberBtn:"Çınar", duzBtn:"Görünüm", kafesBtn:"Örgü", pathBtn:"Yol bul", focusBtn:"Odak",
+    genBtn:"Nesil", statsBtn:"Sayılar", kokenBtn:"Köken", lensBtn:"Katman", themeBtn:"Tema",
+    chatBtn:"Sohbet", adminBtn:"Yönetici", approvalBtn:"Onay" };
+  document.querySelectorAll(".dock button").forEach(b=>{
+    const e=E[b.id] || (b.title||"").split(/[—(/]/)[0].trim().split(" ")[0];
+    if(e) b.dataset.etiket=e;
+    if(b.title && !b.getAttribute("aria-label")) b.setAttribute("aria-label", b.title);
+  });
+})();
+
 // ============================ GECE / GÜNDÜZ MODU ============================
 (function initTheme(){
   // Anahtar sürümlü: yadigâr varsayılan olduğunda, daha önce tema seçmiş
@@ -5868,7 +5939,7 @@ function currentGraphJSON(){
     evren: { ad: EVREN.ad, slogan: EVREN.slogan||"" },
     nodes: nodes.map(n=>({ id:n.id, name:n.name, sex:n.sex, alive:n.alive!==false,
       spouse:n.spouse||[], kin:n.kin||null, mother:n.mother||null,
-      parentRole:n.parentRole||"baba", fatherExt:n.fatherExt||null, tel:n.tel||null,
+      parentRole:n.parentRole||"baba", fatherExt:n.fatherExt||null, tel:n.tel||null, kayit:n.kayit||undefined,
       profile: PROFILES[n.id] || undefined })),
     edges: edges.map(e=>({from:e.from,to:e.to})),
     marriages: (marriages||[]).map(m=>({from:m.from,to:m.to,type:"marriage"})),
@@ -6106,14 +6177,22 @@ function oturumKapat(mesaj){
 // ÇIKIŞ: durum satırındaki rol rozetine dokununca hesap menüsü.
 // Çıkış oturumu, "ben kimim" seçimini ve bu cihazın bildirim aboneliğini kaldırır
 // (ortak kullanılan telefonda başkasının adına bildirim gelmesin).
+// Çıkış: oturum ve "ben kimim" silinir, sayfa KARŞILAMA ekranına döner. Eskiden yalnız oturum
+// siliniyordu; ağaç, kart ve paneller aynen kaldığı için "çıkış yaptım ama ekran değişmedi" deniyordu.
 async function cikisYap(){
-  try{ if(typeof bildirimKapat==="function") await bildirimKapat(); }catch(e){}
-  if(typeof benAta==="function") benAta(null);
+  // bildirim aboneliğini bırak (ağ yavaşsa çıkışı bekletme)
+  try{ if(typeof bildirimKapat==="function") await Promise.race([bildirimKapat(), new Promise(r=>setTimeout(r, 2500))]); }catch(e){}
+  cikisSurerken=true;   // geç dönen bir oturum yanıtı (ör. "ben") jetonu geri yazmasın
+  if(typeof benAta==="function") benAta(null, true);   // sunucuya bildirme: oturum zaten bitiyor
   oturumKapat();
   if(typeof updatePendingBar==="function"){ pendingChanges=false; updatePendingBar(); }
-  const ab=document.getElementById("approvalPanel"); if(ab) ab.style.display="none";
-  toast("Çıkış yapıldı — tekrar girmek için aile şifresi gerekir");
+  try{ ["kok_session","kok_ben"].forEach(k=>localStorage.removeItem(k)); sessionStorage.setItem("kok_cikis","1"); }catch(e){}
+  const u=new URL(location.href); ["giris","sohbet"].forEach(k=>u.searchParams.delete(k));
+  location.replace(u.pathname + (u.search||""));   // temiz açılış: karşılama ekranı
 }
+// çıkıştan sonra açılan sayfada kısa bilgi
+try{ if(sessionStorage.getItem("kok_cikis")){ sessionStorage.removeItem("kok_cikis");
+  setTimeout(()=>toast("Çıkış yapıldı — tekrar girmek için aile şifresi gerekir"), 600); } }catch(e){}
 function hesapMenusu(hedef){
   document.querySelectorAll(".hesapMenu").forEach(m=>m.remove());
   const kim=kimlikId(), ad=kim&&byId[kim] ? `${kimlikSatiri(byId[kim])!=="kök"?kimlikSatiri(byId[kim])+" ":""}${dispName(byId[kim].name)}` : "";
@@ -6163,14 +6242,15 @@ function girisPenceresi(neden){
     ort.innerHTML=`<div style="width:min(360px,100%);background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:18px;box-shadow:0 16px 50px var(--shadow)">
       <div style="font-weight:700;font-size:16px;margin-bottom:6px">Giriş gerekli</div>
       <div style="font-size:13px;color:var(--text-soft);line-height:1.5;margin-bottom:12px">${escapeHtml(neden||"Bu işlem için aile ya da yönetici şifresiyle giriş yap.")}</div>
+      <form onsubmit="return false"><input type="text" name="username" value="aile" autocomplete="username" hidden>
       <input type="password" placeholder="Aile ya da yönetici şifresi" autocomplete="current-password"
-        style="width:100%;box-sizing:border-box;font-size:16px;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg2);color:var(--text)">
+        style="width:100%;box-sizing:border-box;font-size:16px;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg2);color:var(--text)"></form>
       <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
         <button data-iptal class="tbtn">Vazgeç</button>
         <button data-gir class="tbtn" style="background:var(--accent);color:var(--on-accent);border-color:var(--accent)">Giriş</button>
       </div></div>`;
     document.body.appendChild(ort);
-    const inp=ort.querySelector("input"), gir=ort.querySelector("[data-gir]");
+    const inp=ort.querySelector("input[type=password]"), gir=ort.querySelector("[data-gir]");
     const bitir=v=>{ ort.remove(); coz(v); };
     const dene=async()=>{ gir.disabled=true; const j=await sifreyleGir(inp.value); gir.disabled=false;
       if(j.ok) bitir(true); else { toast(j.hata); inp.select(); } };
@@ -6188,6 +6268,42 @@ async function yetkiliIstek(yap, neden){
   oturumKapat();
   if(await girisPenceresi(neden)) r=await yap();
   return r;
+}
+// Yönetici: aynı kişinin iki kaydını birleştir. Bağlar (baba/anne/evlilik), fotoğraf, bilgiler,
+// anılar tek kayıtta toplanır; hangi adın kalacağını yönetici seçer. Kural: AgacLib.kisiBirlestir.
+function kisileriBirlestir(a, b){
+  if(!isAdmin || !window.AgacLib) return;
+  document.getElementById("birlestirPen")?.remove();
+  const ort=document.createElement("div"); ort.id="birlestirPen";
+  ort.style.cssText="position:fixed;inset:0;z-index:60;background:var(--overlay);display:flex;align-items:center;justify-content:center;padding:16px";
+  const satir=(n,i)=>`<label style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:9px;margin-top:8px;cursor:pointer">
+      <input type="radio" name="bAd" value="${i}" ${i===0?"checked":""} style="margin-top:3px">
+      <span><b>${escapeHtml(dispName(n.name))}</b><br><small style="color:var(--muted)">${escapeHtml(kimlikSatiri(n)||"")} · ${nesilOf(n)}. nesil${(PROFILES[n.id]||{}).photo?" · fotoğraflı":""}</small></span></label>`;
+  ort.innerHTML=`<div style="width:min(400px,100%);background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:18px;box-shadow:0 16px 50px var(--shadow)">
+    <div style="font-weight:700;font-size:16px">İki kaydı birleştir</div>
+    <div style="font-size:13px;color:var(--text-soft);line-height:1.5;margin-top:6px">Bu iki kayıt tek kişi olacak: anne-baba, eş ve çocuk bağları,
+      fotoğraf ve bilgiler birleşir. <b>Hangi ad kalsın?</b></div>
+    ${satir(a,0)}${satir(b,1)}
+    <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">
+      <button class="tbtn" data-iptal>Vazgeç</button><button class="tbtn" data-tamam style="background:var(--accent);color:var(--on-accent);border-color:var(--accent)">Birleştir</button></div></div>`;
+  document.body.appendChild(ort);
+  ort.querySelector("[data-iptal]").onclick=()=>ort.remove();
+  ort.querySelector("[data-tamam]").onclick=()=>{
+    const ad=(ort.querySelector("input[name=bAd]:checked").value==="1" ? b : a).name;
+    try{
+      // tutulan kayıt: fotoğraflı / bağı çok olan değil, KARTI AÇIK olan (a); ad seçime göre
+      const { veri } = AgacLib.kisiBirlestir(currentGraphJSON(), a.id, b.id);
+      const t=veri.nodes.find(x=>x.id===a.id); t.name=ad;
+      const eskiAd=dispName(b.name);
+      if(benId===b.id) benAta(a.id);
+      sunucuSurumunuUygula(veri);
+      delete PROFILES[b.id];
+      ort.remove();
+      touch();   // yönetici: buluta kaydedilir
+      const n=byId[a.id]; if(n){ selectNode(n); }
+      toast(`“${eskiAd}” kaydı “${dispName(ad)}” ile birleştirildi ✓`);
+    }catch(e){ toast("Birleştirilemedi: "+e.message); }
+  };
 }
 async function kisiselBaglanti(n){
   const r=await yetkiliIstek(()=>fetch("/api/giris",{method:"POST",headers:{"Content-Type":"application/json"},

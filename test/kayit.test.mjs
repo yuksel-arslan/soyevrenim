@@ -94,3 +94,31 @@ test('uçtan uca kayıt: şifresiz 401, yanlış şifre 401, doğru şifre → k
   assert.equal(b.veri.nodes.find((n) => n.id === r.govde.kisi).profile.photo, url);
   await D.sql`update agac set veri=${JSON.stringify(D.agac)}::jsonb where id=1`;
 });
+
+test('kayıt: eş olarak aynı tam adla kayıt → ikinci kişi açılmaz, evlilik mevcut kişiye bağlanır', () => {
+  const v = agac();
+  v.nodes.push({ id: 'ck', name: 'Celal Kaya', sex: 'E' }, { id: 'nk', name: 'Nevin Arslan (Kaya)', sex: 'K' });
+  v.edges.push({ from: 'ck', to: 'nk' });
+  const r = kayitEkle(v, { ad: 'Nevin', soyad: 'Kaya', cinsiyet: 'K', iliski: 'es', bag: 'y' });
+  assert.equal(r.id, 'nk');
+  assert.equal(r.veri.nodes.length, v.nodes.length, 'yeni kişi eklenmedi');
+  assert.ok(r.veri.marriages.some((m) => m.from === 'y' && m.to === 'nk'));
+});
+
+test('uçtan uca kural: yönetici kaydı aynı anne-babadan aynı adlı ikinci kişiyi eklerse 400', { skip: atla }, async () => {
+  const [row] = await D.sql`select veri, guncelleme from agac where id=1`;
+  const v = JSON.parse(JSON.stringify(row.veri));
+  const e = v.edges.find((x) => v.edges.filter((y) => y.from === x.from).length >= 1);
+  const kardes = v.nodes.find((n) => n.id === e.to);
+  v.nodes.push({ id: 'kopya1', name: kardes.name, sex: kardes.sex });
+  v.edges.push({ from: e.from, to: 'kopya1' });
+  for (const m of v.motherEdges || []) if (m.to === kardes.id) v.motherEdges.push({ from: m.from, to: 'kopya1' });
+  const r = await cagir(agacApi, { body: { veri: v, jeton: jetonUret('admin'), onceki: new Date(row.guncelleme).toISOString() } });
+  assert.equal(r.statusCode, 400, JSON.stringify(r.govde).slice(0, 200));
+  assert.equal(r.govde.kural, 'ayni-ad-kardes');
+  // ad ayırt edilince kabul
+  v.nodes.find((n) => n.id === 'kopya1').name = kardes.name + ' Can';
+  const r2 = await cagir(agacApi, { body: { veri: v, jeton: jetonUret('admin'), onceki: new Date(row.guncelleme).toISOString() } });
+  assert.equal(r2.statusCode, 200, JSON.stringify(r2.govde).slice(0, 200));
+  await D.sql`update agac set veri=${JSON.stringify(D.agac)}::jsonb where id=1`;
+});
