@@ -496,6 +496,19 @@ body:has(.inspector.show) #activeCard{display:none !important}
 #anaEkran .aeOk{position:absolute;left:50%;bottom:-11px;transform:translateX(-50%);width:20px;height:20px;
   background:var(--panel);border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);rotate:45deg;display:none}
 #anaEkran.altOk .aeOk{display:block}
+/* Mobil Çınar şeridi: panel yerine üstte tek satır (sayaç ve kişi kartının altında) */
+#cinarSerit{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 112px);z-index:18;
+  display:flex;align-items:center;gap:8px;height:38px;padding:0 4px 0 10px;border-radius:19px;
+  background:var(--panel);border:1px solid var(--spine);box-shadow:0 8px 24px var(--shadow);color:var(--text);
+  font-size:13px;cursor:pointer;opacity:0;transform:translateY(-8px);transition:opacity .25s,transform .25s}
+#cinarSerit.acik{opacity:1;transform:none}
+#cinarSerit .csIsaret{display:flex;color:var(--spine);flex:none}
+#cinarSerit .csIsaret svg{width:18px;height:18px}
+#cinarSerit .csAd{font-weight:700;color:var(--spine);flex:none;font-size:12px;letter-spacing:.3px}
+#cinarSerit .csMetin{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-soft)}
+#cinarSerit .csAc{color:var(--spine);font-weight:700;flex:none}
+#cinarSerit .csKapat{flex:none;width:30px;height:30px;border-radius:50%;border:none;background:none;color:var(--muted);font-size:18px;cursor:pointer}
+@media (min-width:641px){ #cinarSerit{display:none} }
 </style>
 </head>
 <body>
@@ -5073,6 +5086,29 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     panel.style.display="block";
     if(typeof kotaTazele==="function") kotaTazele();
   }
+  // MOBİL: Çınar kendini üstte tek satırla belli eder (ekranı kaplamaz). Dokununca panel açılır;
+  // × ya da CINAR_SERIT.sureSn sonra kendiliğinden çekilir — dock'taki "Çınar" her zaman orada.
+  const CINAR_SERIT={ sureSn:12 };
+  function cinarSeridi(ilkZiyaret){
+    document.getElementById("cinarSerit")?.remove();
+    const saat=new Date().getHours();
+    const selam = saat<11 ? "Günaydın" : saat<17 ? "İyi günler" : saat<22 ? "İyi akşamlar" : "İyi geceler";
+    const kim=kimlikId(), kimAd = kim&&byId[kim] ? " "+dispName(byId[kim].name) : "";
+    const oneri=ilkOneri();
+    const metin = ilkZiyaret ? `Merhaba${kimAd}, ben ${asistanAdi()} — soyumuzu sor` : (oneri ? `${selam}${kimAd} · “${oneri}”` : `${selam}${kimAd} · bir şey sor`);
+    const d=document.createElement("div"); d.id="cinarSerit"; d.setAttribute("role","button"); d.tabIndex=0;
+    d.innerHTML=`<span class="csIsaret">${document.querySelector(".brand .logoIsaret")?.outerHTML||"🌳"}</span>
+      <span class="csAd">${escapeHtml(asistanAdi())}</span><span class="csMetin">${escapeHtml(metin)}</span>
+      <span class="csAc">›</span><button class="csKapat" aria-label="Kapat">×</button>`;
+    document.body.appendChild(d);
+    requestAnimationFrame(()=>d.classList.add("acik"));
+    const git=()=>{ d.classList.remove("acik"); setTimeout(()=>d.remove(), 300); };
+    d.onclick=e=>{ if(e.target.closest(".csKapat")){ e.stopPropagation(); git(); return; } git(); ac(false); };
+    d.onkeydown=e=>{ if(e.key==="Enter"){ git(); ac(false); } };
+    setTimeout(git, CINAR_SERIT.sureSn*1000);
+  }
+  window.cinarSeridi=cinarSeridi;
+
   // Panel kapanınca dinleme de dursun: panel dışına tıklayınca panel kapanıyor
   // ama tanıma arka planda çalışmaya devam ediyordu (mikrofon açık kalıyordu).
   function kapat(){ panel.style.display="none"; if(typeof sesDurdur==="function") sesDurdur(); }
@@ -5239,7 +5275,9 @@ function rehberKisiBul(ad){ return rehberKisiAra(ad)[0] || null; }
     if(acikMi && denemeler<60) return;          // en fazla ~48 sn bekle
     clearInterval(bekle);
     if(new URLSearchParams(location.search).has("sohbet")) return;   // davetle gelen: sohbet açılacak
-    ac(!gorildi);
+    // Mobilde panel ekranın yarısını kaplıyordu: onun yerine üstte tek satırlık kibar bir şerit
+    if(matchMedia("(max-width:640px)").matches) cinarSeridi(!gorildi);
+    else ac(!gorildi);
     try{ localStorage.setItem(REHBER_KEY,"1"); }catch(e){}
   }, 800);
 

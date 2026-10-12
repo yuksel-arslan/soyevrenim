@@ -222,6 +222,13 @@ yazar (yarıda 429 olsa bile harcanan kısım yazılır).
 4. Model değiştirmek: `api/_lib/ayar.js` → `LLM.model`; sağlayıcı: `LLM.saglayici` (`SAGLAYICI` içinde `openai`, eski `groq`).
 5. Eski `GROQ_API_KEY` artık kullanılmaz; Vercel'den silinebilir.
 
+## Mobilde açılış (Çınar şeridi)
+
+Masaüstünde Çınar paneli açılışta bir kez açılır. **Mobilde** panel ekranın yarısını kapladığı için
+açılmaz; yerine üstte (kişi sayacı ve kişi kartının altında) tek satırlık **Çınar şeridi** çıkar:
+"Çınar · Günaydın Yüksel · “öneri”  ›  ×". Dokununca panel açılır; × ile ya da `CINAR_SERIT.sureSn`
+(12 sn) sonra kendiliğinden çekilir. Çınar dock'ta her zaman erişilebilir. Kod: `cinarSeridi()`.
+
 ## Beceri (bilgi tabanı)
 
 Köken, araştırma, bölge, Lazca ve site bilgisi tek bilgi tabanında; model `bilgi_ara` aracıyla yalnız
