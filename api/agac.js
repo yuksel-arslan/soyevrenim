@@ -4,8 +4,31 @@
 // Ortam değişkeni gerekir: DATABASE_URL  (Neon bağlantı dizesi)
 // Vercel panel → Project → Settings → Environment Variables → DATABASE_URL ekle.
 
-import { jetonDogrula } from './giris.js';
+import { jetonDogrula, jetonUret } from './giris.js';
 import { db } from './_lib/db.js';
+import { KAYIT } from './_lib/ayar.js';
+import { kayitEkle, medyaEkle } from './_lib/kayit.js';
+
+// Ağaca KÜÇÜK ve SINIRLI bir değişiklik işler (tam ağaç yazımı yalnız yöneticide).
+// Güncel sürüm okunur, `degistir(veri)` uygulanır, koşullu yazılır; arada başka kayıt
+// olduysa yeniden denenir (yöneticinin tam kaydıyla aynı çakışma kuralı).
+async function agacYamala(sql, kim, degistir) {
+  for (let i = 0; i < KAYIT.deneme; i++) {
+    const [row] = await sql`select veri, guncelleme from agac where id = 1`;
+    if (!row) throw Object.assign(new Error('Ağaç henüz yok'), { kod: 404, hata: 'Ağaç henüz yok' });
+    const sonuc = degistir(row.veri);
+    const [kayit] = await sql`
+      update agac set veri = ${JSON.stringify(sonuc.veri)}::jsonb, guncelleyen = ${kim}, guncelleme = now()
+      where id = 1 and date_trunc('milliseconds', guncelleme) = date_trunc('milliseconds', ${row.guncelleme}::timestamptz)
+      returning guncelleme`;
+    if (kayit) {
+      await sql`insert into gunluk (veri, guncelleyen) values (${JSON.stringify(sonuc.veri)}::jsonb, ${kim})`;
+      return { ...sonuc, guncelleme: kayit.guncelleme };
+    }
+  }
+  throw Object.assign(new Error('Ağaç şu an çok yoğun'), { kod: 409, hata: 'Ağaç şu an başka biri tarafından değiştiriliyor — tekrar dene' });
+}
+const yamaHatasi = (res, e) => res.status(e.kod || 500).json({ ok: false, hata: e.hata || String(e.message || e), ...(e.var ? { var: e.var } : {}) });
 
 export default async function handler(req, res) {
   // CORS (aynı site zaten sorunsuz; yine de açık tutuyoruz)
@@ -26,6 +49,36 @@ export default async function handler(req, res) {
         guncelleme: row.guncelleme || null,
         guncelleyen: row.guncelleyen || null,
       });
+    }
+
+    const adim = String((req.query && req.query.adim) || '');
+    // KAYIT: ağaçta olmayan aile üyesi kendini mevcut bir kişiye bağlayarak ekler.
+    // Aile/yönetici şifresi (ya da geçerli oturum) şart; bağsız kayıt kayitEkle'de reddedilir.
+    if (req.method === 'POST' && adim === 'kayit') {
+      const body = req.body || {};
+      const oturum = jetonDogrula(body.jeton);
+      const sifre = String(body.sifre || '').trim();
+      const rol = oturum ? oturum.rol
+        : (sifre && sifre === (process.env.ADMIN_SIFRESI || '\0')) ? 'admin'
+        : (sifre && sifre === (process.env.AILE_SIFRESI || '\0')) ? 'aile' : null;
+      if (!rol) return res.status(401).json({ ok: false, hata: sifre ? 'Aile şifresi yanlış' : 'Kayıt için aile şifresi gerekli' });
+      try {
+        const ad = String(body.ad || '').slice(0, 80);
+        const r = await agacYamala(sql, `${ad} (kayıt)`, (v) => kayitEkle(v, body));
+        return res.status(200).json({ ok: true, kisi: r.id, ad: r.kisi.name, rol, jeton: jetonUret(rol, r.id), guncelleme: r.guncelleme });
+      } catch (e) { return yamaHatasi(res, e); }
+    }
+    // FOTOĞRAF / GALERİ: aile üyesinin yüklediği medya ONAYSIZ işlenir (yalnız medya alanı;
+    // ağacın geri kalanına dokunulmaz). Bağlantı kendi deposumuzdan olmalı (medyaEkle denetler).
+    if (req.method === 'POST' && adim === 'medya') {
+      const body = req.body || {};
+      const oturum = jetonDogrula(body.jeton);
+      if (!oturum) return res.status(401).json({ ok: false, hata: 'Oturumun süresi dolmuş — yeniden giriş yap' });
+      try {
+        const kim = String(body.guncelleyen || oturum.rol).slice(0, 80);
+        const r = await agacYamala(sql, kim, (v) => medyaEkle(v, String(body.kisi_id || ''), body.alan, body.url, !!body.video));
+        return res.status(200).json({ ok: true, profil: r.profil, guncelleme: r.guncelleme });
+      } catch (e) { return yamaHatasi(res, e); }
     }
 
     if (req.method === 'POST') {

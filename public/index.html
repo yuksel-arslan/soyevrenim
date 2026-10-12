@@ -433,6 +433,41 @@ body:has(.inspector.show) #activeCard{display:none !important}
 @media (max-width:640px){ .khSozluk{grid-template-columns:1fr} .khSozluk dd{margin-bottom:6px} }
 @media (max-width:640px){ .kokHikaye{width:100%;top:auto;height:82%;border-left:none;border-top:1px solid var(--line);
   border-radius:16px 16px 0 0;transform:translateY(105%)} .kokHikaye.acik{transform:none} .khIc{padding:18px 16px 40px} }
+/* KAYIT formu (karşılama): ağaçta olmayan aile üyesi kendini mevcut bir kişiye bağlar */
+#kayitForm{display:none;margin-top:18px;text-align:left;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:16px;box-shadow:0 16px 50px var(--shadow)}
+#welcome{overflow-y:auto}
+#welcome>div{margin:auto;padding-top:24px !important;padding-bottom:24px !important}
+#welcome.kayitAcik #smsLogin,#welcome.kayitAcik #welcomeStats{display:none !important}
+#kayitForm h2{font-size:16px;margin:0 0 4px;color:var(--text)}
+#kayitForm p.kNot{font-size:12px;color:var(--text-soft);margin:0 0 12px;line-height:1.5}
+#kayitForm label{display:block;font-size:11.5px;color:var(--muted);margin:10px 0 4px;font-weight:600;letter-spacing:.2px}
+#kayitForm input,#kayitForm select{width:100%;box-sizing:border-box;font-size:15px;color:var(--text);background:var(--bg2);
+  border:1px solid var(--line);border-radius:8px;padding:10px 12px;outline:none;font-family:inherit}
+#kayitForm input:focus,#kayitForm select:focus{border-color:var(--accent)}
+#kayitForm .kSatir{display:flex;gap:8px}
+#kayitForm .kSatir>*{flex:1;min-width:0}
+#kayitForm .kCins{display:flex;gap:6px}
+#kayitForm .kCins button{flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:var(--bg2);
+  color:var(--text-soft);cursor:pointer;font-size:14px}
+#kayitForm .kCins button.sec{border-color:var(--accent);color:var(--text);box-shadow:inset 0 0 0 1px var(--accent)}
+#kBagSonuc{margin-top:4px;border:1px solid var(--line);border-radius:8px;max-height:180px;overflow:auto;display:none;background:var(--bg2)}
+#kBagSonuc div{padding:8px 11px;cursor:pointer;font-size:13.5px;border-bottom:1px solid var(--line)}
+#kBagSonuc div:hover{background:var(--panel2)}
+#kBagSonuc small{display:block;color:var(--muted);font-size:11px}
+#kBagSecili{display:none;margin-top:6px;padding:8px 11px;border-radius:8px;border:1px solid var(--accent);font-size:13.5px;
+  color:var(--text);justify-content:space-between;align-items:center;gap:8px}
+#kBagSecili button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;text-decoration:underline}
+#kayitForm .kDugme{display:flex;gap:8px;margin-top:14px}
+#kayitForm .kDugme button{flex:1;padding:11px;border-radius:9px;font-weight:600;font-size:14px;cursor:pointer}
+#kKaydol{background:var(--accent);color:var(--on-accent);border:none}
+#kKaydol:disabled{opacity:.6;cursor:default}
+#kVazgec{background:none;border:1px solid var(--line2);color:var(--text-soft)}
+#kHata{font-size:12.5px;color:var(--danger);margin-top:8px;min-height:16px;line-height:1.45}
+#kHata button{margin-top:6px;background:none;border:1px solid var(--accent);color:var(--text);border-radius:7px;padding:6px 10px;cursor:pointer}
+.whoKayit{padding:11px 14px;font-size:13px;color:var(--accent);cursor:pointer;border-top:1px solid var(--line);font-weight:600}
+.whoKayit:hover{background:var(--panel2)}
+.whoBos{padding:10px 14px;color:var(--muted);font-size:13px;line-height:1.45}
 </style>
 </head>
 <body>
@@ -461,6 +496,34 @@ body:has(.inspector.show) #activeCard{display:none !important}
     </div>
     <button id="skipWho" style="margin-top:16px;background:none;border:none;color:var(--muted);
       font-size:13px;cursor:pointer;text-decoration:underline">Sadece bakmak istiyorum</button>
+
+    <!-- KAYIT: ağaçta yoksan kendini MEVCUT bir kişiye bağlayarak ekle (bağsız kayıt yok) -->
+    <form id="kayitForm" autocomplete="off" onsubmit="return false">
+      <h2>Ağaçta yokum — kaydol</h2>
+      <p class="kNot">Kendini ağaçtaki bir yakınına bağlayarak eklersin. Bağı olmayan kayıt olamaz;
+        aile şifresi gerekir. Eklenince doğrudan kendi adınla girersin.</p>
+      <div class="kSatir">
+        <div><label for="kAd">Adın</label><input id="kAd" maxlength="40" autocomplete="given-name"></div>
+        <div><label for="kSoyad">Soyadın</label><input id="kSoyad" maxlength="30" placeholder="isteğe bağlı" autocomplete="family-name"></div>
+      </div>
+      <div class="kSatir">
+        <div><label>Cinsiyet</label><div class="kCins"><button type="button" data-c="E">Erkek</button><button type="button" data-c="K">Kadın</button></div></div>
+        <div><label for="kDogum">Doğum yılı</label><input id="kDogum" inputmode="numeric" maxlength="4" placeholder="isteğe bağlı"></div>
+      </div>
+      <label for="kIliski">Ağaçtaki kimin nesisin?</label>
+      <select id="kIliski">
+        <option value="cocuk">Çocuğuyum (oğlu / kızı)</option>
+        <option value="es">Eşiyim (gelin / damat)</option>
+        <option value="kardes">Kardeşiyim</option>
+      </select>
+      <input id="kBagAra" placeholder="yakınının adını yaz…" style="margin-top:6px">
+      <div id="kBagSonuc"></div>
+      <div id="kBagSecili"><span></span><button type="button">değiştir</button></div>
+      <div id="kSifreAlan"><label for="kSifre">Aile şifresi</label>
+        <input id="kSifre" type="password" autocomplete="current-password"></div>
+      <div class="kDugme"><button type="button" id="kVazgec">Vazgeç</button><button type="button" id="kKaydol">Kaydol ve gir</button></div>
+      <div id="kHata" role="alert"></div>
+    </form>
 
     <!-- AİLE ŞİFRESİ ile giriş (yalnızca bulut/canlı modda görünür) -->
     <div id="smsLogin" style="display:none;margin-top:22px;border-top:1px solid #1c2740;padding-top:20px">
@@ -3456,13 +3519,34 @@ renderProfileSections._rerun=(n)=>{ // profil bölümünü tazele (galeri/anı d
   openInspector(n);
 };
 
+// FOTOĞRAF / GALERİ ONAYSIZ: aile üyesinin yüklediği medya doğrudan ağaca işlenir
+// (POST /api/agac?adim=medya — yalnız o kişinin medya alanı değişir). Eskiden fotoğraf da
+// "Onaya gönder" çubuğuna düşüyor, yönetici onaylamadıkça görünmüyordu.
+// Yönetici zaten tam kayıt yaptığı için onun yolu (saveProfile) değişmedi.
+async function medyaKaydet(n, alan, url, video){
+  if(isAdmin || !CLOUD.on){ return false; }
+  const kk=kimlikId();
+  const r=await yetkiliIstek(()=>fetch("/api/agac?adim=medya",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ jeton:sessionToken||"", kisi_id:n.id, alan, url, video:!!video,
+      guncelleyen: kk&&byId[kk] ? dispName(byId[kk].name) : "Aile üyesi" })}),
+    "Fotoğrafı kaydetmek için oturumunu yenile: aile şifreni gir.");
+  const j=await r.json().catch(()=>({ok:false, hata:`Sunucu yanıtı okunamadı (${r.status})`}));
+  if(!j.ok) throw new Error(j.hata||"Kaydedilemedi");
+  // Sunucudaki profil esas: yerelde başka bekleyen değişiklik varsa onlar korunur
+  const p=getProfile(n.id);
+  if(alan==="photo") p.photo=j.profil.photo; else p.gallery=j.profil.gallery;
+  PROFILES[n.id]=p; if(byId[n.id]) byId[n.id].profile=p;
+  try{ localStorage.setItem(PROFILE_KEY, JSON.stringify(PROFILES)); }catch(e){}
+  if(!pendingChanges && !dirty && j.guncelleme) CLOUD.lastServer=j.guncelleme;   // kendi kaydını "yeni" sanmasın
+  return true;
+}
 function pickPhoto(n){
   const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
   inp.onchange=async ()=>{ if(!inp.files[0])return;
     toast("Yükleniyor…");
     try{
       const {url}=await uploadMedia(inp.files[0], 400);
-      const p=getProfile(n.id); p.photo=url; PROFILES[n.id]=p; saveProfile(n.id,p);
+      if(!await medyaKaydet(n, "photo", url)){ const p=getProfile(n.id); p.photo=url; PROFILES[n.id]=p; saveProfile(n.id,p); }
       const im=new Image(); im._src=url; im.onload=()=>{ n._img=im; }; im.src=url; n._img=im;
       iDot.style.background=`center/cover url(${url})`; iDot.style.backgroundSize="cover";
       if(activeNode && activeNode.id===n.id) showActiveCard(activeNode);
@@ -3478,9 +3562,11 @@ function pickGallery(n){
     for(const f of files){
       try{
         const {url,video}=await uploadMedia(f, 900);
-        const p=getProfile(n.id); p.gallery=p.gallery||[];
-        p.gallery.push(video ? {url, video:true} : url);   // video ise nesne, foto ise düz url
-        saveProfile(n.id,p);
+        if(!await medyaKaydet(n, "gallery", url, video)){
+          const p=getProfile(n.id); p.gallery=p.gallery||[];
+          p.gallery.push(video ? {url, video:true} : url);   // video ise nesne, foto ise düz url
+          saveProfile(n.id,p);
+        }
       }catch(e){ toast("Bir dosya yüklenemedi: "+e.message); }
     }
     renderProfileSections._rerun(n); toast("Yükleme tamam");
@@ -5576,20 +5662,116 @@ function startAs(id){
 // WHO_MAX sonuç, tek tıklama dinleyicisi, küçük harfli adlar önbellekte.
 const WHO_MAX=12, WHO_GECIKME_MS=120;
 let whoT=0, whoAdlar=null, whoAdlarN=0;
-function whoAra(){
-  const v=whoInput.value.toLocaleLowerCase("tr").replace(/\d+$/,"").trim();
-  if(v.length<2){ whoResults.style.display="none"; return; }
+// Ad karşılaştırma: büyük/küçük harf, Türkçe karakter (Yuksel = Yüksel) ve soyad toleranslı.
+// Eskiden yazılanın TAMAMI adın içinde aranıyordu: "Yüksel Arslan" yazan (ağaçta yalnız "Yüksel")
+// ya da "Yuksel" yazan "yaşayan biri bulunamadı" görüp giremiyordu.
+const adKatla=s=>String(s||"").toLocaleLowerCase("tr").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .replace(/ı/g,"i").replace(/\d+/g,"").replace(/\s+/g," ").trim();
+function adPuani(sozcukler, aranan){
+  // ilk sözcük (ad) eşleşmeli; diğerleri (soyad, baba adı) puan katar
+  const t=aranan.split(" ").filter(x=>x.length>=2); if(!t.length) return 0;
+  const es=w=>sozcukler.some(a=>a.startsWith(w));
+  if(!es(t[0])) return 0;
+  return 1+t.slice(1).filter(es).length;
+}
+function kisiAraAd(v, sadeceYasayan, max){
   if(!whoAdlar || whoAdlarN!==nodes.length){   // ağaç değişince tazele
-    whoAdlar=new Map(nodes.map(n=>[n.id, dispName(n.name).toLocaleLowerCase("tr")])); whoAdlarN=nodes.length; }
+    whoAdlar=new Map(nodes.map(n=>[n.id, adKatla(dispName(n.name)).split(" ")])); whoAdlarN=nodes.length; }
+  const q=adKatla(v);
+  return nodes.filter(n=>!sadeceYasayan || n.alive!==false)
+    .map(n=>[n, adPuani(whoAdlar.get(n.id)||[], q)]).filter(x=>x[1]>0)
+    .sort((a,b)=>b[1]-a[1]).slice(0,max).map(x=>x[0]);
+}
+function whoAra(){
+  const v=whoInput.value.replace(/\d+$/,"").trim();
+  if(v.length<2){ whoResults.style.display="none"; return; }
+  const kayitSatiri=`<div class="whoKayit" data-kayit="1">Listede yok musun? Kaydol →</div>`;
+  if(!nodes.length){
+    whoResults.innerHTML=`<div class="whoBos">Ağaç yükleniyor… birazdan tekrar dene.</div>`;
+    whoResults.style.display="block"; return; }
   // ölüler kendini seçemez — sadece yaşayanlar
-  const hits=nodes.filter(n=>n.alive!==false && whoAdlar.get(n.id).includes(v)).slice(0,WHO_MAX);
-  whoResults.innerHTML=hits.length?hits.map(n=>`<div class="whoR" data-id="${n.id}">
+  const hits=kisiAraAd(v, true, WHO_MAX);
+  whoResults.innerHTML=(hits.length?hits.map(n=>`<div class="whoR" data-id="${n.id}">
       <span>${escapeHtml(dispName(n.name))}</span><small>${escapeHtml(kimlikSatiri(n))}<br>${nesilOf(n)}. nesil</small></div>`).join("")
-    :`<div style="padding:10px 14px;color:var(--muted);font-size:13px">yaşayan biri bulunamadı</div>`;
+    :`<div class="whoBos">“${escapeHtml(v)}” adında yaşayan biri ağaçta yok.</div>`)+kayitSatiri;
   whoResults.style.display="block";
 }
 whoInput.addEventListener("input",()=>{ clearTimeout(whoT); whoT=setTimeout(whoAra, WHO_GECIKME_MS); });
-whoResults.addEventListener("click",e=>{ const r=e.target.closest(".whoR[data-id]"); if(r) startAs(r.dataset.id); });
+whoResults.addEventListener("click",e=>{
+  if(e.target.closest("[data-kayit]")){ kayitAc(); return; }
+  const r=e.target.closest(".whoR[data-id]"); if(r) startAs(r.dataset.id); });
+
+// ---- KAYIT formu: ağaçta olmayan aile üyesi kendini mevcut birine bağlar ----
+// Sunucu: POST /api/agac?adim=kayit (aile şifresi ya da oturum + bağlı kişi zorunlu).
+// Ayrıntı: docs/giris.md → "Kayıt".
+const kayit={ cins:"", bag:null };
+function kayitHata(m){ document.getElementById("kHata").innerHTML=m||""; }
+function kayitAc(){
+  const f=document.getElementById("kayitForm");
+  const yazilan=whoInput.value.replace(/\d+$/,"").trim().split(/\s+/);
+  const kAd=document.getElementById("kAd"), kSoyad=document.getElementById("kSoyad");
+  if(!kAd.value) kAd.value=yazilan[0]||"";
+  if(!kSoyad.value && yazilan.length>1) kSoyad.value=yazilan.slice(1).join(" ");
+  document.getElementById("kSifreAlan").style.display=sessionToken?"none":"";
+  whoResults.style.display="none";
+  f.style.display="block"; kayitHata(""); welcome.classList.add("kayitAcik");
+  f.scrollIntoView({behavior:"smooth", block:"start"});
+  (kAd.value?document.getElementById("kBagAra"):kAd).focus();
+}
+function kayitBagSec(n){
+  kayit.bag=n?n.id:null;
+  const sec=document.getElementById("kBagSecili"), ara=document.getElementById("kBagAra");
+  document.getElementById("kBagSonuc").style.display="none";
+  if(n){ sec.querySelector("span").textContent=`${dispName(n.name)} · ${kimlikSatiri(n)||nesilOf(n)+". nesil"}`;
+    sec.style.display="flex"; ara.style.display="none"; }
+  else { sec.style.display="none"; ara.style.display=""; ara.value=""; ara.focus(); }
+}
+(function kayitBagla(){
+  const $=id=>document.getElementById(id);
+  document.querySelectorAll("#kayitForm .kCins button").forEach(b=>b.onclick=()=>{
+    kayit.cins=b.dataset.c; document.querySelectorAll("#kayitForm .kCins button").forEach(x=>x.classList.toggle("sec", x===b)); });
+  let t=0;
+  $("kBagAra").addEventListener("input",()=>{ clearTimeout(t); t=setTimeout(()=>{
+    const v=$("kBagAra").value.trim(), kutu=$("kBagSonuc");
+    if(v.length<2){ kutu.style.display="none"; return; }
+    const l=kisiAraAd(v, false, WHO_MAX);   // vefat etmiş biri de bağ olabilir (çocuğuyum)
+    kutu.innerHTML=l.length?l.map(n=>`<div data-id="${n.id}">${escapeHtml(dispName(n.name))}
+      <small>${escapeHtml(kimlikSatiri(n))} · ${nesilOf(n)}. nesil${n.alive===false?" · vefat":""}</small></div>`).join("")
+      :`<div class="whoBos" style="cursor:default">Bu adla kimse yok — başka bir yakınını dene</div>`;
+    kutu.style.display="block"; }, WHO_GECIKME_MS); });
+  $("kBagSonuc").addEventListener("click",e=>{ const r=e.target.closest("[data-id]"); if(r) kayitBagSec(byId[r.dataset.id]); });
+  $("kBagSecili").querySelector("button").onclick=()=>kayitBagSec(null);
+  $("kVazgec").onclick=()=>{ $("kayitForm").style.display="none"; welcome.classList.remove("kayitAcik"); whoInput.focus(); };
+  $("kKaydol").onclick=async()=>{
+    const ad=$("kAd").value.trim(), btn=$("kKaydol");
+    if(ad.length<((AYAR&&AYAR.KAYIT&&AYAR.KAYIT.adMin)||2)) return kayitHata("Adını yaz");
+    if(!kayit.cins) return kayitHata("Cinsiyet seç");
+    if(!kayit.bag) return kayitHata("Ağaçtaki yakınını seç — bağı olmayan kayıt olamaz");
+    const sifre=$("kSifre").value.trim();
+    if(!sessionToken && !sifre) return kayitHata("Aile şifresini yaz (aile büyüklerinden alabilirsin)");
+    kayitHata(""); btn.disabled=true; btn.textContent="Kaydediliyor…";
+    try{
+      const r=await fetch("/api/agac?adim=kayit",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ ad, soyad:$("kSoyad").value.trim(), cinsiyet:kayit.cins, dogum:$("kDogum").value.trim()||null,
+          iliski:$("kIliski").value, bag:kayit.bag, sifre, jeton:sessionToken||"" })});
+      const j=await r.json().catch(()=>({ok:false, hata:`Sunucu yanıtı okunamadı (${r.status})`}));
+      if(j.ok){
+        oturumSakla(j);
+        if(j.rol==="admin"){ isAdmin=true; window.__adminRol="admin"; }
+        if(typeof cloudLoad==="function") await cloudLoad();
+        if(typeof chatShowBtn==="function") chatShowBtn();
+        $("kayitForm").style.display="none";
+        if(byId[j.kisi]){ startAs(j.kisi); toast(`Hoş geldin ${dispName(byId[j.kisi].name)} — ağaca eklendin ✓`); }
+        else toast("Kaydın alındı — sayfayı yenile");
+      } else if(r.status===409 && j.var && byId[j.var]){
+        kayitHata(escapeHtml(j.hata)+`<br><button type="button" id="kBuBen">Evet, bu benim — ${escapeHtml(dispName(byId[j.var].name))} olarak gir</button>`);
+        $("kBuBen").onclick=async()=>{ if(!sessionToken && sifre){ const g=await sifreyleGir(sifre); if(!g.ok) return kayitHata(escapeHtml(g.hata)); }
+          $("kayitForm").style.display="none"; startAs(j.var); };
+      } else kayitHata(escapeHtml(j.hata||"Kaydedilemedi"));
+    }catch(e){ kayitHata("Bağlantı hatası — tekrar dene"); }
+    btn.disabled=false; btn.textContent="Kaydol ve gir";
+  };
+})();
 document.getElementById("skipWho").onclick=()=>startAs(null);
 whoInput.addEventListener("keydown",e=>{ if(e.key==="Enter"){
   clearTimeout(whoT); whoAra();   // Enter'da beklemeden ara

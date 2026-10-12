@@ -10,6 +10,16 @@ tek JSON olarak `agac` tablosunda (id = 1). Her kayıt `gunluk` tablosuna da yaz
 | `GET /api/agac` | herkes | `{ok, veri, guncelleme, guncelleyen}` |
 | `POST /api/agac` `{veri, onceki, guncelleyen, jeton}` | yalnız **yönetici** | `{ok, guncelleme}` · oturum geçersiz `401` · aile üyesi `403` (öneri yolu) · **`409` çakışma** + `{veri, guncelleme, guncelleyen}` |
 
+Ek adımlar (aile üyesine açık, küçük ve sınırlı yazım — tam ağaç yazımı yine yalnız yönetici):
+
+| Adım | Ne yapar | Ayrıntı |
+|---|---|---|
+| `POST ?adim=kayit` | Ağaçta olmayan aile üyesi kendini mevcut bir kişiye bağlayarak ekler | `docs/giris.md → Kayıt` |
+| `POST ?adim=medya` | Profil fotoğrafı / galeri öğesini onaysız işler | `docs/medya.md → Onaysız kayıt` |
+
+İkisi de `agacYamala`: güncel sürümü okur, değişikliği uygular, koşullu yazar (arada kayıt olduysa
+`KAYIT.deneme` kez yeniden dener), `gunluk`'e yazar.
+
 ## Cihazlar arası eşitleme (istemci)
 
 - **Yönetici** düzenleyince `cloudSave()` ağacı 1,2 sn sonra kaydeder. İstek `yetkiliIstek()` ile gider:
